@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, cross-platform]  # TEMP: cross-platform
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
