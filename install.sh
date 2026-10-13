@@ -386,7 +386,7 @@ install_omarchy() {
   fi
 }
 
-install() {
+install_all() {
   if (( EUID == 0 )); then
     die "Run without sudo (it asks when it needs to); only --firewall needs root."
   fi
@@ -603,5 +603,5 @@ case $ACTION in
   check) check ;;
   firewall) firewall ;;
   uninstall) uninstall ;;
-  install) install ;;
+  install) install_all ;;
 esac
