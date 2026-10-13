@@ -118,10 +118,46 @@ jobs:
           }
           iscc /Qp /DAppVersion=${{ needs.version.outputs.version }} windows\installer\paattu.iss
           Copy-Item build\installer\*.exe ..\dist\
+      - name: Install, start and uninstall
+        shell: pwsh
+        working-directory: dist
+        run: |
+          $setup = (Get-Item Paattu-*-setup.exe).FullName
+          $log = Join-Path $env:RUNNER_TEMP 'setup.log'
+          $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/LOG=$log" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content $log; throw "setup exited with $($p.ExitCode)" }
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\Paattu'
+          Get-ChildItem $dir | Format-Table Name, Length
+          # Up for 20 s with libmpv loaded means main() got past MediaKit.
+          $app = Start-Process (Join-Path $dir 'paattu.exe') -PassThru
+          Start-Sleep -Seconds 20
+          if ($app.HasExited) { throw "Paattu exited with $($app.ExitCode) within 20 s" }
+          $modules = (Get-Process -Id $app.Id).Modules.ModuleName
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $shot = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+            [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
+            New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP smoke) | Out-Null
+            $shot.Save((Join-Path $env:RUNNER_TEMP 'smoke\windows.png'))
+          } catch { Write-Warning "no screenshot: $_" }
+          Stop-Process -Id $app.Id -Force
+          if ($modules -notcontains 'libmpv-2.dll') { throw "Paattu is running but libmpv-2.dll isn't loaded" }
+          Start-Sleep -Seconds 2
+          Start-Process (Join-Path $dir 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait
+          for ($i = 0; $i -lt 30 -and (Test-Path (Join-Path $dir 'paattu.exe')); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path (Join-Path $dir 'paattu.exe')) { throw "paattu.exe is still there after uninstalling" }
+          'Installed, ran for 20 s with libmpv loaded, uninstalled'
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: dist/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-windows
+          path: ${{ runner.temp }}/smoke
+          if-no-files-found: ignore
 
   linux:
     needs: version
@@ -214,6 +250,36 @@ jobs:
           name: linux
           path: dist/*
 
+  # The APK installs and starts on an emulator.
+  android-smoke:
+    name: Android app starts (emulator)
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android
+          path: dist
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash .github/android-smoke.sh smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-android
+          path: smoke
+          if-no-files-found: ignore
+
   # The Linux builds start on other distros: the AppImage with nothing but GTK
   # and Mesa installed, the tarball once mpv is there too.
   linux-smoke:
@@ -281,7 +347,7 @@ jobs:
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [version, android, windows, linux, linux-smoke]
+    needs: [version, android, android-smoke, windows, linux, linux-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
