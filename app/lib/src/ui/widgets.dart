@@ -1,0 +1,455 @@
+// Pieces the pages share: cover art, song rows, the song menu, pickers.
+
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../app_state.dart';
+import '../library.dart';
+import '../links.dart';
+import '../track.dart';
+import '../util.dart';
+
+/// Cover art from the network, with a fallback picture and a placeholder.
+class Cover extends StatelessWidget {
+  const Cover({super.key, this.url, this.fallback, this.size = 48, this.radius = 6, this.icon = Icons.music_note});
+
+  final String? url;
+  final String? fallback;
+  final double? size;
+  final double radius;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget placeholder() => Container(
+          color: scheme.surfaceContainerHighest,
+          alignment: Alignment.center,
+          child: Icon(icon, color: scheme.onSurfaceVariant, size: size == null ? 48 : size! * 0.45),
+        );
+    Widget image(String? link, Widget Function() otherwise) => link == null || link.isEmpty
+        ? otherwise()
+        : Image.network(link,
+            fit: BoxFit.cover,
+            width: size,
+            height: size,
+            gaplessPlayback: true,
+            errorBuilder: (_, _, _) => otherwise());
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: image(url, () => image(fallback, placeholder)),
+      ),
+    );
+  }
+}
+
+class TrackCover extends StatelessWidget {
+  const TrackCover(this.track, {super.key, this.size = 48, this.large = false, this.radius = 6});
+  final Json track;
+  final double? size;
+  final bool large;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) =>
+      Cover(url: trackArt(track, large: large), fallback: trackArtFallback(track), size: size, radius: radius);
+}
+
+/// The song playing now, for highlighting it in lists.
+class NowPlayingBuilder extends StatelessWidget {
+  const NowPlayingBuilder({super.key, required this.builder});
+  final Widget Function(BuildContext context, String? playingId) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final player = Paattu.of(context).player;
+    return StreamBuilder<Json?>(
+      stream: player.current,
+      initialData: player.current.value,
+      builder: (context, snapshot) => builder(context, snapshot.data == null ? null : trackId(snapshot.data!)),
+    );
+  }
+}
+
+/// A song in a list: cover, title, film · singer, length and a menu.
+class TrackTile extends StatelessWidget {
+  const TrackTile({
+    super.key,
+    required this.track,
+    required this.onTap,
+    this.playingId,
+    this.index,
+    this.playlistId,
+    this.trailing,
+    this.showSite = false,
+  });
+
+  final Json track;
+  final VoidCallback onTap;
+  final String? playingId;
+  final int? index;
+  final String? playlistId;
+  final Widget? trailing;
+  final bool showSite;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final playing = playingId != null && playingId == trackId(track);
+    final subtitle = [
+      trackSubtitle(track),
+      if (showSite) siteName(trackSite(track)),
+      if (showSite && qualityLabel(track).isNotEmpty) qualityLabel(track),
+    ].where((s) => s.isNotEmpty).join(' · ');
+    final duration = trackDuration(track);
+    return ListTile(
+      onTap: onTap,
+      onLongPress: () => showTrackMenu(context, track, playlistId: playlistId),
+      contentPadding: const EdgeInsets.only(left: 16, right: 4),
+      leading: Stack(
+        alignment: Alignment.center,
+        children: [
+          TrackCover(track),
+          if (playing)
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(Icons.graphic_eq, color: theme.colorScheme.primary),
+            ),
+        ],
+      ),
+      title: Text(
+        trackTitle(track),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: playing ? TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600) : null,
+      ),
+      subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ?trailing,
+          if (duration != null)
+            Text(formatDuration(duration), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          IconButton(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => showTrackMenu(context, track, playlistId: playlistId),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A heart button that follows the library.
+class FavouriteButton extends StatelessWidget {
+  const FavouriteButton(this.track, {super.key, this.size});
+  final Json track;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) => LibraryBuilder(builder: (context, app) {
+        final on = app.library.isFavourite(trackId(track));
+        return IconButton(
+          iconSize: size,
+          tooltip: on ? 'Remove from Favourites' : 'Add to Favourites',
+          icon: Icon(on ? Icons.favorite : Icons.favorite_border, color: on ? Theme.of(context).colorScheme.primary : null),
+          onPressed: () => app.toggleFavourite(track),
+        );
+      });
+}
+
+/// The song menu: play, queue, heart, save, add to a playlist, open.
+Future<void> showTrackMenu(BuildContext context, Json track, {String? playlistId}) {
+  final app = Paattu.of(context);
+  final library = app.library;
+  final id = trackId(track);
+  final ownList = playlistId != null && library.playlist(playlistId)?['local'] == true;
+  final ytList = playlistId != null && !ownList && library.playlist(playlistId) != null;
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+      useRootNavigator: true,
+    isScrollControlled: true,
+    builder: (sheet) => SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: TrackCover(track),
+              title: Text(trackTitle(track), maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: Text([trackSubtitle(track), siteName(trackSite(track))].where((s) => s.isNotEmpty).join(' · ')),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.play_arrow),
+              title: const Text('Play now'),
+              onTap: () {
+                Navigator.pop(sheet);
+                fire(app.player.playTrack(track));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.playlist_play),
+              title: const Text('Play next'),
+              onTap: () {
+                Navigator.pop(sheet);
+                app.player.playNext([track]);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.queue_music),
+              title: const Text('Add to queue'),
+              onTap: () {
+                Navigator.pop(sheet);
+                app.player.enqueue([track]);
+              },
+            ),
+            ListTile(
+              leading: Icon(library.isFavourite(id) ? Icons.favorite : Icons.favorite_border),
+              title: Text(library.isFavourite(id) ? 'Remove from Favourites' : 'Add to Favourites'),
+              onTap: () {
+                Navigator.pop(sheet);
+                app.toggleFavourite(track);
+              },
+            ),
+            if (!library.isSaved(id))
+              ListTile(
+                leading: const Icon(Icons.library_add),
+                title: const Text('Save to library'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  app.saveSong(track);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.playlist_add),
+              title: const Text('Add to a playlist…'),
+              onTap: () async {
+                Navigator.pop(sheet);
+                final target = await pickPlaylist(context);
+                if (target != null) app.addToPlaylist(target, [track]);
+              },
+            ),
+            if (ownList || ytList)
+              ListTile(
+                leading: const Icon(Icons.remove_circle_outline),
+                title: Text('Remove from ${library.playlist(playlistId!)?['title'] ?? 'this playlist'}'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  library.removeTracks(playlistId!, [id]);
+                  library.changed();
+                  app.toast('Removed ${trackTitle(track)}');
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: Text('Open on ${siteName(trackSite(track))}'),
+              onTap: () {
+                Navigator.pop(sheet);
+                fire(launchUrl(Uri.parse(trackPage(track)), mode: LaunchMode.externalApplication));
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Pick one of your playlists (or make a new one). Returns its id.
+Future<String?> pickPlaylist(BuildContext context) {
+  final app = Paattu.of(context);
+  return showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+      useRootNavigator: true,
+    isScrollControlled: true,
+    builder: (sheet) {
+      final own = app.library.ownPlaylists();
+      if (!own.any((p) => p['id'] == favouritesId)) own.insert(0, app.library.favourites());
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(sheet).height * 0.7),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text('Add to a playlist', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: const Text('New playlist…'),
+                onTap: () async {
+                  final name = await askText(sheet, title: 'New playlist', label: 'Name', action: 'Create');
+                  if (name == null || !sheet.mounted) return;
+                  try {
+                    final p = app.library.createPlaylist(name);
+                    app.library.changed();
+                    if (sheet.mounted) Navigator.pop(sheet, p['id'] as String);
+                  } on LibraryException catch (error) {
+                    app.toast(error.message);
+                  }
+                },
+              ),
+              for (final p in own)
+                ListTile(
+                  leading: Icon(p['id'] == favouritesId
+                      ? Icons.favorite
+                      : p['id'] == savedId
+                          ? Icons.library_music
+                          : Icons.queue_music),
+                  title: Text(asString(p['title'])),
+                  subtitle: Text(plural(asList(p['tracks']).length, 'song')),
+                  onTap: () => Navigator.pop(sheet, p['id'] as String),
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Ask for a line of text.
+Future<String?> askText(BuildContext context,
+    {required String title, String label = '', String initial = '', String action = 'OK', String? hint}) {
+  final controller = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text(title),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: label.isEmpty ? null : label, hintText: hint),
+        onSubmitted: (value) => Navigator.pop(dialog, value.trim().isEmpty ? null : value.trim()),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialog, controller.text.trim().isEmpty ? null : controller.text.trim()),
+          child: Text(action),
+        ),
+      ],
+    ),
+  ).whenComplete(controller.dispose);
+}
+
+Future<bool> confirm(BuildContext context, {required String title, String? body, String action = 'Remove'}) async {
+  final answer = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text(title),
+      content: body == null ? null : Text(body),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(dialog, true), child: Text(action)),
+      ],
+    ),
+  );
+  return answer == true;
+}
+
+class SectionHeader extends StatelessWidget {
+  const SectionHeader(this.title, {super.key, this.action});
+  final String title;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 8, 8),
+        child: Row(
+          children: [
+            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+            ?action,
+          ],
+        ),
+      );
+}
+
+class EmptyState extends StatelessWidget {
+  const EmptyState({super.key, required this.icon, required this.title, this.body, this.action});
+  final IconData icon;
+  final String title;
+  final String? body;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+            if (body != null) ...[
+              const SizedBox(height: 6),
+              Text(body!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  textAlign: TextAlign.center),
+            ],
+            if (action != null) ...[const SizedBox(height: 16), action!],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A square playlist card for the home shelves.
+class PlaylistCard extends StatelessWidget {
+  const PlaylistCard({super.key, required this.playlist, required this.onTap, this.width = 150, this.icon});
+  final Json playlist;
+  final VoidCallback onTap;
+  final double width;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final count = playlist['tracks'] is List ? plural(asList(playlist['tracks']).length, 'song') : '';
+    final owner = asString(playlist['ownerName']);
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Cover(
+                url: asString(playlist['thumbnail']),
+                size: width - 8,
+                radius: 10,
+                icon: icon ?? Icons.queue_music,
+              ),
+              const SizedBox(height: 6),
+              Text(asString(playlist['title']), maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text([owner, count].where((s) => s.isNotEmpty).join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
