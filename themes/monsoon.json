@@ -1,0 +1,11 @@
+{
+  "name": "Monsoon",
+  "description": "Kerala backwaters in the rain",
+  "mode": "dark",
+  "background": "#0F1A17",
+  "surface": "#16241F",
+  "foreground": "#E3F2EC",
+  "muted": "#7FA597",
+  "accent": "#4FC3A1",
+  "highlight": "#8BD3E6"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Neelakurinji",
+  "description": "Munnar hills in kurinji bloom",
+  "mode": "dark",
+  "background": "#14122A",
+  "surface": "#1E1B3A",
+  "foreground": "#ECEAFF",
+  "muted": "#9A95C6",
+  "accent": "#8E7CFF",
+  "highlight": "#C7A8FF"
+}

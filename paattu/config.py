@@ -1,0 +1,127 @@
+"""~/.config/paattu/config.json: looks and behaviour, hot-reloaded by the shell.
+
+Like `spicetify config`, everything can be set from the command line
+(`paattu config set desktop.style vinyl`) and themes are plain files you can
+copy and edit (~/.config/paattu/themes/<name>.json).
+"""
+
+import contextlib
+import copy
+import json
+import os
+import tempfile
+
+from . import paths
+
+DEFAULTS = {
+    "theme": "omarchy",
+    "desktop": {
+        "enabled": True,
+        "workspace": 1,
+        "monitor": "",
+        "style": "vinyl",
+        "position": "bottom-left",
+        "marginX": 56,
+        "marginY": 56,
+        "scale": 1.0,
+        "opacity": 0.92,
+        "showQuickPicks": True,
+        "showUpNext": True,
+    },
+    "queue": {"dedupe": True, "skipTrailers": True},
+    "languages": ["Malayalam", "Tamil"],
+    # Where search looks (JioSaavn has the film songs at 320 kbps) and how many per site.
+    "search": {"sites": ["jiosaavn", "youtube", "soundcloud"], "limit": 12},
+}
+
+STYLES = ("vinyl", "card", "minimal")
+POSITIONS = ("top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right")
+
+
+def _merge(base, override):
+    out = copy.deepcopy(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def load():
+    try:
+        with open(paths.CONFIG_FILE, encoding="utf-8") as f:
+            return _merge(DEFAULTS, json.load(f))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return copy.deepcopy(DEFAULTS)
+
+
+def save(config):
+    paths.CONFIG.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=paths.CONFIG, prefix=".config.", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        os.replace(tmp, paths.CONFIG_FILE)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+        raise
+
+
+def parse_value(raw):
+    """CLI strings to JSON values: numbers, booleans, lists stay typed."""
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
+def validate(key, value):
+    if key == "desktop.style" and value not in STYLES:
+        raise ValueError("desktop.style is one of: " + ", ".join(STYLES))
+    if key == "desktop.position" and value not in POSITIONS:
+        raise ValueError("desktop.position is one of: " + ", ".join(POSITIONS))
+    if key == "theme" and value != "omarchy" and value not in theme_names():
+        raise ValueError("unknown theme %r; see: paattu theme list" % value)
+    if key == "desktop.workspace" and not (isinstance(value, int) and value >= 1):
+        raise ValueError("desktop.workspace is a workspace number")
+    if key in ("desktop.scale", "desktop.opacity") and not isinstance(value, (int, float)):
+        raise ValueError(key + " is a number")
+
+
+def get(config, key):
+    node = config
+    for part in key.split("."):
+        if not isinstance(node, dict) or part not in node:
+            raise KeyError(key)
+        node = node[part]
+    return node
+
+
+def set_key(key, value):
+    validate(key, value)
+    try:
+        with open(paths.CONFIG_FILE, encoding="utf-8") as f:
+            stored = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        stored = {}
+    node = stored
+    parts = key.split(".")
+    for part in parts[:-1]:
+        node = node.setdefault(part, {})
+    node[parts[-1]] = value
+    save(stored)
+    return load()
+
+
+def theme_names():
+    if not paths.THEMES.is_dir():
+        return []
+    return sorted(p.stem for p in paths.THEMES.glob("*.json"))
+
+
+def theme(name):
+    with open(paths.THEMES / (name + ".json"), encoding="utf-8") as f:
+        return json.load(f)

@@ -1,0 +1,11 @@
+{
+  "name": "Kasavu",
+  "description": "Kerala kasavu: cream silk with a gold border",
+  "mode": "light",
+  "background": "#F6F0E1",
+  "surface": "#EDE3CB",
+  "foreground": "#2B2416",
+  "muted": "#7A6A4A",
+  "accent": "#B8901F",
+  "highlight": "#8C6A12"
+}

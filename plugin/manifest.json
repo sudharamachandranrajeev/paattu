@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "rajeevrama.paattu",
+  "name": "Paattu",
+  "version": "0.1.0",
+  "author": "rajeevrama",
+  "description": "Malayalam & Tamil music from public YouTube playlists: now-playing controls in the bar, a widget on the home workspace, and the Paattu app window. Audio comes straight from YouTube through yt-dlp + mpv (no ads); library and playback live in ~/Work/paattu (the paattu command).",
+  "kinds": [
+    "bar-widget",
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "panel": "Home.qml"
+  },
+  "barWidget": {
+    "displayName": "Paattu",
+    "description": "Now playing with controls, the queue and Malayalam / Tamil mixes",
+    "category": "Media",
+    "aliases": [
+      "music",
+      "paattu",
+      "player",
+      "youtube"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "label": "title",
+      "maxWidth": 170,
+      "scroll": "volume"
+    },
+    "schema": [
+      {
+        "key": "label",
+        "type": "enum",
+        "label": "Bar label",
+        "options": [
+          "title",
+          "none"
+        ],
+        "defaultValue": "title",
+        "description": "Show the song and movie next to the icon, or just the icon."
+      },
+      {
+        "key": "maxWidth",
+        "type": "number",
+        "label": "Label width",
+        "defaultValue": 170,
+        "description": "Longest the label gets before it scrolls, in pixels."
+      },
+      {
+        "key": "scroll",
+        "type": "enum",
+        "label": "Scroll wheel",
+        "options": [
+          "volume",
+          "track"
+        ],
+        "defaultValue": "volume",
+        "description": "Scrolling over the widget changes the volume, or skips tracks."
+      }
+    ]
+  }
+}

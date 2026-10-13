@@ -1,0 +1,11 @@
+{
+  "name": "Theyyam",
+  "description": "Theyyam: fire red, turmeric and black",
+  "mode": "dark",
+  "background": "#120A08",
+  "surface": "#1F110D",
+  "foreground": "#FBEDE6",
+  "muted": "#B98C7E",
+  "accent": "#FF5A1F",
+  "highlight": "#FFC400"
+}

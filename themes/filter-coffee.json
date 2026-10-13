@@ -1,0 +1,11 @@
+{
+  "name": "Filter Coffee",
+  "description": "Degree coffee in a davara-tumbler",
+  "mode": "dark",
+  "background": "#1B1410",
+  "surface": "#261C16",
+  "foreground": "#F3E9DF",
+  "muted": "#A68E7B",
+  "accent": "#D49A5A",
+  "highlight": "#E8C8A0"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Kanjeevaram",
+  "description": "Kanchipuram silk: deep magenta with gold zari",
+  "mode": "dark",
+  "background": "#1E0A14",
+  "surface": "#2E1220",
+  "foreground": "#F6E7D8",
+  "muted": "#B89A8A",
+  "accent": "#E0B44A",
+  "highlight": "#D81B60"
+}

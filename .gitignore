@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+.venv/
+
+# Flutter app
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/android/local.properties
+app/android/key.properties
+app/android/app/*.jks
+*.keystore

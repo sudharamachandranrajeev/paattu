@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Paattu
+GenericName=Music
+Comment=Malayalam & Tamil music from YouTube playlists
+Exec=paattu open
+Icon=paattu
+Terminal=false
+Categories=AudioVideo;Audio;Music;Player;
+Keywords=music;songs;malayalam;tamil;youtube;playlist;paattu;
+StartupNotify=false
