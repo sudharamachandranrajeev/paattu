@@ -309,7 +309,7 @@ install_program() {
     for part in bin paattu engine themes share plugin install.sh README.md LICENSE pyproject.toml; do
       if [[ -e $SRC/$part ]]; then cp -R "$SRC/$part" "$stage/"; fi
     done
-    find "$stage" -name __pycache__ -type d -prune -exec rm -rf {} +
+    rm -rf "$stage"/*/__pycache__ "$stage"/*/*/__pycache__
     chmod 755 "$stage" "$stage/bin/paattu" "$stage/install.sh"
     if [[ -L $LIB ]]; then rm -f "$LIB"; else rm -rf "$LIB"; fi
     mv "$stage" "$LIB"

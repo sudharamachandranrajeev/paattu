@@ -117,7 +117,8 @@ void main() {
 
   test('a direct audio file plays as it is', () {
     final t = audioFileTrack('https://archive.org/download/x/Malare_Song.flac');
-    expect(t['title'], 'Malare Song');
+    expect(t['rawTitle'], 'Malare Song');
+    expect(t['title'], 'Malare');
     expect(t['codec'], 'flac');
     expect(t['site'], 'archive.org');
   });

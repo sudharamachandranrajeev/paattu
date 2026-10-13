@@ -214,9 +214,74 @@ jobs:
           name: linux
           path: dist/*
 
+  # The Linux builds start on other distros: the AppImage with nothing but GTK
+  # and Mesa installed, the tarball once mpv is there too.
+  linux-smoke:
+    name: Linux app starts on ${{ matrix.image }}
+    needs: linux
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:24.04", "fedora:latest", "archlinux:latest"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: dist
+      - name: GTK, Mesa and Xvfb
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-3-0t64 libgl1-mesa-dri libegl1 xvfb xauth >/dev/null
+          elif command -v dnf >/dev/null; then
+            dnf install -y -q gtk3 mesa-dri-drivers mesa-libEGL xorg-x11-server-Xvfb xorg-x11-xauth util-linux
+          else
+            pacman -Syu --noconfirm --needed gtk3 mesa xorg-server-xvfb xorg-xauth >/dev/null
+          fi
+      - name: Smoke test
+        shell: bash
+        run: |
+          set -u
+          # Runs the app for 20 s; it should still be up, with no missing
+          # libraries and no exception from main (libmpv loads at start).
+          smoke() {
+            local log=$1; shift
+            set +e
+            HOME=$PWD/home timeout 20 xvfb-run -a "$@" >"$log" 2>&1
+            local code=$?
+            set -e
+            cat "$log"
+            if [[ $code != 124 ]]; then echo "::error::$* exited with $code"; return 1; fi
+            if grep -qE 'Unhandled Exception|error while loading shared libraries|symbol lookup error|undefined symbol|cannot open shared object' "$log"; then
+              echo "::error::$* failed to start"; return 1
+            fi
+            echo "$* ran for 20 s"
+          }
+          mkdir -p home
+          failed=0
+          appimage=$(ls dist/*.AppImage 2>/dev/null | head -n1 || true)
+          if [[ -n $appimage ]]; then
+            chmod +x "$appimage"
+            smoke appimage.log env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" || failed=1
+          else
+            echo "::warning::no AppImage in this build"
+          fi
+          if command -v apt-get >/dev/null; then
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libmpv2 >/dev/null
+          elif command -v dnf >/dev/null; then
+            dnf install -y -q mpv-libs
+          else
+            pacman -S --noconfirm --needed mpv >/dev/null
+          fi
+          tar xzf dist/*.tar.gz
+          smoke tarball.log "$(ls -d paattu-*-linux-x64)/paattu" || failed=1
+          exit $failed
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [version, android, windows, linux]
+    needs: [version, android, windows, linux, linux-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
