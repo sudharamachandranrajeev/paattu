@@ -1,11 +1,10 @@
-// Unit tests for the plugin's Model.js: node --test tests/
+// Unit tests for the plugin's Model.js: node --test tests/*.test.mjs
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { homedir } from "node:os"
 import vm from "node:vm"
 
-const source = readFileSync(`${homedir()}/.config/omarchy/plugins/rajeevrama.paattu/Model.js`, "utf8")
+const source = readFileSync(new URL("../plugin/Model.js", import.meta.url), "utf8")
   .replace(/^\.pragma library\s*$/m, "")
 const M = {}
 vm.runInNewContext(source, M)

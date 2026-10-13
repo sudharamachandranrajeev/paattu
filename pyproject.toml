@@ -1,0 +1,32 @@
+# The paattu command as a Python package (pip / pipx). install.sh is the
+# easy way: it also sets up mpv, yt-dlp, the engine service and, on Omarchy,
+# the shell plugin. Paattu itself needs only the standard library.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paattu"
+dynamic = ["version"]
+description = "Malayalam & Tamil music from YouTube, JioSaavn, SoundCloud and any link: mpv + yt-dlp, no ads"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Rajeev Sudharamachandran" }]
+classifiers = [
+  "Environment :: Console",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Multimedia :: Sound/Audio :: Players",
+]
+
+[project.urls]
+Homepage = "https://github.com/sudharamachandranrajeev/paattu"
+
+[project.scripts]
+paattu = "paattu.cli:main"
+
+[tool.setuptools]
+packages = ["paattu"]
+
+[tool.setuptools.dynamic]
+version = { attr = "paattu.__version__" }

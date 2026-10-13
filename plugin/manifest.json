@@ -4,7 +4,7 @@
   "name": "Paattu",
   "version": "0.1.0",
   "author": "rajeevrama",
-  "description": "Malayalam & Tamil music from public YouTube playlists: now-playing controls in the bar, a widget on the home workspace, and the Paattu app window. Audio comes straight from YouTube through yt-dlp + mpv (no ads); library and playback live in ~/Work/paattu (the paattu command).",
+  "description": "Malayalam & Tamil music from public YouTube playlists: now-playing controls in the bar, a widget on the home workspace, and the Paattu app window. Audio comes straight from YouTube through yt-dlp + mpv (no ads); library and playback live in the paattu command (~/.local/lib/paattu).",
   "kinds": [
     "bar-widget",
     "panel"

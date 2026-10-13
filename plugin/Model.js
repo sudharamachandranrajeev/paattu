@@ -1,7 +1,7 @@
 .pragma library
 
 // Pure helpers for Paattu (bar control, desktop widget, app window). Kept free
-// of QML so they can be unit tested with node: ~/Work/paattu/tests/model.test.mjs
+// of QML so they can be unit tested with node: tests/model.test.mjs in the Paattu repo
 
 var GLYPH_PLAY = "\u{F040A}"        // md-play
 var GLYPH_PAUSE = "\u{F03E4}"       // md-pause

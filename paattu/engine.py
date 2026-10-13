@@ -25,6 +25,13 @@ class EngineError(Exception):
     pass
 
 
+def _systemctl(*args):
+    """systemctl's exit code, or None without systemd (other inits, containers)."""
+    if not shutil.which("systemctl"):
+        return None
+    return subprocess.run(["systemctl", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+
+
 def firewall_status():
     """'ok', 'blocked' (a saved OpenSnitch rule denies mpv), 'ask' (OpenSnitch
     will prompt for mpv), or 'none' (no OpenSnitch)."""
@@ -33,7 +40,7 @@ def firewall_status():
         names = os.listdir(OPENSNITCH_RULES)
     except OSError:
         return "none"
-    if subprocess.run(["systemctl", "is-active", "--quiet", "opensnitchd.service"]).returncode != 0:
+    if _systemctl("is-active", "--quiet", "opensnitchd.service") not in (0, None):
         return "none"
     if FIREWALL_RULE in names:
         return "ok"  # precedence rule, sorts before any saved deny
@@ -64,9 +71,8 @@ def start(wait=6.0):
     if running():
         return
     paths.RUNTIME.mkdir(parents=True, exist_ok=True)
-    unit = subprocess.run(["systemctl", "--user", "start", SERVICE], capture_output=True, text=True)
-    if unit.returncode != 0:
-        # Not installed as a unit (e.g. running from the source tree): start mpv directly.
+    if _systemctl("--user", "start", SERVICE) != 0:
+        # No unit (no systemd, or running from the source tree): start mpv directly.
         if not shutil.which("mpv"):
             raise EngineError("mpv is not installed")
         subprocess.Popen(mpv_command(), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -76,11 +82,12 @@ def start(wait=6.0):
         if running():
             return
         time.sleep(0.1)
-    raise EngineError("the engine didn't start; see: journalctl --user -u " + SERVICE)
+    raise EngineError("the engine didn't start; try: mpv --version, then paattu engine restart"
+                      if not shutil.which("systemctl") else "the engine didn't start; see: journalctl --user -u " + SERVICE)
 
 
 def stop():
-    subprocess.run(["systemctl", "--user", "stop", SERVICE], capture_output=True)
+    _systemctl("--user", "stop", SERVICE)
     if running():
         with _connect() as sock:
             sock.sendall(b'{"command":["quit"]}\n')

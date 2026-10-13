@@ -1,12 +1,14 @@
+# Template: install.sh fills in the @...@ values for this machine.
 [Unit]
 Description=Paattu music engine (mpv + yt-dlp)
-Documentation=file://%h/Work/paattu/README.md
+Documentation=@URL@
 After=pipewire.service pipewire-pulse.service
 
 [Service]
 Type=simple
-ExecStartPre=/usr/bin/mkdir -p %t/paattu
-ExecStart=/usr/bin/mpv --config-dir=%h/.config/paattu/mpv --input-ipc-server=%t/paattu/mpv.sock
+Environment=PATH=@PATH@
+ExecStartPre=@MKDIR@ -p %t/paattu
+ExecStart=@MPV@ --config-dir=@CONFIG@ --input-ipc-server=%t/paattu/mpv.sock
 Restart=on-failure
 RestartSec=2
 

@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 
-from . import art, cliamp, config, engine, library, paths, seeds, sources, youtube
+from . import __version__, art, cliamp, config, engine, library, paths, seeds, sources, youtube
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -896,7 +896,7 @@ def _queue_from_args(args, out):
     raise YouTubeError("play a playlist id or link, a video link, --mix NAME, --lang Malayalam|Tamil, or --user @handle")
 
 
-FIREWALL_FIX = "sudo ~/Work/paattu/install.sh --firewall"
+FIREWALL_FIX = "sudo ~/.local/lib/paattu/install.sh --firewall"
 
 
 def _check_firewall():
@@ -904,7 +904,7 @@ def _check_firewall():
     state = engine.firewall_status()
     if state == "blocked":
         raise EngineError("OpenSnitch has a saved rule blocking mpv, so nothing can stream. Fix: " + FIREWALL_FIX)
-    if state == "ask":
+    if state == "ask" and shutil.which("notify-send"):
         subprocess.Popen(["notify-send", "-a", "Paattu", "-u", "critical", "Paattu: allow mpv in OpenSnitch",
                           "OpenSnitch is about to ask about mpv. Click Allow, or run once: " + FIREWALL_FIX],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1214,14 +1214,21 @@ def cmd_watch(args, out):
         url = target
     else:
         raise EngineError("not a song link: %s" % target)
-    launcher = shutil.which("omarchy-launch-webapp")
-    command = [launcher, url] if launcher else ["brave", "--app=" + url]
-    subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    launcher = shutil.which("omarchy-launch-webapp") or shutil.which("xdg-open")
+    if not launcher:
+        import webbrowser
+        webbrowser.open(url)
+        out.done("Opened " + url)
+        return
+    subprocess.Popen([launcher, url], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
     out.done("Opened " + url)
 
 
 def cmd_open(args, out):
+    if not shutil.which("omarchy-shell"):
+        raise EngineError("the Paattu window is part of the Omarchy shell; elsewhere use the Paattu desktop app "
+                          "or the commands (paattu --help)")
     payload = json.dumps({"view": args.view or "home"})
     subprocess.run(["omarchy-shell", "shell", "summon", PLUGIN_ID, payload], capture_output=True)
     out.done()
@@ -1231,6 +1238,7 @@ def cmd_open(args, out):
 
 def build_parser():
     p = argparse.ArgumentParser(prog="paattu", description=__doc__)
+    p.add_argument("--version", action="version", version="paattu " + __version__)
     p.add_argument("--json", action="store_true", help="JSON output (for the shell plugin)")
     sub = p.add_subparsers(dest="command", required=True)
 
