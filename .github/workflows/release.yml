@@ -171,7 +171,7 @@ jobs:
       - name: Build tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev file >/dev/null
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev file patchelf >/dev/null
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -214,40 +214,47 @@ jobs:
           StartupWMClass=paattu
           EOF
           sed -i 's/^ *//' $app/usr/share/applications/paattu.desktop
-          # libmpv, GTK and what they need travel in the AppImage; glibc, the
-          # graphics stack, ALSA and fonts come from the system (linuxdeploy's
-          # excludelist).
+          # GTK and glib come from the system (every desktop has GTK 3, and the
+          # system's input methods and GIO modules only work with its own);
+          # libmpv and what it needs travel in the AppImage, found through
+          # their $ORIGIN runpaths, so nothing the system's GTK loads changes.
           mpv=$(ldconfig -p | awk '/libmpv\.so\.[0-9] /{print $NF; exit}')
           cat > AppRun <<'EOF'
           #!/bin/sh
           HERE="$(dirname "$(readlink -f "$0")")"
-          export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export LIBMPV_LIBRARY_PATH="$HERE/usr/lib/@LIBMPV@"
           exec "$HERE/usr/bin/paattu" "$@"
           EOF
-          sed -i 's/^ *//' AppRun
+          sed -i -e 's/^ *//' -e "s/@LIBMPV@/$(basename "$mpv")/" AppRun
           chmod +x AppRun
+          # libmpv links libjack and libusb, which linuxdeploy's excludelist
+          # leaves to the system, but few desktops have libjack without mpv.
+          mkdir -p $app/usr/lib
+          for name in libjack.so.0 libusb-1.0.so.0; do
+            lib=$(ldconfig -p | awk -v n="$name" '$1 == n {print $NF; exit}')
+            [[ -n $lib ]] || { echo "::warning::no $name to bundle"; continue; }
+            cp -L "$lib" "$app/usr/lib/$name"
+            patchelf --set-rpath '$ORIGIN' "$app/usr/lib/$name"
+          done
+          excludes=()
+          for lib in libgtk-3 libgdk-3 libgdk_pixbuf-2.0 libglib-2.0 libgobject-2.0 libgio-2.0 libgmodule-2.0 libgthread-2.0 \
+                     libcairo libcairo-gobject libpango-1.0 libpangocairo-1.0 libpangoft2-1.0 libatk-1.0 libatk-bridge-2.0 \
+                     libatspi libepoxy; do
+            excludes+=(--exclude-library "$lib.so*")
+          done
           libs=()
           for so in $app/usr/bin/lib/*.so; do
             [[ $(basename "$so") == libapp.so ]] || libs+=(--library "$so")
           done
-          APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy --appdir $app --executable $app/usr/bin/paattu \
-            --library "$mpv" "${libs[@]}" \
+          LDAI_OUTPUT="../dist/Paattu-$version-linux-x86_64.AppImage" APPIMAGE_EXTRACT_AND_RUN=1 \
+            ./linuxdeploy --appdir $app --executable $app/usr/bin/paattu \
+            --library "$mpv" "${libs[@]}" "${excludes[@]}" \
             --desktop-file $app/usr/share/applications/paattu.desktop \
             --icon-file $app/usr/share/icons/hicolor/256x256/apps/paattu.png \
-            --custom-apprun AppRun
-          # libmpv links libjack and libusb, which the excludelist leaves to the
-          # system, but few desktops have libjack without mpv: bring them along.
-          for name in libjack.so.0 libusb-1.0.so.0; do
-            lib=$(ldconfig -p | awk -v n="$name" '$1 == n {print $NF; exit}')
-            [[ -n $lib ]] || { echo "::warning::no $name to bundle"; continue; }
-            for dep in "$lib" $(ldd "$lib" | awk '/libdb-/ {print $3}'); do
-              [[ -e $app/usr/lib/$(basename "$dep") ]] || cp -L "$dep" $app/usr/lib/
-            done
-          done
-          # media_kit asks for libmpv.so first; point it at the bundled one.
-          ln -sf "$(basename "$mpv")" $app/usr/lib/libmpv.so
-          LDAI_OUTPUT="../dist/Paattu-$version-linux-x86_64.AppImage" APPIMAGE_EXTRACT_AND_RUN=1 \
-            ./linuxdeploy --appdir $app --output appimage
+            --custom-apprun AppRun --output appimage
+          if ls $app/usr/lib | grep -E '^lib(gtk-3|glib-2\.0|gio-2\.0)\.so'; then
+            echo "::error::GTK or glib went into the AppImage"; rm -f ../dist/*.AppImage; exit 1
+          fi
           ls -la ../dist
       - uses: actions/upload-artifact@v4
         with:

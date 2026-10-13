@@ -46,9 +46,10 @@ widget on workspace 1, or Super+Space → Paattu. Elsewhere, use the command:
 Download from [Releases](../../releases). The Windows installer is not code
 signed yet, so SmartScreen says "Windows protected your PC": choose **More
 info → Run anyway**. On Android, allow your browser or file manager to
-install unknown apps when asked. On Linux, the AppImage carries what it needs
-(`chmod +x` it and run it); the tarball uses the system's GTK 3 and mpv's
-library (`mpv` on Arch, `libmpv2` on Debian / Ubuntu, `mpv-libs` on Fedora).
+install unknown apps when asked. On Linux, the AppImage brings its own mpv
+and uses your desktop's GTK 3 (`chmod +x` it and run it); the tarball also
+needs mpv's library (`mpv` on Arch, `libmpv2` on Debian / Ubuntu, `mpv-libs`
+on Fedora).
 
 The apps search and play by themselves (no yt-dlp or mpv to install):
 JioSaavn songs at 320 kbps AAC, YouTube's best audio (Opus), SoundCloud,
