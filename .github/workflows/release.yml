@@ -1,0 +1,252 @@
+# Builds the Paattu app for Android, Windows and Linux. A v* tag publishes a
+# GitHub release with the APK, the Windows installer (and a portable zip), and
+# the Linux AppImage / tarball; running it by hand only builds them.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+    branches: [cross-platform]  # TEMP: build-test before merging
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.7
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      build: ${{ steps.v.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            version=${GITHUB_REF#refs/tags/v}
+          else
+            version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Paattu $version (build $GITHUB_RUN_NUMBER)"
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PAATTU_KEYSTORE_BASE64 }}
+        run: |
+          if [[ -n $KEYSTORE_BASE64 ]]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/paattu.jks"
+            echo "PAATTU_KEYSTORE=$RUNNER_TEMP/paattu.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No PAATTU_KEYSTORE_BASE64 secret: the APK is signed with a debug key"
+          fi
+      - name: Build the APK
+        env:
+          PAATTU_KEYSTORE_PASSWORD: ${{ secrets.PAATTU_KEYSTORE_PASSWORD }}
+          PAATTU_KEY_ALIAS: ${{ secrets.PAATTU_KEY_ALIAS }}
+          PAATTU_KEY_PASSWORD: ${{ secrets.PAATTU_KEY_PASSWORD }}
+        run: |
+          flutter build apk --release \
+            --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+          mkdir -p ../dist
+          cp build/app/outputs/flutter-apk/app-release.apk ../dist/Paattu-${{ needs.version.outputs.version }}-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Build
+        run: |
+          flutter build windows --release \
+            --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+      - name: Bundle the Visual C++ runtime
+        run: |
+          # So the app runs on a fresh Windows without the VC++ redistributable.
+          release=build/windows/x64/runner/Release
+          for dll in msvcp140.dll msvcp140_1.dll msvcp140_2.dll vcruntime140.dll vcruntime140_1.dll; do
+            if [[ -f /c/Windows/System32/$dll ]]; then cp "/c/Windows/System32/$dll" "$release/"; fi
+          done
+          ls "$release"
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ..\dist | Out-Null
+          Compress-Archive -Path build\windows\x64\runner\Release\* `
+            -DestinationPath ..\dist\Paattu-${{ needs.version.outputs.version }}-windows-x64-portable.zip
+      - name: Installer
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+            $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6"
+          }
+          iscc /Qp /DAppVersion=${{ needs.version.outputs.version }} windows\installer\paattu.iss
+          Copy-Item build\installer\*.exe ..\dist\
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+
+  linux:
+    needs: version
+    # The oldest supported Ubuntu, so the build runs on older distros too.
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev file >/dev/null
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Build
+        run: |
+          flutter build linux --release \
+            --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
+      - name: Tarball
+        run: |
+          version=${{ needs.version.outputs.version }}
+          mkdir -p ../dist "paattu-$version-linux-x64"
+          cp -r build/linux/x64/release/bundle/. "paattu-$version-linux-x64/"
+          cp linux/paattu.png "paattu-$version-linux-x64/"
+          cat > "paattu-$version-linux-x64/README.txt" <<'EOF'
+          Paattu for Linux. Needs mpv's library (libmpv) and GTK 3:
+            Arch: pacman -S mpv   Debian/Ubuntu: apt install libmpv2 (or libmpv1)   Fedora: dnf install mpv-libs
+          Run ./paattu from this folder.
+          EOF
+          tar czf "../dist/Paattu-$version-linux-x64.tar.gz" "paattu-$version-linux-x64"
+      - name: AppImage
+        continue-on-error: true
+        run: |
+          version=${{ needs.version.outputs.version }}
+          curl -fsSLo linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy
+          app=AppDir
+          mkdir -p $app/usr/bin $app/usr/lib $app/usr/share/applications $app/usr/share/icons/hicolor/256x256/apps
+          cp -r build/linux/x64/release/bundle/. $app/usr/bin/
+          cp linux/paattu.png $app/usr/share/icons/hicolor/256x256/apps/paattu.png
+          cat > $app/usr/share/applications/paattu.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Paattu
+          Comment=Malayalam and Tamil music
+          Exec=paattu
+          Icon=paattu
+          Categories=AudioVideo;Audio;Player;
+          StartupWMClass=paattu
+          EOF
+          sed -i 's/^ *//' $app/usr/share/applications/paattu.desktop
+          # libmpv and what it needs travel in the AppImage; GTK and the
+          # graphics stack come from the system.
+          mpv=$(ldconfig -p | awk '/libmpv\.so\.[0-9] /{print $NF; exit}')
+          cat > AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "$HERE/usr/bin/paattu" "$@"
+          EOF
+          sed -i 's/^ *//' AppRun
+          chmod +x AppRun
+          excludes=()
+          for lib in 'libgtk-3.so*' 'libgdk-3.so*' 'libglib-2.0.so*' 'libgobject-2.0.so*' 'libgio-2.0.so*' 'libgmodule-2.0.so*' \
+                     'libcairo*.so*' 'libpango*.so*' 'libharfbuzz*.so*' 'libatk*.so*' 'libgdk_pixbuf-2.0.so*' 'libepoxy.so*' \
+                     'libwayland*.so*' 'libxkbcommon*.so*' 'libfontconfig.so*' 'libfreetype.so*' 'libdbus-1.so*'; do
+            excludes+=(--exclude-library "$lib")
+          done
+          libs=()
+          for so in $app/usr/bin/lib/*.so; do
+            [[ $(basename "$so") == libapp.so ]] || libs+=(--library "$so")
+          done
+          APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy --appdir $app --executable $app/usr/bin/paattu \
+            --library "$mpv" "${libs[@]}" "${excludes[@]}" \
+            --desktop-file $app/usr/share/applications/paattu.desktop \
+            --icon-file $app/usr/share/icons/hicolor/256x256/apps/paattu.png \
+            --custom-apprun AppRun
+          # media_kit asks for libmpv.so first; point it at the bundled one.
+          ln -sf "$(basename "$mpv")" $app/usr/lib/libmpv.so
+          LDAI_OUTPUT="../dist/Paattu-$version-linux-x86_64.AppImage" APPIMAGE_EXTRACT_AND_RUN=1 \
+            ./linuxdeploy --appdir $app --output appimage
+          ls -la ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, android, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Release notes
+        run: |
+          version=${{ needs.version.outputs.version }}
+          # The CHANGELOG section for this version.
+          awk -v v="$version" '$0 ~ "^## " {p = index($0, v) > 0; next} p' CHANGELOG.md > notes.md
+          [[ -s notes.md ]] || echo "Paattu $version" > notes.md
+          cat notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=${GITHUB_REF#refs/tags/}
+          flags=()
+          [[ $tag == *-* || $tag == v0.* ]] && flags+=(--prerelease)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "Paattu ${tag#v}" --notes-file notes.md "${flags[@]}"
+          fi

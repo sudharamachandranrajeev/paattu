@@ -1,18 +1,60 @@
 # Paattu — പാട്ട് · பாட்டு
 
 Malayalam & Tamil music from public YouTube playlists, plus search across
-JioSaavn, YouTube and SoundCloud, built into Omarchy: a control in the status
-bar, a widget on the home workspace, an app window, and a `paattu` command.
-*Paattu* means "song" in both languages.
+JioSaavn, YouTube and SoundCloud. *Paattu* means "song" in both languages.
+
+| Where | What you get | Install |
+|---|---|---|
+| **Linux** (any distro) | the `paattu` command and music engine; on [Omarchy](https://omarchy.org) also a bar control, a desktop widget and an app window | `./install.sh` (below) |
+| **Windows 11** | the Paattu app | `Paattu-…-windows-x64-setup.exe` from [Releases](../../releases) (or the portable zip) |
+| **Android** | the Paattu app, with lock-screen and notification controls | `Paattu-…-android.apk` from [Releases](../../releases) |
+| **Linux desktop app** | the same app as Windows / Android | `Paattu-…-linux-x86_64.AppImage` or the tarball from [Releases](../../releases) |
+
+The apps and the Linux command share the library format: export it from
+one (Settings → Export the library, or `~/.local/share/paattu/library.json`)
+and import it in another.
+
+### Linux: the command and the Omarchy plugin
 
 ```
-./install.sh                    # your user: command, engine, launcher, bar plugin
-sudo ./install.sh --firewall    # OpenSnitch: let mpv / yt-dlp reach the music sites (once)
+git clone https://github.com/sudharamachandranrajeev/paattu.git
+cd paattu
+./install.sh                    # asks once for sudo to install mpv and python
 ./install.sh --check            # what's installed
+sudo ~/.local/lib/paattu/install.sh --firewall   # only with OpenSnitch: let mpv / yt-dlp reach the music sites
+./install.sh --uninstall        # remove it (--purge also removes your library)
 ```
 
-Open it with **Super+Shift+M**, the music icon in the bar, the widget on
-workspace 1, or Super+Space → Paattu.
+`install.sh` works on Arch (and Omarchy, Manjaro, EndeavourOS, CachyOS),
+Debian, Ubuntu (and Mint, Pop!_OS), Fedora, openSUSE, Void and Alpine. It
+installs **mpv** (and mpv-mpris for media keys) and **python3** with your
+package manager, a current **yt-dlp** (from pacman on Arch, otherwise the
+official release into `~/.local/bin`, since distro packages are usually too
+old for YouTube) and **deno** (yt-dlp needs a JavaScript runtime for
+YouTube), then the program into `~/.local/lib/paattu`, the `paattu` command,
+and an mpv engine service for systemd users. Nothing else runs as root.
+`--yes` answers its questions; `--dev` links your checkout instead of
+copying it (for working on Paattu). Without systemd, `paattu` starts mpv
+itself.
+
+On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the
+widget on workspace 1, or Super+Space → Paattu. Elsewhere, use the command:
+`paattu search malare`, `paattu play --mix "Malayalam mix"`, `paattu --help`.
+
+### Windows and Android
+
+Download from [Releases](../../releases). The Windows installer is not code
+signed yet, so SmartScreen says "Windows protected your PC": choose **More
+info → Run anyway**. On Android, allow your browser or file manager to
+install unknown apps when asked. The Linux AppImage and tarball need mpv's
+library (`mpv` on Arch, `libmpv2` on Debian / Ubuntu, `mpv-libs` on Fedora).
+
+The apps search and play by themselves (no yt-dlp or mpv to install):
+JioSaavn songs at 320 kbps AAC, YouTube's best audio (Opus), SoundCloud,
+and direct links to audio files. They have the same library as the Linux
+command: Home with your mixes and shelves, Search, Library (your playlists,
+YouTube profiles and playlists), Favourites, a queue and a now-playing
+screen, and the six Paattu themes.
 
 ## How it works
 
@@ -322,8 +364,28 @@ added the rule before search existed, run it again to add the new sites.
 
 ```
 python3 -m unittest discover -s tests     # titles, library, search, seeds, cliamp export, config
-node --test tests/*.mjs                   # the plugin's Model.js
+node --test tests/*.test.mjs              # the plugin's Model.js
+./install.sh --dev                        # use this checkout as the installed program
 ```
+
+The app is in `app/` (Flutter, Dart): `lib/src/` has the library model
+(a port of `paattu/library.py`), title cleaning (`titles.py`), the sources
+(JioSaavn, YouTube via youtube_explode_dart, SoundCloud) and the player
+(just_audio: ExoPlayer on Android, libmpv on Windows / Linux, with
+audio_service for Android's media controls). `app/test/` runs the same
+title and track-id cases as `tests/`. With Flutter installed:
+
+```
+cd app && flutter pub get && flutter test && flutter run
+```
+
+GitHub Actions does the rest: `ci.yml` runs every test, shellcheck, and
+`install.sh` on Debian, Ubuntu, Fedora, Arch and openSUSE containers;
+`release.yml` builds the signed APK, the Windows installer (Inno Setup) and
+the Linux AppImage when a `v*` tag is pushed, and publishes them as a
+release. The Android signing key is in the repository secrets
+(`PAATTU_KEYSTORE_BASE64`, `PAATTU_KEYSTORE_PASSWORD`, `PAATTU_KEY_ALIAS`,
+`PAATTU_KEY_PASSWORD`); without them the APK is signed with a debug key.
 
 The shell plugin hot-reloads, except `Home.qml` (the always-loaded desktop
 widget / window host), which needs `omarchy restart shell`.

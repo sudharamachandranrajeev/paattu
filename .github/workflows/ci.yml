@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main, cross-platform]  # TEMP: cross-platform
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: Desktop Paattu (Python, shell plugin, installer lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python tests
+        run: python -m unittest discover -s tests -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Shell plugin model tests
+        run: node --test tests/*.test.mjs
+      - name: shellcheck
+        run: shellcheck install.sh
+
+  install:
+    name: install.sh on ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "ubuntu:24.04", "fedora:latest", "archlinux:latest", "opensuse/tumbleweed:latest"]
+    steps:
+      - name: Prepare a user with sudo
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo curl ca-certificates >/dev/null
+          elif command -v dnf >/dev/null; then
+            dnf install -y -q sudo curl shadow-utils
+          elif command -v pacman >/dev/null; then
+            pacman -Syu --noconfirm --needed sudo curl >/dev/null
+          elif command -v zypper >/dev/null; then
+            zypper -n -q install sudo curl shadow
+          fi
+          useradd -m tester
+          echo 'tester ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/tester
+          chmod 440 /etc/sudoers.d/tester
+      - uses: actions/checkout@v4
+      - name: Install as a normal user
+        run: |
+          cp -r "$GITHUB_WORKSPACE" /home/tester/paattu
+          chown -R tester: /home/tester/paattu
+          su - tester -c 'cd ~/paattu && ./install.sh --yes'
+      - name: Check the install
+        run: |
+          su - tester -c '
+            set -e
+            cd ~/paattu
+            ./install.sh --check
+            export PATH="$HOME/.local/bin:$PATH"
+            paattu --version
+            mpv --version | head -1
+            (command -v yt-dlp >/dev/null && yt-dlp --version) || ~/.local/bin/yt-dlp --version
+            test -f ~/.config/paattu/mpv/mpv.conf
+            ./install.sh --uninstall
+            test ! -e ~/.local/bin/paattu
+          '
+
+  app:
+    name: Flutter app (analyze, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
