@@ -46,7 +46,8 @@ widget on workspace 1, or Super+Space → Paattu. Elsewhere, use the command:
 Download from [Releases](../../releases). The Windows installer is not code
 signed yet, so SmartScreen says "Windows protected your PC": choose **More
 info → Run anyway**. On Android, allow your browser or file manager to
-install unknown apps when asked. The Linux AppImage and tarball need mpv's
+install unknown apps when asked. On Linux, the AppImage carries what it needs
+(`chmod +x` it and run it); the tarball uses the system's GTK 3 and mpv's
 library (`mpv` on Arch, `libmpv2` on Debian / Ubuntu, `mpv-libs` on Fedora).
 
 The apps search and play by themselves (no yt-dlp or mpv to install):
@@ -54,7 +55,7 @@ JioSaavn songs at 320 kbps AAC, YouTube's best audio (Opus), SoundCloud,
 and direct links to audio files. They have the same library as the Linux
 command: Home with your mixes and shelves, Search, Library (your playlists,
 YouTube profiles and playlists), Favourites, a queue and a now-playing
-screen, and the six Paattu themes.
+screen, and the Paattu themes.
 
 ## How it works
 
@@ -382,8 +383,9 @@ cd app && flutter pub get && flutter test && flutter run
 GitHub Actions does the rest: `ci.yml` runs every test, shellcheck, and
 `install.sh` on Debian, Ubuntu, Fedora, Arch and openSUSE containers;
 `release.yml` builds the signed APK, the Windows installer (Inno Setup) and
-the Linux AppImage when a `v*` tag is pushed, and publishes them as a
-release. The Android signing key is in the repository secrets
+the Linux AppImage and tarball, starts each one (the installer on Windows, an
+Android emulator, Ubuntu, Fedora and Arch containers), and on a `v*` tag
+publishes them as a release. The Android signing key is in the repository secrets
 (`PAATTU_KEYSTORE_BASE64`, `PAATTU_KEYSTORE_PASSWORD`, `PAATTU_KEY_ALIAS`,
 `PAATTU_KEY_PASSWORD`); without them the APK is signed with a debug key.
 

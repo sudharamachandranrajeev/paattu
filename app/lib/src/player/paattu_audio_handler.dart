@@ -18,6 +18,10 @@ import '../titles.dart';
 import '../track.dart';
 import '../util.dart';
 
+/// Why this device can't play (libmpv didn't load on the desktop), or null.
+/// The app still opens; picking a song shows this instead.
+String? playbackUnavailable;
+
 class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   PaattuAudioHandler() {
     // Errors are handled from errorStream; this one only reports state.
@@ -187,6 +191,11 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Future<void> _playAt(int index, {bool autoplay = true, Duration? from}) async {
     if (index < 0 || index >= _queue.length) return;
+    final problem = playbackUnavailable;
+    if (problem != null) {
+      messages.add(problem);
+      return;
+    }
     final generation = ++_generation;
     final changed = index != _index;
     _index = index;

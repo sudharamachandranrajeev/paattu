@@ -20,8 +20,16 @@ Future<void> main() async {
   final desktop = Platform.isLinux || Platform.isWindows;
   if (desktop) {
     // ExoPlayer plays on Android; libmpv (media_kit) on the desktop.
-    JustAudioMediaKit.ensureInitialized(linux: true, windows: true);
-    JustAudioMediaKit.title = 'Paattu';
+    try {
+      JustAudioMediaKit.ensureInitialized(linux: true, windows: true);
+      JustAudioMediaKit.title = 'Paattu';
+    } catch (error) {
+      debugPrint('libmpv: $error');
+      playbackUnavailable = Platform.isLinux
+          ? "Paattu needs mpv's library to play. Install it (Arch: mpv, Debian/Ubuntu: libmpv2, "
+              'Fedora: mpv-libs) and open Paattu again'
+          : "Paattu can't find libmpv-2.dll next to paattu.exe. Reinstall Paattu";
+    }
   }
 
   final dir = await getApplicationSupportDirectory();
@@ -37,9 +45,11 @@ Future<void> main() async {
   } catch (_) {
     // Not every desktop has an audio session to configure.
   }
-  if (desktop) await player.setVolume(settings.volume);
+  if (desktop && playbackUnavailable == null) await player.setVolume(settings.volume);
 
   runApp(PaattuApp(state: AppState(library, settings, player)));
+  final problem = playbackUnavailable;
+  if (problem != null) fire(Future.delayed(const Duration(seconds: 1), () => player.messages.add(problem)));
 }
 
 /// On Android the player runs in a media service (notification, lock screen,

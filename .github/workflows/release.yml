@@ -214,8 +214,9 @@ jobs:
           StartupWMClass=paattu
           EOF
           sed -i 's/^ *//' $app/usr/share/applications/paattu.desktop
-          # libmpv and what it needs travel in the AppImage; GTK and the
-          # graphics stack come from the system.
+          # libmpv, GTK and what they need travel in the AppImage; glibc, the
+          # graphics stack, ALSA and fonts come from the system (linuxdeploy's
+          # excludelist).
           mpv=$(ldconfig -p | awk '/libmpv\.so\.[0-9] /{print $NF; exit}')
           cat > AppRun <<'EOF'
           #!/bin/sh
@@ -225,21 +226,24 @@ jobs:
           EOF
           sed -i 's/^ *//' AppRun
           chmod +x AppRun
-          excludes=()
-          for lib in 'libgtk-3.so*' 'libgdk-3.so*' 'libglib-2.0.so*' 'libgobject-2.0.so*' 'libgio-2.0.so*' 'libgmodule-2.0.so*' \
-                     'libcairo*.so*' 'libpango*.so*' 'libharfbuzz*.so*' 'libatk*.so*' 'libgdk_pixbuf-2.0.so*' 'libepoxy.so*' \
-                     'libwayland*.so*' 'libxkbcommon*.so*' 'libfontconfig.so*' 'libfreetype.so*' 'libdbus-1.so*'; do
-            excludes+=(--exclude-library "$lib")
-          done
           libs=()
           for so in $app/usr/bin/lib/*.so; do
             [[ $(basename "$so") == libapp.so ]] || libs+=(--library "$so")
           done
           APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy --appdir $app --executable $app/usr/bin/paattu \
-            --library "$mpv" "${libs[@]}" "${excludes[@]}" \
+            --library "$mpv" "${libs[@]}" \
             --desktop-file $app/usr/share/applications/paattu.desktop \
             --icon-file $app/usr/share/icons/hicolor/256x256/apps/paattu.png \
             --custom-apprun AppRun
+          # libmpv links libjack and libusb, which the excludelist leaves to the
+          # system, but few desktops have libjack without mpv: bring them along.
+          for name in libjack.so.0 libusb-1.0.so.0; do
+            lib=$(ldconfig -p | awk -v n="$name" '$1 == n {print $NF; exit}')
+            [[ -n $lib ]] || { echo "::warning::no $name to bundle"; continue; }
+            for dep in "$lib" $(ldd "$lib" | awk '/libdb-/ {print $3}'); do
+              [[ -e $app/usr/lib/$(basename "$dep") ]] || cp -L "$dep" $app/usr/lib/
+            done
+          done
           # media_kit asks for libmpv.so first; point it at the bundled one.
           ln -sf "$(basename "$mpv")" $app/usr/lib/libmpv.so
           LDAI_OUTPUT="../dist/Paattu-$version-linux-x86_64.AppImage" APPIMAGE_EXTRACT_AND_RUN=1 \
@@ -300,11 +304,11 @@ jobs:
         run: |
           if command -v apt-get >/dev/null; then
             apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-3-0t64 libgl1-mesa-dri libegl1 xvfb xauth >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-3-0t64 libgl1-mesa-dri libegl1 libgles2 libasound2t64 xvfb xauth >/dev/null
           elif command -v dnf >/dev/null; then
-            dnf install -y -q gtk3 mesa-dri-drivers mesa-libEGL xorg-x11-server-Xvfb xorg-x11-xauth util-linux
+            dnf install -y -q gtk3 mesa-dri-drivers mesa-libEGL libglvnd-gles alsa-lib xorg-x11-server-Xvfb xorg-x11-xauth util-linux
           else
-            pacman -Syu --noconfirm --needed gtk3 mesa xorg-server-xvfb xorg-xauth >/dev/null
+            pacman -Syu --noconfirm --needed gtk3 mesa alsa-lib xorg-server-xvfb xorg-xauth >/dev/null
           fi
       - name: Smoke test
         shell: bash
@@ -320,7 +324,7 @@ jobs:
             set -e
             cat "$log"
             if [[ $code != 124 ]]; then echo "::error::$* exited with $code"; return 1; fi
-            if grep -qE 'Unhandled Exception|error while loading shared libraries|symbol lookup error|undefined symbol|cannot open shared object' "$log"; then
+            if grep -qE 'Unhandled Exception|Cannot find libmpv|error while loading shared libraries|symbol lookup error|undefined symbol|cannot open shared object' "$log"; then
               echo "::error::$* failed to start"; return 1
             fi
             echo "$* ran for 20 s"
@@ -330,7 +334,12 @@ jobs:
           appimage=$(ls dist/*.AppImage 2>/dev/null | head -n1 || true)
           if [[ -n $appimage ]]; then
             chmod +x "$appimage"
-            smoke appimage.log env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" || failed=1
+            if ! smoke appimage.log env APPIMAGE_EXTRACT_AND_RUN=1 "$appimage"; then
+              failed=1
+              # What the bundled libmpv can't find here.
+              (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/$appimage" --appimage-extract >/dev/null 2>&1 \
+                && LD_LIBRARY_PATH=squashfs-root/usr/lib ldd squashfs-root/usr/lib/libmpv.so.* | grep 'not found') || true
+            fi
           else
             echo "::warning::no AppImage in this build"
           fi
