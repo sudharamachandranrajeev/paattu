@@ -214,8 +214,8 @@ class _PlaylistPageState extends State<PlaylistPage> {
                         header: header,
                         buildDefaultDragHandles: false,
                         itemCount: tracks.length,
-                        onReorder: (from, to) {
-                          library.moveTrack(widget.playlistId, from, to > from ? to - 1 : to);
+                        onReorderItem: (from, to) {
+                          library.moveTrack(widget.playlistId, from, to);
                           library.changed();
                         },
                         itemBuilder: (context, i) => TrackTile(

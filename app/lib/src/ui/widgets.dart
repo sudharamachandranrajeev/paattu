@@ -243,10 +243,10 @@ Future<void> showTrackMenu(BuildContext context, Json track, {String? playlistId
             if (ownList || ytList)
               ListTile(
                 leading: const Icon(Icons.remove_circle_outline),
-                title: Text('Remove from ${library.playlist(playlistId!)?['title'] ?? 'this playlist'}'),
+                title: Text('Remove from ${library.playlist(playlistId)?['title'] ?? 'this playlist'}'),
                 onTap: () {
                   Navigator.pop(sheet);
-                  library.removeTracks(playlistId!, [id]);
+                  library.removeTracks(playlistId, [id]);
                   library.changed();
                   app.toast('Removed ${trackTitle(track)}');
                 },

@@ -61,8 +61,10 @@ class SettingsPage extends StatelessWidget {
   Future<void> _import(BuildContext context, AppState app) async {
     await attempt(app, () async {
       final file = await FilePicker.pickFile(dialogTitle: 'Import a Paattu library', type: FileType.any);
-      if (file == null || !context.mounted) return;
-      await _importBytes(context, app, await file.readAsBytes(), file.name);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!context.mounted) return;
+      await _importBytes(context, app, bytes, file.name);
     }, failure: "Couldn't import");
   }
 
@@ -136,7 +138,9 @@ class SettingsPage extends StatelessWidget {
                   title: const Text('Use the desktop Paattu library'),
                   subtitle: Text(desktop.path),
                   onTap: () => attempt(app, () async {
-                    await _importBytes(context, app, await desktop.readAsBytes(), 'The desktop library');
+                    final bytes = await desktop.readAsBytes();
+                    if (!context.mounted) return;
+                    await _importBytes(context, app, bytes, 'The desktop library');
                   }, failure: "Couldn't import"),
                 ),
               const SectionHeader('About'),

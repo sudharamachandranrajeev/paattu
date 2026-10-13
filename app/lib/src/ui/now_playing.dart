@@ -401,7 +401,7 @@ class QueuePage extends StatelessWidget {
               return ReorderableListView.builder(
                 buildDefaultDragHandles: false,
                 itemCount: tracks.length,
-                onReorder: (from, to) => player.moveInQueue(from, to > from ? to - 1 : to),
+                onReorderItem: player.moveInQueue,
                 itemBuilder: (context, i) {
                   final t = tracks[i];
                   return Dismissible(

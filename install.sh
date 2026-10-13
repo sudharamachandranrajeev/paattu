@@ -73,6 +73,7 @@ first_line() {
 # The package manager, from /etc/os-release (ID, then ID_LIKE), else whichever is there.
 detect_pm() {
   local ids=""
+  # shellcheck source=/dev/null
   [[ -r /etc/os-release ]] && ids=$(. /etc/os-release && echo " ${ID:-} ${ID_LIKE:-} ")
   case $ids in
     *" arch "* | *" archarm "* | *" manjaro "* | *" endeavouros "* | *" cachyos "* | *" omarchy "*) echo pacman ;;
@@ -452,6 +453,7 @@ install() {
 check() {
   local pm mpris
   pm=$(detect_pm)
+  # shellcheck source=/dev/null
   note "distro: $( (. /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-?}") || echo unknown) ($pm)"
   note "mpv: $(first_line mpv --version || echo missing)"
   mpris=$(find_mpris)
@@ -488,11 +490,11 @@ uninstall() {
   fi
   if [[ -e $UNIT_DIR/$UNIT ]]; then
     rm -f "$UNIT_DIR/$UNIT"
-    have systemctl && systemctl --user daemon-reload 2>/dev/null || true
+    if have systemctl; then systemctl --user daemon-reload 2>/dev/null || true; fi
     note "removed the engine service"
   fi
   if [[ -d $PLUGIN_DIR ]]; then
-    have omarchy && omarchy plugin disable "$PLUGIN_ID" >/dev/null 2>&1 || true
+    if have omarchy; then omarchy plugin disable "$PLUGIN_ID" >/dev/null 2>&1 || true; fi
     rm -rf "$PLUGIN_DIR"
     note "removed the Omarchy plugin"
   fi
