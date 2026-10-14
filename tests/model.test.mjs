@@ -289,3 +289,32 @@ test("later pages leave out results already shown", () => {
   assert.equal(M.kindTitle("artist"), "Artists")
   assert.equal(M.resultTypeName({ type: "playlist" }), "Playlist")
 })
+
+test("sound: the same numbers as paattu/sound.py", () => {
+  const cases = JSON.parse(readFileSync(new URL("./sound_cases.json", import.meta.url), "utf8"))
+  for (const c of cases) {
+    eq(M.soundNormalize(c.settings), c.normalized)
+    eq(M.soundGains(c.settings), c.gains)
+  }
+})
+
+test("sound: live moves, labels and presets", () => {
+  const flat = M.soundGains({ on: true })
+  const louder = M.soundGains({ on: true, bands: [0, 0, 0, 2.5, 0, 0, 0, 0, 0, 0] })
+  // Only what changed: the preamp that makes room for the boost, and the band.
+  eq(M.soundCommands(flat, louder), [["af-command", "paattu", "g", M.soundFmt(louder.pre), "equalizer@pre"],
+                                     ["af-command", "paattu", "g", "2.5", "equalizer@b3"]])
+  assert.ok(louder.pre < -2 && louder.pre > -3)
+  assert.equal(M.soundCommands(flat, flat).length, 0)
+  assert.equal(M.soundFmt(-0.04), "0")
+  assert.equal(M.soundDb(2.5), "+2.5")
+  assert.equal(M.soundDb(-3), "-3")
+  assert.equal(M.soundBandLabel(16000), "16k")
+  assert.equal(M.soundBandLabel(62), "62")
+  const s = M.soundNormalize({ bands: [6, 5, 4.5, 2.5, 0.5, 0, 0, 0, 0, 0], presets: { Car: [1, 1] } })
+  assert.equal(M.soundMatchingPreset(s), "bass")
+  assert.equal(M.soundMatchingPreset(M.soundNormalize({ bands: [1, 1] , presets: { Car: [1, 1] } })), "Car")
+  eq(M.soundPresets(s).slice(-1), [{ id: "Car", name: "Car", bands: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0], saved: true }])
+  assert.ok(M.soundSame({ on: false }, {}))
+  assert.ok(!M.soundSame({ on: true }, {}))
+})

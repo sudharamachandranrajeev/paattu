@@ -440,6 +440,7 @@ FloatingWindow {
             { view: "playlist", arg: Model.SAVED, glyph: Model.GLYPH_SAVED, label: "Saved songs" },
             { view: "users", arg: null, glyph: Model.GLYPH_USER, label: "YouTube users" },
             { view: "queue", arg: null, glyph: Model.GLYPH_QUEUE, label: "Queue" },
+            { view: "sound", arg: null, glyph: Model.GLYPH_EQUALIZER, label: "Sound" },
             { view: "settings", arg: null, glyph: Model.GLYPH_PALETTE, label: "Look & settings" }
           ]
 
@@ -645,6 +646,7 @@ FloatingWindow {
           : win.view === "users" || win.view === "user" ? usersPage
           : win.view === "queue" ? queuePage
           : win.view === "settings" ? settingsPage
+          : win.view === "sound" ? soundPage
           : win.view === "search" ? searchPage
           : win.view === "collection" ? collectionPage
           : win.view === "mixes" ? mixesPage
@@ -736,6 +738,7 @@ FloatingWindow {
   Component { id: playlistPage; PlaylistPage { app: win; playlistId: win.arg || "" } }
   Component { id: queuePage; QueuePage { app: win } }
   Component { id: settingsPage; SettingsPage { app: win } }
+  Component { id: soundPage; SoundPage { app: win } }
   Component { id: searchPage; SearchPage { app: win } }
   Component { id: collectionPage; CollectionPage { app: win; item: win.view === "collection" && win.arg ? win.arg : ({}) } }
   Component { id: mixesPage; MixesPage { app: win } }

@@ -166,6 +166,16 @@ Rectangle {
     }
     GlyphButton {
       anchors.verticalCenter: parent.verticalCenter
+      glyph: Model.GLYPH_EQUALIZER
+      size: 30
+      // Lit while the equaliser is on.
+      color: root.app.view === "sound" || (root.app.store.config.sound || {}).on === true ? root.pal.accent : root.pal.muted
+      fontFamily: root.app.fontFamily
+      tooltip: "Sound"
+      onClicked: root.app.view === "sound" ? root.app.back() : root.app.navigate("sound")
+    }
+    GlyphButton {
+      anchors.verticalCenter: parent.verticalCenter
       glyph: Model.GLYPH_QUEUE
       size: 30
       color: root.app.view === "queue" ? root.pal.accent : root.pal.muted

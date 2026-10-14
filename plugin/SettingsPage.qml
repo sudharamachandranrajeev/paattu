@@ -36,24 +36,6 @@ Flickable {
   function set(key, value) { root.app.setConfig(key, value) }
 
   // Inline components can't see this file's ids, so they take `app`.
-  component SectionTitle: Text {
-    required property var app
-    textFormat: Text.PlainText
-    color: app.pal.foreground
-    font.family: app.fontFamily
-    font.pixelSize: 18
-    font.bold: true
-  }
-
-  component Hint: Text {
-    required property var app
-    textFormat: Text.PlainText
-    wrapMode: Text.WordWrap
-    color: app.pal.muted
-    font.family: app.fontFamily
-    font.pixelSize: 12
-  }
-
   component Stepper: Row {
     id: stepper
     required property var app

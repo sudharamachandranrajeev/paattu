@@ -70,6 +70,11 @@ def tenth(x):
     return math.floor(x * 10 + 0.5) / 10
 
 
+def hundredth(x):
+    """x to 0.01, halves up (Python's round() rounds them to even)."""
+    return math.floor(x * 100 + 0.5) / 100
+
+
 def fmt(x):
     """2.5 → "2.5", 3.0 → "3", -0.0 → "0"."""
     x = tenth(x)
@@ -109,9 +114,9 @@ def normalize(settings):
         "preamp": tenth(_number(s.get("preamp"), -LIMIT, LIMIT)),
         "bass": tenth(_number(s.get("bass"), -LIMIT, LIMIT)),
         "treble": tenth(_number(s.get("treble"), -LIMIT, LIMIT)),
-        "balance": round(_number(s.get("balance"), -1, 1), 2),
+        "balance": hundredth(_number(s.get("balance"), -1, 1)),
         "noclip": s.get("noclip") is not False,
-        "speed": round(_number(s.get("speed"), *SPEED, default=1.0), 2),
+        "speed": hundredth(_number(s.get("speed"), *SPEED, default=1.0)),
         "presets": presets,
     }
 
