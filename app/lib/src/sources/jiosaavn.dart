@@ -94,20 +94,163 @@ void _remember(List<Json> tracks) {
   }
 }
 
-Future<List<Json>> searchJioSaavn(String query, {int limit = 12}) async {
-  final data = asJson(await getJson(_api.replace(queryParameters: {
-    '__call': 'search.getResults',
-    '_format': 'json',
-    '_marker': '0',
-    'api_version': '4',
-    'ctx': 'web6dot0',
+Map<String, String> _call(String call, Map<String, String> extra) => {
+      '__call': call,
+      '_format': 'json',
+      '_marker': '0',
+      'api_version': '4',
+      'ctx': 'web6dot0',
+      ...extra,
+    };
+
+/// One page of songs (pages count from 1).
+Future<List<Json>> searchJioSaavn(String query, {int limit = 12, int page = 1}) async {
+  final data = asJson(await getJson(_api.replace(queryParameters: _call('search.getResults', {
     'n': '${limit * 2 > 50 ? 50 : limit * 2}',
-    'p': '1',
+    'p': '$page',
     'q': query,
-  })));
+  }))));
   final tracks = _unique(asList(data['results']), limit);
   _remember(tracks);
   return tracks;
+}
+
+// Albums' pictures end -150x150.jpg, artists' _50x50.jpg; both come in 500x500.
+final _anySizeRe = RegExp(r'([-_])\d+x\d+\.(jpg|jpeg|png|webp)$');
+String _bigImage(String url) => url.replaceFirstMapped(_anySizeRe, (m) => '${m.group(1)}500x500.${m.group(2)}');
+
+/// A JioSaavn album, playlist or artist as a search result (see
+/// collection in sources.dart), or null.
+Json? jiosaavnCollection(Object? raw) {
+  final item = asJson(raw);
+  final type = asString(item['type']);
+  final info = asJson(item['more_info']);
+  final title = htmlUnescape(asString(item['title'] ?? item['name'])).trim();
+  if (title.isEmpty || asString(item['id']).isEmpty) return null;
+  final url = asString(item['perma_url']);
+  final count = toInt(info['song_count']) ?? toInt(item['numsongs']);
+  switch (type) {
+    case 'album':
+      final music = htmlUnescape(asString(item['subtitle']).isNotEmpty ? asString(item['subtitle']) : asString(info['music']));
+      return {
+        'type': 'album',
+        'site': 'jiosaavn',
+        'id': asString(item['id']),
+        'url': url,
+        'title': title,
+        'subtitle': [music, asString(item['year'])].where((s) => s.isNotEmpty).join(' · '),
+        'art': _bigImage(asString(item['image'])),
+        'count': count,
+        'year': asString(item['year']),
+        'language': _title(asString(item['language'])),
+      };
+    case 'playlist':
+      return {
+        'type': 'playlist',
+        'site': 'jiosaavn',
+        'id': asString(item['id']),
+        'url': url,
+        'title': title,
+        'subtitle': htmlUnescape(asString(item['subtitle'])),
+        'art': _bigImage(asString(item['image'])),
+        'count': count,
+        'language': _title(asString(info['language'])),
+      };
+    case 'artist':
+      final role = asString(item['description']).isNotEmpty ? asString(item['description']) : asString(item['role']);
+      return {
+        'type': 'artist',
+        'site': 'jiosaavn',
+        'id': asString(item['id']),
+        'url': url,
+        'title': title,
+        'subtitle': role == 'Artist' || role == 'Primary' ? 'Singer' : _title(role),
+        'art': _bigImage(asString(item['image'])),
+      };
+  }
+  return null;
+}
+
+/// One page of albums, playlists or artists ([kind] 'album', 'playlist',
+/// 'artist'). Empty when there are no more.
+Future<List<Json>> searchJioSaavnCollections(String query, String kind, {int page = 1, int limit = 20}) async {
+  final call = switch (kind) {
+    'album' => 'search.getAlbumResults',
+    'playlist' => 'search.getPlaylistResults',
+    _ => 'search.getArtistResults',
+  };
+  final data = asJson(await getJson(_api.replace(queryParameters: _call(call, {'q': query, 'n': '$limit', 'p': '$page'}))));
+  final total = toInt(data['total']) ?? 0;
+  if ((page - 1) * limit >= total) return const [];
+  return [
+    for (final item in asList(data['results']))
+      if (jiosaavnCollection(asJson(item)..putIfAbsent('type', () => kind)) case final found?) found,
+  ];
+}
+
+/// A singer's or composer's page: their best songs and albums, a page at
+/// a time (pages count from 1).
+Future<Json> jiosaavnArtist(Json artist, {int page = 1}) async {
+  final url = asString(artist['url']);
+  final token = url.isEmpty ? '' : Uri.parse(url).pathSegments.where((p) => p.isNotEmpty).last;
+  final data = asJson(await getJson(_api.replace(
+      queryParameters: token.isNotEmpty
+          ? _call('webapi.get', {'type': 'artist', 'token': token, 'n_song': '25', 'n_album': '20', 'p': '$page', 'category': '', 'sort_order': ''})
+          : _call('artist.getArtistPageDetails',
+              {'artistId': asString(artist['id']), 'n_song': '25', 'n_album': '20', 'page': '$page', 'category': '', 'sort_order': ''}))));
+  final songs = _unique(asList(data['topSongs']), 25);
+  _remember(songs);
+  List<Json> collections(Object? items, String type) => [
+        for (final item in asList(items))
+          if (jiosaavnCollection(asJson(item)..putIfAbsent('type', () => type)) case final found?) found,
+      ];
+  return {
+    'name': htmlUnescape(asString(data['name'])),
+    'art': _bigImage(asString(data['image'])),
+    'followers': toInt(data['follower_count']) ?? toInt(data['fan_count']),
+    'role': _title(asString(data['dominantType'])),
+    'songs': songs,
+    'albums': collections(data['topAlbums'], 'album'),
+    'singles': collections(data['singles'], 'album'),
+    'playlists': collections(data['dedicated_artist_playlist'], 'playlist'),
+    'similar': collections(data['similarArtists'], 'artist'),
+  };
+}
+
+/// What JioSaavn suggests for a few typed letters: songs, albums, artists
+/// and playlists, best first.
+Future<List<Json>> suggestJioSaavn(String query) async {
+  final data = asJson(await getJson(_api.replace(queryParameters: _call('autocomplete.get', {'query': query}))));
+  final groups = [
+    for (final key in const ['topquery', 'songs', 'albums', 'artists', 'playlists'])
+      (toInt(asJson(data[key])['position']) ?? 9, key, asList(asJson(data[key])['data'])),
+  ]..sort((a, b) => a.$1.compareTo(b.$1));
+  final out = <Json>[];
+  final seen = <String>{};
+  for (final (_, _, items) in groups) {
+    for (final raw in items.map(asJson)) {
+      final type = asString(raw['type']);
+      final title = htmlUnescape(asString(raw['title'])).trim();
+      if (title.isEmpty || !seen.add('$type|${raw['id']}')) continue;
+      if (type == 'song') {
+        final info = asJson(raw['more_info']);
+        out.add({
+          'type': 'song',
+          'site': 'jiosaavn',
+          'id': asString(raw['id']),
+          'url': asString(raw['perma_url']),
+          'title': title,
+          'subtitle': [htmlUnescape(asString(info['album'])), htmlUnescape(asString(info['primary_artists']))]
+              .where((s) => s.isNotEmpty)
+              .join(' · '),
+          'art': _bigImage(asString(raw['image'])),
+        });
+      } else if (jiosaavnCollection(raw) case final found?) {
+        out.add(found);
+      }
+    }
+  }
+  return out;
 }
 
 /// The songs behind a JioSaavn song, album or playlist link.

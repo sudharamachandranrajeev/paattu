@@ -2,6 +2,8 @@
 // playlists and the audio streams (via youtube_explode_dart).
 
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'dart:math';
 
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
@@ -45,6 +47,80 @@ Json? youtubeTrack(Video video) {
 Future<List<Json>> searchYouTube(String query, {int limit = 12}) async {
   final results = await yt.search.search(query);
   return results.map(youtubeTrack).whereType<Json>().take(limit).toList();
+}
+
+String _biggest(List<Thumbnail> thumbnails) {
+  if (thumbnails.isEmpty) return '';
+  final sorted = [...thumbnails]..sort((a, b) => a.width - b.width);
+  final url = sorted.last.url.toString();
+  return url.startsWith('//') ? 'https:$url' : url;
+}
+
+/// A YouTube playlist or channel from a search, in the shape of collection
+/// in sources.dart, or null.
+Json? youtubeCollection(SearchResult result) {
+  if (result case SearchPlaylist(:final id, :final title, :final videoCount, :final thumbnails) when title.isNotEmpty) {
+    return {
+      'type': 'playlist',
+      'site': 'youtube',
+      'id': id.value,
+      'url': 'https://www.youtube.com/playlist?list=${id.value}',
+      'title': title,
+      'subtitle': videoCount > 0 ? plural(videoCount, 'video') : '',
+      'art': _biggest(thumbnails),
+      'count': videoCount > 0 ? videoCount : null,
+    };
+  }
+  if (result case SearchChannel(:final id, :final name, :final videoCount, :final thumbnails) when name.isNotEmpty) {
+    return {
+      'type': 'artist',
+      'site': 'youtube',
+      'id': id.value,
+      'url': 'https://www.youtube.com/channel/${id.value}',
+      'title': name,
+      'subtitle': videoCount > 0 ? '${plural(videoCount, 'video')} on YouTube' : 'YouTube channel',
+      'art': _biggest(thumbnails),
+    };
+  }
+  return null;
+}
+
+/// YouTube's search, a page (about 20) at a time: songs ([kind] 'song'),
+/// playlists ('playlist') or channels ('artist').
+class YouTubeSearch {
+  YouTubeSearch(this.query, this.kind);
+  final String query;
+  final String kind;
+  VideoSearchList? _videos;
+  SearchList? _content;
+  bool _started = false;
+
+  /// The next page, or null when there are no more.
+  Future<List<Json>?> next() async {
+    if (kind == 'song') {
+      final page = _started ? await _videos?.nextPage() : await yt.search.search(query);
+      _started = true;
+      _videos = page;
+      return page?.map(youtubeTrack).whereType<Json>().toList();
+    }
+    final page = _started
+        ? await _content?.nextPage()
+        : await yt.search.searchContent(query, filter: kind == 'playlist' ? TypeFilters.playlist : TypeFilters.channel);
+    _started = true;
+    _content = page;
+    return page?.map(youtubeCollection).whereType<Json>().toList();
+  }
+}
+
+/// What YouTube suggests for a few typed letters.
+Future<List<String>> suggestYouTube(String query) async {
+  final data = asList(jsonDecode(await getText(Uri.https('suggestqueries.google.com', '/complete/search', {
+    'client': 'firefox',
+    'ds': 'yt',
+    'hl': 'en',
+    'q': query,
+  }))));
+  return data.length > 1 ? asStrings(data[1]) : const [];
 }
 
 /// One video as a song (for links to a single video).
@@ -220,16 +296,119 @@ Future<Json> channelPlaylists(String query) async {
 
 // ---------------------------------------------------------------- streams
 
-/// The best audio stream for a video. Later [attempt]s ask YouTube as
-/// different apps, for when a stream stops working part way.
+/// YouTube's Vision Pro app. As of October 2026 it is the one client that
+/// hands out audio links without a proof-of-origin token or a JavaScript
+/// challenge (yt-dlp asks as it too): the Android and iOS apps' links are
+/// refused (403) and the VR app's need a sign-in, which made songs wait on
+/// youtube_explode's retries. It needs a visitor id, which one small request
+/// gives and which lasts the session.
+const _visionAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15';
+const _visionClient = {
+  'clientName': 'VISIONOS',
+  'clientVersion': '1.02',
+  'deviceMake': 'Apple',
+  'deviceModel': 'RealityDevice17,1',
+  'userAgent': _visionAgent,
+  'osName': 'visionOS',
+  'osVersion': '26.5.23O471',
+  'hl': 'en',
+  'timeZone': 'UTC',
+  'utcOffsetMinutes': 0,
+};
+final _playerApi = Uri.parse('https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
+
+String? _visitor;
+
+/// YouTube's id for this visitor, from the small file its service worker reads.
+Future<String> _visitorId({bool fresh = false}) async {
+  final known = _visitor;
+  if (!fresh && known != null) return known;
+  var text = await getText(Uri.parse('https://www.youtube.com/sw.js_data'), headers: {'User-Agent': _visionAgent});
+  if (text.startsWith(")]}'")) text = text.substring(4);
+  Object? node = jsonDecode(text);
+  for (final i in const [0, 2, 0, 0, 13]) {
+    node = asList(node).length > i ? asList(node)[i] : null;
+  }
+  final id = asString(node);
+  if (id.isEmpty) throw SourceException("couldn't start a YouTube session");
+  return _visitor = id;
+}
+
+/// Headers for googlevideo. Without a Range header it sends a file at about
+/// the speed it plays; Android's player sends none for the first request
+/// (it adds its own when seeking, which replaces this one). mpv on the
+/// desktop always asks for a range.
+Map<String, String> streamHeaders(String agent, {bool? android}) => {
+      'User-Agent': agent,
+      if (android ?? Platform.isAndroid) 'Range': 'bytes=0-',
+    };
+
+/// The best audio in a player response: the original language (not a dubbed
+/// copy), not the loudness-levelled (DRC) copy, then the highest bitrate.
+ResolvedStream bestAudio(Json response, {String agent = _visionAgent, bool? android}) {
+  final status = asJson(response['playabilityStatus']);
+  if (asString(status['status']) != 'OK') {
+    final reason = squash(asString(status['reason']));
+    throw SourceException(reason.isEmpty ? "YouTube won't play this video" : reason);
+  }
+  final streaming = asJson(response['streamingData']);
+  final audio = [
+    for (final f in asList(streaming['adaptiveFormats']).map(asJson))
+      if (asString(f['mimeType']).startsWith('audio/') && asString(f['url']).isNotEmpty) f,
+  ];
+  if (audio.isEmpty) throw SourceException('YouTube has no audio for this video');
+  int rank(Json f) {
+    final track = asJson(f['audioTrack']);
+    var score = toInt(f['bitrate']) ?? 0;
+    if (track.isNotEmpty && track['audioIsDefault'] != true) score -= 1 << 24;
+    if (f['isDrc'] == true) score -= 1 << 20;
+    return score;
+  }
+
+  audio.sort((a, b) => rank(b) - rank(a));
+  final best = audio.first;
+  final mime = asString(best['mimeType']);
+  final codec = mime.contains('opus')
+      ? 'opus'
+      : mime.contains('mp4a')
+          ? 'aac'
+          : mime.split(';').first.split('/').last;
+  final bits = toInt(best['averageBitrate']) ?? toInt(best['bitrate']) ?? 0;
+  // Links last about six hours; stop using one well before that.
+  final seconds = toInt(streaming['expiresInSeconds']) ?? 21600;
+  return ResolvedStream(Uri.parse(asString(best['url'])),
+      codec: codec,
+      kbps: (bits / 1000).round(),
+      headers: streamHeaders(agent, android: android),
+      lifetime: Duration(seconds: max(600, seconds - 1800)));
+}
+
+Future<ResolvedStream> _visionStream(String id, {bool fresh = false}) async {
+  final visitor = await _visitorId(fresh: fresh);
+  final response = await postJson(_playerApi, {
+    'context': {
+      'client': {..._visionClient, 'visitorData': visitor},
+    },
+    'videoId': id,
+    'contentCheckOk': true,
+    'racyCheckOk': true,
+  }, headers: {
+    'User-Agent': _visionAgent,
+    'X-YouTube-Client-Name': '101',
+    'X-YouTube-Client-Version': '1.02',
+    'X-Goog-Visitor-Id': visitor,
+    'Origin': 'https://www.youtube.com',
+  });
+  return bestAudio(asJson(response));
+}
+
+/// The best audio stream for a video: as YouTube's Vision Pro app, then again
+/// with a new visitor id, then (slower) youtube_explode's own ways, for when
+/// a stream won't start or stops part way.
 Future<ResolvedStream> streamYouTube(String id, {int attempt = 0}) async {
-  final clients = switch (attempt) {
-    0 => null,
-    1 => [YoutubeApiClient.androidVr],
-    2 => [YoutubeApiClient.ios],
-    _ => [YoutubeApiClient.tv],
-  };
-  final manifest = await yt.videos.streams.getManifest(id, ytClients: clients, requireWatchPage: attempt > 0);
+  if (attempt < 2) return _visionStream(id, fresh: attempt == 1);
+  final manifest = await yt.videos.streams.getManifest(id);
   final audio = manifest.audioOnly;
   if (audio.isEmpty) throw SourceException('YouTube has no audio for this video');
   final best = audio.withHighestBitrate();
@@ -243,6 +422,6 @@ Future<ResolvedStream> streamYouTube(String id, {int attempt = 0}) async {
   return ResolvedStream(best.url,
       codec: codec,
       kbps: (best.bitrate.bitsPerSecond / 1000).round(),
-      headers: {'User-Agent': agent},
+      headers: streamHeaders(agent),
       lifetime: const Duration(hours: 3));
 }

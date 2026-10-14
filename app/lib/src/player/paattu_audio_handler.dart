@@ -247,7 +247,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final id = trackId(track);
     final known = _streams[id];
     if (attempt == 0 && known != null && known.fresh) return known;
-    final stream = await streamFor(track, attempt: attempt).timeout(const Duration(seconds: 45));
+    final stream = await streamFor(track, attempt: attempt).timeout(const Duration(seconds: 20));
     _streams[id] = stream;
     return stream;
   }
@@ -259,7 +259,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final known = _streams[trackId(next)];
     if (known != null && known.fresh) return;
     try {
-      _streams[trackId(next)] = await streamFor(next).timeout(const Duration(seconds: 45));
+      _streams[trackId(next)] = await streamFor(next).timeout(const Duration(seconds: 20));
     } catch (_) {
       // it gets another go when it plays
     }

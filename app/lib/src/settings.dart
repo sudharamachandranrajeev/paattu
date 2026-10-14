@@ -180,6 +180,18 @@ class Settings extends ChangeNotifier {
   bool get saveData => _data['saveData'] == true;
   set saveData(bool on) => _set('saveData', on);
 
+  /// What was searched lately, newest first.
+  List<String> get recentSearches => asStrings(_data['recentSearches']);
+
+  void rememberSearch(String query) {
+    final q = query.trim();
+    if (q.isEmpty || isLink(q)) return;
+    final recent = [q, ...recentSearches.where((r) => r.toLowerCase() != q.toLowerCase())].take(12).toList();
+    _set('recentSearches', recent);
+  }
+
+  void forgetSearch(String query) => _set('recentSearches', recentSearches.where((r) => r != query).toList());
+
   double get volume => (_data['volume'] is num) ? (_data['volume'] as num).toDouble().clamp(0.0, 1.0) : 1.0;
   set volume(double v) => _set('volume', v);
 }

@@ -87,9 +87,55 @@ List<Json> _tracks(Iterable<Object?> items, {int limit = 200}) {
   return out.take(limit).toList();
 }
 
-Future<List<Json>> searchSoundCloud(String query, {int limit = 12}) async {
-  final data = asJson(await _api('/search/tracks', {'q': query, 'limit': '${limit + 4}'}));
+/// One page of songs (pages count from 1).
+Future<List<Json>> searchSoundCloud(String query, {int limit = 12, int page = 1}) async {
+  final data = asJson(await _api('/search/tracks', {'q': query, 'limit': '${limit + 4}', 'offset': '${(page - 1) * (limit + 4)}'}));
   return _tracks(asList(data['collection']), limit: limit);
+}
+
+/// A SoundCloud set or user as a search result (see collection in
+/// sources.dart), or null.
+Json? soundcloudCollection(Object? raw) {
+  final item = asJson(raw);
+  final url = asString(item['permalink_url']);
+  if (!isLink(url)) return null;
+  if (asString(item['kind']) == 'user') {
+    final followers = toInt(item['followers_count']);
+    return {
+      'type': 'artist',
+      'site': 'soundcloud',
+      'id': asString(item['id']),
+      'url': url,
+      'title': asString(item['username']),
+      'subtitle': followers == null ? '' : plural(followers, 'follower'),
+      'art': asString(item['avatar_url']).replaceFirst('-large.', '-t500x500.'),
+    };
+  }
+  final user = asJson(item['user']);
+  return {
+    'type': item['is_album'] == true ? 'album' : 'playlist',
+    'site': 'soundcloud',
+    'id': asString(item['id']),
+    'url': url,
+    'title': asString(item['title']),
+    'subtitle': asString(user['username']),
+    'art': _art(item),
+    'count': toInt(item['track_count']),
+  };
+}
+
+/// One page of albums, playlists or users ([kind] 'album', 'playlist', 'artist').
+Future<List<Json>> searchSoundCloudCollections(String query, String kind, {int page = 1, int limit = 20}) async {
+  final path = switch (kind) {
+    'album' => '/search/albums',
+    'playlist' => '/search/playlists_without_albums',
+    _ => '/search/users',
+  };
+  final data = asJson(await _api(path, {'q': query, 'limit': '$limit', 'offset': '${(page - 1) * limit}'}));
+  return [
+    for (final item in asList(data['collection']))
+      if (soundcloudCollection(item) case final found?) found,
+  ];
 }
 
 /// The songs behind a SoundCloud track, set (album / playlist) or profile link.
