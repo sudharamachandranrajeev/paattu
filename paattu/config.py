@@ -11,7 +11,7 @@ import json
 import os
 import tempfile
 
-from . import paths
+from . import paths, sound
 
 DEFAULTS = {
     "theme": "omarchy",
@@ -32,6 +32,8 @@ DEFAULTS = {
     "languages": ["Malayalam", "Tamil"],
     # Where search looks (JioSaavn has the film songs at 320 kbps) and how many per site.
     "search": {"sites": ["jiosaavn", "youtube", "soundcloud"], "limit": 12},
+    # The equaliser, tone, balance and speed (paattu sound).
+    "sound": sound.DEFAULTS,
 }
 
 STYLES = ("vinyl", "card", "minimal")

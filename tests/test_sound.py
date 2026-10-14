@@ -1,0 +1,120 @@
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from paattu import cli, config, engine, paths, sound  # noqa: E402
+
+CASES = json.loads(Path(__file__).with_name("sound_cases.json").read_text(encoding="utf-8"))
+
+
+class SharedCases(unittest.TestCase):
+    """tests/sound_cases.json: the app's Dart tests check the same numbers."""
+
+    def test_cases(self):
+        for case in CASES:
+            with self.subTest(case["case"]):
+                self.assertEqual(sound.normalize(case["settings"]), case["normalized"])
+                self.assertEqual(sound.gains(case["settings"]), case["gains"])
+                self.assertEqual(sound.graph(case["settings"]), case["graph"])
+
+
+class Curve(unittest.TestCase):
+    def test_a_band_peaks_at_its_frequency(self):
+        band = [(sound.FILTERS[6][1], 6.0)]  # 1 kHz
+        self.assertAlmostEqual(sound.response(band, 1000), 6.0, places=2)
+        self.assertLess(sound.response(band, 62), 0.3)
+
+    def test_tiny_q_is_a_flat_gain(self):
+        pre = [(sound.FILTERS[0][1], -6.0)]
+        for f in (25, 100, 1000, 8000, 18000):
+            self.assertAlmostEqual(sound.response(pre, f), -6.0, delta=0.05)
+
+    def test_noclip_lowers_the_preamp_by_the_peak(self):
+        s = {"on": True, "bands": [0, 0, 0, 0, 0, 6, 0, 0, 0, 0]}
+        self.assertEqual(sound.gains(s)["pre"], -6.0)
+        self.assertEqual(sound.gains(dict(s, noclip=False))["pre"], 0.0)
+        self.assertEqual(sound.gains({"on": True, "bands": [-3] * 10})["pre"], 0.0)  # cuts need no room
+
+    def test_numbers(self):
+        self.assertEqual([sound.fmt(x) for x in (2.5, 3.0, -0.0, -0.04, 1.25, -2.25)], ["2.5", "3", "0", "0", "1.3", "-2.2"])
+        self.assertEqual(sound.graph({"on": False, "bands": [5] * 10}), "")
+        self.assertEqual(sound.summary({"on": True, "preset": "melody", "bass": 2, "speed": 1.25}),
+                         "On · Melody · bass +2 dB · 1.25×")
+
+
+class FakeEngine:
+    def __init__(self):
+        self.props = {"speed": 1.0}
+        self.sent = []
+
+    def get(self, prop, default=None):
+        return self.props.get(prop, default)
+
+    def batch(self, commands):
+        self.sent += commands
+        for command in commands:
+            if command[0] == "set_property":
+                self.props[command[1]] = command[2]
+        return [{"error": "success"} for _ in commands]
+
+
+class Apply(unittest.TestCase):
+    def test_only_what_changed(self):
+        e = FakeEngine()
+        s = {"on": True, "preset": "melody", "bands": list(sound.PRESETS[1][2]), "speed": 1.25}
+        sound.apply(e, s)
+        self.assertEqual([c[:2] for c in e.sent], [["af", "add"], ["set_property", "user-data/paattu/af"],
+                                                   ["set_property", "speed"]])
+        self.assertEqual(e.sent[0][2], sound.graph(s))
+        e.sent = []
+        sound.apply(e, s)
+        self.assertEqual(e.sent, [])
+        sound.apply(e, dict(s, on=False))
+        self.assertEqual(e.sent[0], ["af", "remove", "@paattu"])
+
+
+class Command(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        for patch in (mock.patch.object(paths, "CONFIG", Path(tmp.name)),
+                      mock.patch.object(paths, "CONFIG_FILE", Path(tmp.name) / "config.json"),
+                      mock.patch.object(engine, "running", return_value=False)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def run_cli(self, *argv):
+        with mock.patch("sys.stdout"):
+            self.assertEqual(cli.main(list(argv)), 0)
+        return config.load()["sound"]
+
+    def test_presets_bands_and_saving(self):
+        s = self.run_cli("sound", "preset", "Bass", "boost")
+        self.assertEqual((s["on"], s["preset"], s["bands"][0]), (True, "bass", 6.0))
+        s = self.run_cli("sound", "set", "--band", "16k=+2", "--band", "1=-1", "--preamp", "-3", "--balance", "-0.2")
+        self.assertEqual((s["bands"][9], s["bands"][0], s["preamp"], s["balance"], s["preset"]), (2.0, -1.0, -3.0, -0.2, ""))
+        s = self.run_cli("sound", "save", "Car")
+        self.assertEqual((s["preset"], s["presets"]["Car"]), ("Car", s["bands"]))
+        s = self.run_cli("sound", "set", "--bands=" + ",".join(str(b) for b in sound.PRESETS[1][2]))
+        self.assertEqual(s["preset"], "melody")  # moved onto a preset's curve
+        s = self.run_cli("sound", "delete", "car")
+        self.assertEqual(s["presets"], {})
+        s = self.run_cli("sound", "off")
+        self.assertFalse(s["on"])
+
+    def test_bad_input(self):
+        with mock.patch("sys.stdout"), mock.patch("sys.stderr"):
+            self.assertEqual(cli.main(["sound", "save", "Rock"]), 1)
+            self.assertEqual(cli.main(["sound", "set", "--band", "3k=1"]), 1)
+            self.assertEqual(cli.main(["sound", "preset", "nope"]), 1)
+        self.assertEqual([cli._sound_band(k) for k in ("1", "10", "31", "1k", "16000")], [0, 9, 0, 5, 9])
+
+
+if __name__ == "__main__":
+    unittest.main()

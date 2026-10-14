@@ -12,7 +12,7 @@ import socket
 import subprocess
 import time
 
-from . import paths
+from . import config, paths, sound
 from .titles import song_key
 from .sources import track_url
 
@@ -201,6 +201,8 @@ def load(engine, tracks, start=0, shuffle=False, source=None):
     """Replace the queue with tracks and start playing tracks[start]."""
     if not tracks:
         raise EngineError("nothing to play")
+    # The sound settings, in case the engine started (or restarted) since.
+    sound.apply(engine, config.load()["sound"])
     start = max(0, min(start, len(tracks) - 1))
     order = list(range(len(tracks)))
     if shuffle:

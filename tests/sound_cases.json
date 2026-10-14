@@ -1,0 +1,362 @@
+[
+ {
+  "case": "off by default",
+  "settings": {},
+  "normalized": {
+   "on": false,
+   "preset": "flat",
+   "bands": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "preamp": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "balance": 0.0,
+   "noclip": true,
+   "speed": 1.0,
+   "presets": {}
+  },
+  "gains": {
+   "pre": 0.0,
+   "b0": 0.0,
+   "b1": 0.0,
+   "b2": 0.0,
+   "b3": 0.0,
+   "b4": 0.0,
+   "b5": 0.0,
+   "b6": 0.0,
+   "b7": 0.0,
+   "b8": 0.0,
+   "b9": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "left": 0.0,
+   "right": 0.0
+  },
+  "graph": ""
+ },
+ {
+  "case": "on, flat",
+  "settings": {
+   "on": true
+  },
+  "normalized": {
+   "on": true,
+   "preset": "flat",
+   "bands": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "preamp": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "balance": 0.0,
+   "noclip": true,
+   "speed": 1.0,
+   "presets": {}
+  },
+  "gains": {
+   "pre": 0.0,
+   "b0": 0.0,
+   "b1": 0.0,
+   "b2": 0.0,
+   "b3": 0.0,
+   "b4": 0.0,
+   "b5": 0.0,
+   "b6": 0.0,
+   "b7": 0.0,
+   "b8": 0.0,
+   "b9": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "left": 0.0,
+   "right": 0.0
+  },
+  "graph": "@paattu:lavfi=[equalizer@pre=f=1000:t=q:w=0.001:g=0,equalizer@b0=f=31:t=o:w=1:g=0,equalizer@b1=f=62:t=o:w=1:g=0,equalizer@b2=f=125:t=o:w=1:g=0,equalizer@b3=f=250:t=o:w=1:g=0,equalizer@b4=f=500:t=o:w=1:g=0,equalizer@b5=f=1000:t=o:w=1:g=0,equalizer@b6=f=2000:t=o:w=1:g=0,equalizer@b7=f=4000:t=o:w=1:g=0,equalizer@b8=f=8000:t=o:w=1:g=0,equalizer@b9=f=16000:t=o:w=1:g=0,equalizer@bass=f=60:t=o:w=3:g=0,equalizer@treble=f=10000:t=o:w=2:g=0,equalizer@left=f=1000:t=q:w=0.001:c=FL:g=0,equalizer@right=f=1000:t=q:w=0.001:c=FR:g=0]"
+ },
+ {
+  "case": "melody: the preamp makes room for the boosts",
+  "settings": {
+   "on": true,
+   "preset": "melody",
+   "bands": [
+    -2,
+    -1.5,
+    -1,
+    0.5,
+    2,
+    3.5,
+    3.5,
+    2,
+    0.5,
+    -0.5
+   ]
+  },
+  "normalized": {
+   "on": true,
+   "preset": "melody",
+   "bands": [
+    -2.0,
+    -1.5,
+    -1.0,
+    0.5,
+    2.0,
+    3.5,
+    3.5,
+    2.0,
+    0.5,
+    -0.5
+   ],
+   "preamp": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "balance": 0.0,
+   "noclip": true,
+   "speed": 1.0,
+   "presets": {}
+  },
+  "gains": {
+   "pre": -4.6,
+   "b0": -2.0,
+   "b1": -1.5,
+   "b2": -1.0,
+   "b3": 0.5,
+   "b4": 2.0,
+   "b5": 3.5,
+   "b6": 3.5,
+   "b7": 2.0,
+   "b8": 0.5,
+   "b9": -0.5,
+   "bass": 0.0,
+   "treble": 0.0,
+   "left": 0.0,
+   "right": 0.0
+  },
+  "graph": "@paattu:lavfi=[equalizer@pre=f=1000:t=q:w=0.001:g=-4.6,equalizer@b0=f=31:t=o:w=1:g=-2,equalizer@b1=f=62:t=o:w=1:g=-1.5,equalizer@b2=f=125:t=o:w=1:g=-1,equalizer@b3=f=250:t=o:w=1:g=0.5,equalizer@b4=f=500:t=o:w=1:g=2,equalizer@b5=f=1000:t=o:w=1:g=3.5,equalizer@b6=f=2000:t=o:w=1:g=3.5,equalizer@b7=f=4000:t=o:w=1:g=2,equalizer@b8=f=8000:t=o:w=1:g=0.5,equalizer@b9=f=16000:t=o:w=1:g=-0.5,equalizer@bass=f=60:t=o:w=3:g=0,equalizer@treble=f=10000:t=o:w=2:g=0,equalizer@left=f=1000:t=q:w=0.001:c=FL:g=0,equalizer@right=f=1000:t=q:w=0.001:c=FR:g=0]"
+ },
+ {
+  "case": "tone, balance right, a cut preamp",
+  "settings": {
+   "on": true,
+   "preset": "",
+   "bands": [
+    4,
+    3,
+    1,
+    0,
+    -1,
+    0,
+    1.5,
+    2,
+    3,
+    3
+   ],
+   "preamp": -1,
+   "bass": 3,
+   "treble": -2,
+   "balance": 0.3
+  },
+  "normalized": {
+   "on": true,
+   "preset": "",
+   "bands": [
+    4.0,
+    3.0,
+    1.0,
+    0.0,
+    -1.0,
+    0.0,
+    1.5,
+    2.0,
+    3.0,
+    3.0
+   ],
+   "preamp": -1.0,
+   "bass": 3.0,
+   "treble": -2.0,
+   "balance": 0.3,
+   "noclip": true,
+   "speed": 1.0,
+   "presets": {}
+  },
+  "gains": {
+   "pre": -7.9,
+   "b0": 4.0,
+   "b1": 3.0,
+   "b2": 1.0,
+   "b3": 0.0,
+   "b4": -1.0,
+   "b5": 0.0,
+   "b6": 1.5,
+   "b7": 2.0,
+   "b8": 3.0,
+   "b9": 3.0,
+   "bass": 3.0,
+   "treble": -2.0,
+   "left": -3.1,
+   "right": 0.0
+  },
+  "graph": "@paattu:lavfi=[equalizer@pre=f=1000:t=q:w=0.001:g=-7.9,equalizer@b0=f=31:t=o:w=1:g=4,equalizer@b1=f=62:t=o:w=1:g=3,equalizer@b2=f=125:t=o:w=1:g=1,equalizer@b3=f=250:t=o:w=1:g=0,equalizer@b4=f=500:t=o:w=1:g=-1,equalizer@b5=f=1000:t=o:w=1:g=0,equalizer@b6=f=2000:t=o:w=1:g=1.5,equalizer@b7=f=4000:t=o:w=1:g=2,equalizer@b8=f=8000:t=o:w=1:g=3,equalizer@b9=f=16000:t=o:w=1:g=3,equalizer@bass=f=60:t=o:w=3:g=3,equalizer@treble=f=10000:t=o:w=2:g=-2,equalizer@left=f=1000:t=q:w=0.001:c=FL:g=-3.1,equalizer@right=f=1000:t=q:w=0.001:c=FR:g=0]"
+ },
+ {
+  "case": "clipping allowed, balance left",
+  "settings": {
+   "on": true,
+   "bands": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    0,
+    0,
+    0
+   ],
+   "preamp": 2,
+   "noclip": false,
+   "balance": -0.5
+  },
+  "normalized": {
+   "on": true,
+   "preset": "flat",
+   "bands": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    6.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "preamp": 2.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "balance": -0.5,
+   "noclip": false,
+   "speed": 1.0,
+   "presets": {}
+  },
+  "gains": {
+   "pre": 2.0,
+   "b0": 0.0,
+   "b1": 0.0,
+   "b2": 0.0,
+   "b3": 0.0,
+   "b4": 0.0,
+   "b5": 6.0,
+   "b6": 0.0,
+   "b7": 0.0,
+   "b8": 0.0,
+   "b9": 0.0,
+   "bass": 0.0,
+   "treble": 0.0,
+   "left": 0.0,
+   "right": -6.0
+  },
+  "graph": "@paattu:lavfi=[equalizer@pre=f=1000:t=q:w=0.001:g=2,equalizer@b0=f=31:t=o:w=1:g=0,equalizer@b1=f=62:t=o:w=1:g=0,equalizer@b2=f=125:t=o:w=1:g=0,equalizer@b3=f=250:t=o:w=1:g=0,equalizer@b4=f=500:t=o:w=1:g=0,equalizer@b5=f=1000:t=o:w=1:g=6,equalizer@b6=f=2000:t=o:w=1:g=0,equalizer@b7=f=4000:t=o:w=1:g=0,equalizer@b8=f=8000:t=o:w=1:g=0,equalizer@b9=f=16000:t=o:w=1:g=0,equalizer@bass=f=60:t=o:w=3:g=0,equalizer@treble=f=10000:t=o:w=2:g=0,equalizer@left=f=1000:t=q:w=0.001:c=FL:g=0,equalizer@right=f=1000:t=q:w=0.001:c=FR:g=-6]"
+ },
+ {
+  "case": "out of range and junk",
+  "settings": {
+   "on": true,
+   "preset": 7,
+   "bands": [
+    20,
+    -20,
+    "x",
+    null,
+    1.26,
+    1.24
+   ],
+   "preamp": 30,
+   "bass": "-40",
+   "balance": 5,
+   "speed": 9,
+   "presets": {
+    "  Mine ": [
+     1,
+     2
+    ],
+    "": [
+     1
+    ]
+   }
+  },
+  "normalized": {
+   "on": true,
+   "preset": "",
+   "bands": [
+    12.0,
+    -12.0,
+    0.0,
+    0.0,
+    1.3,
+    1.2,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "preamp": 12.0,
+   "bass": -12.0,
+   "treble": 0.0,
+   "balance": 1.0,
+   "noclip": true,
+   "speed": 2.0,
+   "presets": {
+    "Mine": [
+     1.0,
+     2.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  },
+  "gains": {
+   "pre": 10.9,
+   "b0": 12.0,
+   "b1": -12.0,
+   "b2": 0.0,
+   "b3": 0.0,
+   "b4": 1.3,
+   "b5": 1.2,
+   "b6": 0.0,
+   "b7": 0.0,
+   "b8": 0.0,
+   "b9": 0.0,
+   "bass": -12.0,
+   "treble": 0.0,
+   "left": -40.0,
+   "right": 0.0
+  },
+  "graph": "@paattu:lavfi=[equalizer@pre=f=1000:t=q:w=0.001:g=10.9,equalizer@b0=f=31:t=o:w=1:g=12,equalizer@b1=f=62:t=o:w=1:g=-12,equalizer@b2=f=125:t=o:w=1:g=0,equalizer@b3=f=250:t=o:w=1:g=0,equalizer@b4=f=500:t=o:w=1:g=1.3,equalizer@b5=f=1000:t=o:w=1:g=1.2,equalizer@b6=f=2000:t=o:w=1:g=0,equalizer@b7=f=4000:t=o:w=1:g=0,equalizer@b8=f=8000:t=o:w=1:g=0,equalizer@b9=f=16000:t=o:w=1:g=0,equalizer@bass=f=60:t=o:w=3:g=-12,equalizer@treble=f=10000:t=o:w=2:g=0,equalizer@left=f=1000:t=q:w=0.001:c=FL:g=-40,equalizer@right=f=1000:t=q:w=0.001:c=FR:g=0]"
+ }
+]

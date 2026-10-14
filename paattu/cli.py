@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 
-from . import __version__, art, browse, cliamp, config, engine, library, paths, seeds, sources, youtube
+from . import __version__, art, browse, cliamp, config, engine, library, paths, seeds, sound, sources, youtube
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1283,6 +1283,118 @@ def cmd_config(args, out):
     out.data(value, json.dumps(value, indent=2, ensure_ascii=False))
 
 
+def _sound_band(key):
+    """A band by number (1-10) or frequency (125, 1k, 16000)."""
+    text = key.strip().lower()
+    if text.isdigit() and 1 <= int(text) <= len(sound.BANDS):
+        return int(text) - 1
+    try:
+        hz = float(text[:-1]) * 1000 if text.endswith("k") else float(text)
+    except ValueError:
+        hz = None
+    for i, f in enumerate(sound.BANDS):
+        if hz is not None and abs(hz - f) <= f * 0.05:
+            return i
+    raise ValueError("no band %r: say 1-%d or a frequency (%s)" % (
+        key, len(sound.BANDS), ", ".join(_hz(f) for f in sound.BANDS)))
+
+
+def _hz(f):
+    return "%dk" % (f // 1000) if f >= 1000 else str(f)
+
+
+def _find_preset(name, s):
+    """A preset's id from its id or name (any case), or a saved preset's name."""
+    wanted = name.strip().lower()
+    for key, title, _ in sound.PRESETS:
+        if wanted in (key, title.lower()):
+            return key
+    for saved in s["presets"]:
+        if saved.lower() == wanted:
+            return saved
+    raise ValueError("no preset %r; see: paattu sound presets" % name)
+
+
+def _matching_preset(s):
+    for key, _, bands in sound.PRESETS:
+        if list(bands) == s["bands"]:
+            return key
+    return next((name for name, bands in s["presets"].items() if bands == s["bands"]), "")
+
+
+def _sound_text(s):
+    dbs = ["%+.1f" % b if b else "0" for b in s["bands"]]
+    applied = sound.gains(s)["pre"]
+    lines = [sound.summary(s),
+             "  " + " ".join("%5s" % _hz(f) for f in sound.BANDS) + "  Hz",
+             "  " + " ".join("%5s" % d for d in dbs) + "  dB"]
+    if s["noclip"] and applied != s["preamp"]:
+        lines.append("Preamp %s dB plays at %s dB, leaving room for the boosts (paattu sound set --noclip off)"
+                     % (sound.fmt(s["preamp"]), sound.fmt(applied)))
+    return "\n".join(lines)
+
+
+def cmd_sound(args, out):
+    s = sound.normalize(config.load().get("sound"))
+    action, name = args.action, " ".join(args.name).strip()
+    if action == "presets":
+        rows = [{"id": key, "name": title, "bands": list(bands), "saved": False} for key, title, bands in sound.PRESETS]
+        rows += [{"id": n, "name": n, "bands": b, "saved": True} for n, b in s["presets"].items()]
+        out.data({"presets": rows}, "\n".join("%-12s %s" % (r["name"], " ".join("%+g" % b if b else "0" for b in r["bands"]))
+                                             for r in rows))
+        return
+    if action in ("preset", "save", "delete") and not name:
+        raise ValueError("usage: paattu sound %s NAME" % action)
+    if action == "on":
+        s["on"] = True
+    elif action == "off":
+        s["on"] = False
+    elif action == "preset":
+        key = _find_preset(name, s)
+        s.update(bands=sound.preset_bands(key, s), preset=key, on=True)
+    elif action == "save":
+        if any(name.lower() in (key, title.lower()) for key, title, _ in sound.PRESETS):
+            raise ValueError("%r is a built-in preset; pick another name" % name)
+        s["presets"][name] = list(s["bands"])
+        s["preset"] = name
+    elif action == "delete":
+        saved = next((n for n in s["presets"] if n.lower() == name.lower()), None)
+        if saved is None:
+            raise ValueError("no saved preset %r" % name)
+        del s["presets"][saved]
+        if s["preset"] == saved:
+            s["preset"] = ""
+    elif action == "reset":
+        s = sound.normalize({"on": s["on"], "presets": s["presets"]})
+    elif action == "set":
+        if args.bands is not None:
+            values = [config.parse_value(v) for v in args.bands.replace(",", " ").split()]
+            if len(values) != len(sound.BANDS) or not all(isinstance(v, (int, float)) for v in values):
+                raise ValueError("--bands takes %d numbers (dB)" % len(sound.BANDS))
+            s["bands"] = values
+        for item in args.band or []:
+            key, _, value = item.partition("=")
+            try:
+                s["bands"][_sound_band(key)] = float(value)
+            except ValueError:
+                raise ValueError("--band takes BAND=DB, e.g. 1k=+2.5")
+        for key in ("preamp", "bass", "treble", "balance", "speed"):
+            if getattr(args, key) is not None:
+                s[key] = getattr(args, key)
+        if args.noclip is not None:
+            s["noclip"] = args.noclip == "on"
+        if args.bands is not None or args.band:
+            s = sound.normalize(s)
+            s["preset"] = _matching_preset(s)
+    if action != "show":
+        s = sound.normalize(s)
+        config.set_key("sound", s)
+    if engine.running():
+        with engine.Engine(autostart=False) as e:
+            sound.apply(e, s)
+    out.done(_sound_text(s), sound=s, summary=sound.summary(s), gains=sound.gains(s), graph=sound.graph(s))
+
+
 def cmd_export(args, out):
     names = cliamp.export(library.load(), _language(args.lang) if args.lang else None)
     out.done("Wrote %d cliamp playlist%s to %s" % (len(names), "" if len(names) == 1 else "s", paths.CLIAMP_PLAYLISTS),
@@ -1567,6 +1679,20 @@ def build_parser():
     a.add_argument("key", nargs="?")
     a.add_argument("value", nargs="?")
     a.set_defaults(func=cmd_config)
+
+    a = sub.add_parser("sound", help="equaliser, preamp, bass, treble, balance and speed")
+    a.add_argument("action", nargs="?", default="show",
+                   choices=("show", "on", "off", "preset", "presets", "set", "save", "delete", "reset"))
+    a.add_argument("name", nargs="*", help="a preset (preset, save, delete)")
+    a.add_argument("--bands", help="all ten bands in dB, e.g. --bands=-2,-1,0,1,2,3,3,2,1,0")
+    a.add_argument("--band", action="append", metavar="BAND=DB", help="one band by number (1-10) or Hz (1k), e.g. 1k=+2")
+    a.add_argument("--preamp", type=float, metavar="DB")
+    a.add_argument("--bass", type=float, metavar="DB")
+    a.add_argument("--treble", type=float, metavar="DB")
+    a.add_argument("--balance", type=float, metavar="-1..1")
+    a.add_argument("--speed", type=float, metavar="0.5..2")
+    a.add_argument("--noclip", choices=("on", "off"), help="lower the preamp by the biggest boost (default on)")
+    a.set_defaults(func=cmd_sound)
 
     a = sub.add_parser("export", help="share the library with cliamp")
     a.add_argument("target", choices=("cliamp",))
