@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 
-from . import __version__, art, cliamp, config, engine, library, paths, seeds, sources, youtube
+from . import __version__, art, browse, cliamp, config, engine, library, paths, seeds, sources, youtube
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1094,9 +1094,11 @@ def cmd_art(args, out):
 
 # ---------------------------------------------------------------- search
 
-def _search_art(tracks, wait=5):
-    """Cache result covers, giving up on slow ones after about `wait` seconds."""
+def _search_art(tracks, wait=5, collections=()):
+    """Cache result covers (songs', and albums', singers' and playlists' from
+    browse), giving up on slow ones after about `wait` seconds."""
     jobs = [(art.track_art(t["id"], t), paths.art_path("v", t["id"])) for t in tracks]
+    jobs += [(c.get("art"), paths.art_path("c", c["artKey"])) for c in collections if c.get("artKey")]
     jobs = [(u, d) for u, d in jobs if u and not (d.exists() and d.stat().st_size > 0)]
     if not jobs:
         return
@@ -1146,6 +1148,104 @@ def cmd_search(args, out):
               "paattu playlist add-songs NAME ID")
     else:
         print("Nothing found for %s" % query)
+
+
+# ---------------------------------------------------------------- browse
+
+def _browse_item(text):
+    try:
+        item = json.loads(text)
+    except ValueError:
+        item = None
+    if not isinstance(item, dict) or item.get("type") not in ("album", "artist", "playlist") or not item.get("site"):
+        raise ValueError("give an album, singer or playlist as JSON, as paattu browse search --json prints them")
+    return item
+
+
+def _split(found):
+    songs = [t for t in found if (t.get("type") or "song") == "song"]
+    return songs, [c for c in found if (c.get("type") or "song") != "song"]
+
+
+def cmd_browse_search(args, out):
+    query = " ".join(args.query).strip()
+    if not query or sources.is_link(query):
+        raise ValueError("search for words (paattu search looks up links)")
+    cfg = config.load()["search"]
+    sites = args.site or [s for s in cfg.get("sites") or sources.SEARCH_SITES if s in sources.SEARCH_SITES]
+    cursors = json.loads(args.after) if args.after else None
+    if not args.json:
+        out.progress("Searching %s…" % ", ".join(sources.site_name(s) for s in sites if s in browse.KIND_SITES[args.kind]))
+    found, following, errors = browse.search(query, args.kind, sites, cursors)
+    songs, collections = _split(found)
+    sources.remember(songs)
+    if args.json:
+        _search_art(songs, collections=collections)
+        # Each with its key, so the app can drop repeats from later pages.
+        results = [dict(item, key=browse.result_key(item)) for item in found]
+        out.done("", query=query, kind=args.kind, results=results, next=following, errors=errors)
+        return
+    for n, item in enumerate(found, 1):
+        if item in songs:
+            print(_result_line(n, item))
+        else:
+            print("%3d. %-34s %-30s %s" % (n, item["title"][:34], (item.get("subtitle") or "")[:30],
+                                           sources.site_name(item["site"])))
+    for site, message in errors.items():
+        print("\n%s: %s" % (sources.site_name(site), message), file=sys.stderr)
+    if following:
+        print("\nMore: paattu browse search --kind %s --after '%s' -- %s" % (args.kind, json.dumps(following), query))
+    if not found:
+        print("Nothing found for %s" % query)
+
+
+def cmd_browse_suggest(args, out):
+    query = " ".join(args.query).strip()
+    found = browse.suggest(query)
+    if args.json:
+        out.done("", query=query, suggestions=found)
+        return
+    for item in found:
+        print("%-9s %s%s" % (item["type"], item["title"], "  ·  " + item["subtitle"] if item.get("subtitle") else ""))
+
+
+def cmd_browse_open(args, out):
+    item = _browse_item(args.item)
+    if not args.json:
+        out.progress("Opening %s…" % (item.get("title") or "it"))
+    if item["type"] == "artist":
+        page = browse.artist(item, args.page)
+    else:
+        page = {"songs": browse.collection_songs(item)}
+    songs = page["songs"]
+    sources.remember(songs)
+    if args.json:
+        shelves = page.get("albums", []) + page.get("playlists", []) + page.get("similar", [])
+        _search_art(songs[:60], collections=shelves + ([dict(item, art=page["art"])] if page.get("art") else []))
+        out.done("", item=item, **page)
+        return
+    if page.get("name"):
+        print("%s  ·  %s" % (page["name"], page.get("about") or sources.site_name(item["site"])))
+    for n, t in enumerate(songs, 1):
+        print(_result_line(n, t))
+    for shelf in ("albums", "playlists", "similar"):
+        if page.get(shelf):
+            print("\n%s: %s" % (shelf.title(), ", ".join(c["title"] for c in page[shelf][:12])))
+
+
+def cmd_browse_play(args, out):
+    data = library.load()
+    tracks = [t for t in (_known(data, tid) for tid in args.ids) if t]
+    if not tracks:
+        raise SourceError("those songs aren't known: open the album or search again first")
+    _check_firewall()
+    with engine.Engine() as e:
+        engine.load(e, tracks, start=args.index, shuffle=args.shuffle,
+                    source={"type": "search", "id": args.source or "", "title": args.title or "Search"})
+    first = tracks[max(0, min(args.index, len(tracks) - 1))]  # shuffling still starts there
+    _spawn_art([t["id"] for t in tracks[:8]])
+    out.done("Playing %s — %s" % (first.get("title") or first["id"], args.title or "Search"),
+             track=first["id"], count=len(tracks))
 
 
 def cmd_theme(args, out):
@@ -1337,6 +1437,29 @@ def build_parser():
     a.add_argument("--site", action="append", choices=sources.SEARCH_SITES, help="only this site (repeatable)")
     a.add_argument("--limit", type=int, help="results per site (default 12)")
     a.set_defaults(func=cmd_search)
+
+    browsing = sub.add_parser("browse", help="albums, singers and playlists: search a page at a time, suggestions, "
+                                             "open one, play its songs").add_subparsers(dest="action", required=True)
+    a = browsing.add_parser("search", help="one page of songs, albums, singers (artist) or playlists from each site")
+    a.add_argument("query", nargs="+")
+    a.add_argument("--kind", default="song", choices=browse.KINDS)
+    a.add_argument("--site", action="append", choices=sources.SEARCH_SITES, help="only this site (repeatable)")
+    a.add_argument("--after", help="the next page: the JSON 'next' of the page before")
+    a.set_defaults(func=cmd_browse_search)
+    a = browsing.add_parser("suggest", help="suggestions for a few typed letters")
+    a.add_argument("query", nargs="+")
+    a.set_defaults(func=cmd_browse_suggest)
+    a = browsing.add_parser("open", help="the songs of an album or playlist, or a singer's page (JSON from search)")
+    a.add_argument("item")
+    a.add_argument("--page", type=int, default=1, help="a singer's next page of songs")
+    a.set_defaults(func=cmd_browse_open)
+    a = browsing.add_parser("play", help="play songs found by browse (ids, in order)")
+    a.add_argument("ids", nargs="+")
+    a.add_argument("--index", type=int, default=0, help="start at this one (from 0)")
+    a.add_argument("--shuffle", action="store_true")
+    a.add_argument("--title", help="what they're from, for the player")
+    a.add_argument("--source", help="the album's or playlist's id")
+    a.set_defaults(func=cmd_browse_play)
 
     a = sub.add_parser("import", help="add a YouTube profile (all its playlists) or a playlist link")
     a.add_argument("link")

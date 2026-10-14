@@ -265,3 +265,27 @@ test("mix commands keep ids and names that start with a dash safe", () => {
   eq(M.renameMixArgs("mix-1", "-x"), ["mix", "rename", "mix-1", "--", "-x"])
   eq(M.moveMixArgs("mix-1", 2), ["mix", "move", "mix-1", "2"])
 })
+
+test("browse commands keep queries and ids that start with a dash safe", () => {
+  eq(M.browseSearchArgs("-malare", "album", null), ["browse", "search", "--kind", "album", "--", "-malare"])
+  eq(M.browseSearchArgs("malare", "song", { youtube: "T" }),
+     ["browse", "search", "--kind", "song", "--after", '{"youtube":"T"}', "--", "malare"])
+  eq(M.suggestArgs("-chi"), ["browse", "suggest", "--", "-chi"])
+  eq(M.openArgs({ type: "artist", site: "jiosaavn", id: "455" }, 1),
+     ["browse", "open", "--", '{"type":"artist","site":"jiosaavn","id":"455"}'])
+  eq(M.openArgs({ type: "album" }, 2), ["browse", "open", "--page", "2", "--", '{"type":"album"}'])
+  eq(M.browsePlayArgs([{ id: "-abcdefghij" }, { id: "x" }], 1, true, "Premam", "123"),
+     ["browse", "play", "--index", "1", "--shuffle", "--title", "Premam", "--source", "123", "--", "-abcdefghij", "x"])
+  eq(M.saveSongsArgs([{ id: "-abcdefghij" }]), ["save", "--", "-abcdefghij"])
+})
+
+test("later pages leave out results already shown", () => {
+  const seen = {}
+  const first = [{ key: "song|malare|premam", id: "a" }, { type: "album", site: "jiosaavn", id: "1" }]
+  eq(M.freshResults(first, seen).map(r => r.id), ["a", "1"])
+  const next = [{ key: "song|malare|premam", id: "b" }, { type: "album", site: "soundcloud", id: "1" },
+                { type: "album", site: "jiosaavn", id: "1" }]
+  eq(M.freshResults(next, seen).map(r => r.site || r.id), ["soundcloud"])
+  assert.equal(M.kindTitle("artist"), "Artists")
+  assert.equal(M.resultTypeName({ type: "playlist" }), "Playlist")
+})

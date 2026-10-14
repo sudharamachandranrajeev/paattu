@@ -19,6 +19,7 @@ FloatingWindow {
   property int artRevision: 0
 
   // Navigation: home | language | mixes | mix | users | user | playlist | queue | settings | search
+  // | collection (an album, singer or playlist from a search; arg: the result)
   // ("add" opens users with the link box focused; "pick" opens the
   // add-to-playlist picker for the song playing)
   property string view: "home"
@@ -31,6 +32,14 @@ FloatingWindow {
   property var online: ({ query: "", results: [], errors: ({}), busy: false, error: "" })
   // Which site's results show ("" for all).
   property string onlineSite: ""
+  // Browsing (`paattu browse search`): the query, the tab showing (a kind, or
+  // "library") and a feed per kind that grows a page at a time.
+  property var browse: ({ query: "", kind: "song", feeds: ({}) })
+  property int browseSerial: 0
+  // How far down the results were, for coming back from an album.
+  property real searchScroll: 0
+  // Suggestions for what's being typed (`paattu browse suggest`).
+  property var suggestions: ({ query: "", items: [] })
   // A short message over the player bar ("Playing … next").
   property string toast: ""
 
@@ -91,6 +100,10 @@ FloatingWindow {
     }
     if (search.text.trim() !== text) search.text = text
     onlineSite = ""
+    if (!Model.isLink(text)) {
+      startBrowse(text)
+      return
+    }
     online = { query: text, results: [], errors: ({}), busy: true, error: "" }
     searchJobs.run(Model.searchArgs(text, []), "", function(ok, e) {
       if (win.online.query !== text) return  // a newer search took over
@@ -98,6 +111,89 @@ FloatingWindow {
         busy: false, error: ok ? "" : (e.message || "The search didn't work") }
       win.store.refreshArt()
     })
+  }
+
+  // ---------- browse: songs, albums, singers and playlists ----------
+  function newFeed() {
+    return { items: [], seen: ({}), next: null, pages: 0, busy: false, done: false, errors: ({}), error: "" }
+  }
+  function setFeed(kind, changes) {
+    var feeds = Object.assign({}, browse.feeds)
+    feeds[kind] = Object.assign({}, feeds[kind] || newFeed(), changes)
+    browse = Object.assign({}, browse, { feeds: feeds })
+  }
+  function startBrowse(text) {
+    browseSerial++
+    var kind = browse.kind === "library" ? "song" : (browse.kind || "song")
+    browse = { query: text, kind: kind, feeds: ({}) }
+    searchScroll = 0
+    suggestions = { query: "", items: [] }
+    loadMore(kind)
+  }
+  function showKind(kind) {
+    browse = Object.assign({}, browse, { kind: kind })
+    searchScroll = 0
+    if (browse.query && kind !== "library" && !browse.feeds[kind]) loadMore(kind)
+  }
+  // The next page of a kind (the first, if none yet).
+  function loadMore(kind) {
+    var query = browse.query
+    var feed = browse.feeds[kind] || newFeed()
+    if (!query || feed.busy || feed.done) return
+    setFeed(kind, { busy: true })
+    var serial = browseSerial
+    browseJobs.run(Model.browseSearchArgs(query, kind, feed.pages ? feed.next : null), "", function(ok, e) {
+      if (serial !== win.browseSerial) return  // a newer search took over
+      var now = win.browse.feeds[kind] || win.newFeed()
+      var seen = Object.assign({}, now.seen)
+      var fresh = ok ? Model.freshResults(e.results, seen) : []
+      var next = ok && e.next && Object.keys(e.next).length ? e.next : null
+      win.setFeed(kind, { items: now.items.concat(fresh), seen: seen, next: next, pages: now.pages + 1, busy: false,
+        done: !next, errors: now.pages === 0 && ok ? (e.errors || ({})) : now.errors,
+        error: ok || now.pages > 0 ? "" : (e.message || "The search didn't work") })
+      win.store.refreshArt()
+    })
+  }
+
+  // Suggestions a moment after typing stops.
+  function suggestSoon() { suggestTimer.restart() }
+  function suggestNow() {
+    var q = search.text.trim()
+    if (!q || Model.isLink(q) || q === browse.query) return
+    if (suggestJobs.busy) {
+      suggestTimer.restart()
+      return
+    }
+    suggestJobs.run(Model.suggestArgs(q), "", function(ok, e) {
+      if (ok && search.text.trim().indexOf(q) === 0) win.suggestions = { query: q, items: e.suggestions || [] }
+    })
+  }
+  // A suggestion: a phrase searches; a song plays; anything else opens.
+  function openSuggestion(item) {
+    if (item.type === "query") searchOnline(item.title)
+    else if (item.type === "song") playSong({ id: item.url })
+    else openResult(item)
+  }
+
+  function openResult(item) { if (item && item.type) navigate("collection", item) }
+  // An album's or playlist's songs, or a page of a singer's (onDone(ok, event)).
+  function loadCollection(item, page, onDone) {
+    openJobs.run(Model.openArgs(item, page), "", function(ok, e) {
+      win.store.refreshArt()
+      onDone(ok, e)
+    })
+  }
+  // Play songs found by browse, from index on.
+  function playFound(tracks, index, shuffle, title, source) {
+    if (!tracks || tracks.length === 0) return
+    quick.run(Model.browsePlayArgs(tracks, index, shuffle, title, source), "Loading…", function(ok, e) {
+      if (ok) cacheCurrentArt()
+      else showToast(e.message)
+    })
+  }
+  function saveSongs(tracks) {
+    if (!tracks || tracks.length === 0) return
+    quick.run(Model.saveSongsArgs(tracks), "", function(ok, e) { showToast(e.message) })
   }
 
   // One song (from a search, a link or the library) on its own.
@@ -262,6 +358,15 @@ FloatingWindow {
   }
 
   Jobs { id: searchJobs }
+  // Their own runners: a page of results never waits behind an album opening.
+  Jobs { id: browseJobs }
+  Jobs { id: suggestJobs }
+  Jobs { id: openJobs }
+  Timer {
+    id: suggestTimer
+    interval: 250
+    onTriggered: win.suggestNow()
+  }
 
   Connections {
     target: win.player
@@ -345,6 +450,7 @@ FloatingWindow {
               && (modelData.arg === null || win.arg === modelData.arg)
               || (modelData.view === "users" && win.view === "user")
               || (modelData.view === "mixes" && win.view === "mix")
+              || (modelData.view === "search" && win.view === "collection")
             width: sidebar.width - 36
             height: 38
             radius: 8
@@ -479,6 +585,7 @@ FloatingWindow {
             clip: true
             onTextChanged: {
               win.query = text
+              win.suggestSoon()
               if (text.length > 0 && win.view !== "search") win.navigate("search")
               else if (text.length === 0 && win.view === "search") win.back()
             }
@@ -539,6 +646,7 @@ FloatingWindow {
           : win.view === "queue" ? queuePage
           : win.view === "settings" ? settingsPage
           : win.view === "search" ? searchPage
+          : win.view === "collection" ? collectionPage
           : win.view === "mixes" ? mixesPage
           : win.view === "mix" ? mixPage
           : homePage
@@ -629,6 +737,7 @@ FloatingWindow {
   Component { id: queuePage; QueuePage { app: win } }
   Component { id: settingsPage; SettingsPage { app: win } }
   Component { id: searchPage; SearchPage { app: win } }
+  Component { id: collectionPage; CollectionPage { app: win; item: win.view === "collection" && win.arg ? win.arg : ({}) } }
   Component { id: mixesPage; MixesPage { app: win } }
   Component { id: mixPage; MixPage { app: win; mixId: win.view === "mix" ? win.arg : "" } }
 }

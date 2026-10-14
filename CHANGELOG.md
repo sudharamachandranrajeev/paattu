@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 — Faster YouTube, albums, artists and suggestions
+
+Which file: the same as 0.2.0 (`Paattu-0.3.0-windows-x64-setup.exe`,
+`Paattu-0.3.0-android.apk`, the AppImage or the tarball). On Omarchy, pull
+and run `./install.sh` (or `git pull` for a `--dev` install), then
+`omarchy restart shell`.
+
+What's new:
+- **YouTube songs start much faster in the app** (Windows, Android and the
+  Linux app), and the ones that sometimes never played now do. Audio links
+  come from one quick request to YouTube's Vision Pro client; on Android the
+  first request asks for a byte range, which YouTube doesn't slow down to
+  playing speed.
+- **Search for songs, albums, artists and playlists** across JioSaavn,
+  YouTube and SoundCloud, with a tab for each. Scrolling down loads more,
+  without repeats.
+- **Album, playlist and artist pages**: play, shuffle, save the songs, add
+  them to a playlist, or open them on the site. A JioSaavn artist page
+  lists their songs (more as you scroll), albums and singles, playlists and
+  similar singers. A YouTube channel page lists its popular uploads and
+  playlists, and you can follow the channel. YouTube playlists can be saved
+  to the library.
+- **Suggestions while you type**: YouTube's search phrases, plus JioSaavn
+  songs, albums, singers and playlists to open straight away. The app also
+  keeps your recent searches.
+- Omarchy: all of the above in the Paattu window, from the new
+  `paattu browse` command (`browse search --kind album …`,
+  `browse suggest`, `browse open`, `browse play`).
+
 ## 0.2.0 — Windows, Android and any Linux
 
 Which file:

@@ -206,6 +206,16 @@ Or **paste a link** to a song, album or playlist on any site yt-dlp can play:
 JioSaavn, YouTube, SoundCloud, Bandcamp, Audiomack, archive.org, or a plain
 mp3 / m4a / flac file. A FLAC link plays lossless.
 
+While you type, suggestions come up: YouTube's search phrases, and
+JioSaavn songs, albums, singers and playlists that open straight away. After
+**Enter**, the tabs switch between **Songs**, **Albums**, **Artists** and
+**Playlists**; each loads more as you scroll down, and the same film song
+from two sites shows once (the 320 kbps JioSaavn copy). An album or playlist
+opens on its own page to play, shuffle, save or open on its site. A
+JioSaavn artist's page has their songs (more as you scroll), albums and
+singles, playlists and similar singers; a YouTube channel's has its popular
+uploads and playlists, and **Follow** adds it to YouTube users.
+
 Click a result to play it. Hover it for its buttons: heart (Favourites),
 save (Saved songs), add to any of your playlists or a new one, and play
 next. In the app, typing filters your library as before and the online
@@ -221,6 +231,10 @@ download sites.
 paattu search kaathalae kaathalae               # all three sites, grouped
 paattu search --site jiosaavn --limit 20 malare
 paattu search 'https://www.jiosaavn.com/album/…'   # what's at a link
+paattu browse search --kind album chithra       # songs, albums, artists or playlists, a page at a time
+paattu browse search --kind song --after '{"youtube": "…"}' chithra   # the next page
+paattu browse suggest chith                     # what the search box suggests
+paattu browse open '{"type": "artist", "site": "jiosaavn", "id": "455", …}'   # an item from browse search
 paattu play SONG                                # an id from a search, or any song link
 paattu add [--next] SONG
 paattu save SONG | paattu fav SONG
@@ -356,11 +370,13 @@ added the rule before search existed, run it again to add the new sites.
    starter library made optional
 4. ✅ Search JioSaavn, YouTube and SoundCloud from the app and the bar; play
    or keep a song from any link; Saved songs; stream quality on now playing
-5. EQ presets and a real spectrum visualizer on the widgets
-6. Malayalam / Tamil radio (Radio Browser)
-7. Synced lyrics in the app and on the desktop widget
-8. "Song radio" from a track
-9. Album-art accent colours (Spotify-style adaptive theme)
+5. ✅ Albums, artists and playlists in search, endless results, suggestions
+   while typing; faster YouTube in the app
+6. EQ presets and a real spectrum visualizer on the widgets
+7. Malayalam / Tamil radio (Radio Browser)
+8. Synced lyrics in the app and on the desktop widget
+9. "Song radio" from a track
+10. Album-art accent colours (Spotify-style adaptive theme)
 
 ## Development
 

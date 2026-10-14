@@ -327,6 +327,65 @@ function searchArgs(query, sites) {
 function playSongArgs(id) { return ["play", "--", id] }
 function queueSongArgs(id, next) { return ["add"].concat(next ? ["--next"] : []).concat(["--", id]) }
 
+// ---------- browse: songs, albums, singers and playlists, a page at a time
+// (`paattu browse`; keep in step with paattu/browse.py)
+var KINDS = [
+  { kind: "song", title: "Songs", glyph: GLYPH_NOTE },
+  { kind: "album", title: "Albums", glyph: GLYPH_ALBUM },
+  { kind: "artist", title: "Artists", glyph: GLYPH_USER },
+  { kind: "playlist", title: "Playlists", glyph: GLYPH_PLAYLIST }
+]
+var KIND_SITES = {
+  song: ["jiosaavn", "youtube", "soundcloud"],
+  album: ["jiosaavn", "soundcloud"],
+  artist: ["jiosaavn", "youtube", "soundcloud"],
+  playlist: ["jiosaavn", "youtube", "soundcloud"]
+}
+// after: the "next" cursors of the page before, or null for the first page.
+function browseSearchArgs(query, kind, after) {
+  return ["browse", "search", "--kind", kind].concat(after ? ["--after", JSON.stringify(after)] : [])
+    .concat(["--", String(query)])
+}
+function suggestArgs(query) { return ["browse", "suggest", "--", String(query)] }
+function openArgs(item, page) {
+  return ["browse", "open"].concat(page > 1 ? ["--page", String(page)] : []).concat(["--", JSON.stringify(item)])
+}
+// Play songs found by browse from index (ids in order).
+function browsePlayArgs(tracks, index, shuffle, title, source) {
+  return ["browse", "play", "--index", String(index || 0)].concat(shuffle ? ["--shuffle"] : [])
+    .concat(["--title", String(title || "Search"), "--source", String(source || ""), "--"])
+    .concat((tracks || []).map(function(t) { return t.id }))
+}
+function saveSongsArgs(tracks) {
+  return ["save", "--"].concat((tracks || []).map(function(t) { return t.id }))
+}
+// What makes two results the same: `browse search` gives each its key
+// (browse.result_key: a film song is one song on every site; anything else
+// only on its own site).
+function resultKey(item) {
+  return item.key || (item.type || "song") + "|" + item.site + "|" + item.id
+}
+// items without those already in have (whose keys are in seen; seen grows).
+function freshResults(items, seen) {
+  return (items || []).filter(function(item) {
+    var key = resultKey(item)
+    if (seen[key]) return false
+    seen[key] = true
+    return true
+  })
+}
+function kindTitle(kind) {
+  for (var i = 0; i < KINDS.length; i++) if (KINDS[i].kind === kind) return KINDS[i].title
+  return ""
+}
+function resultGlyph(item) {
+  return item.type === "album" ? GLYPH_ALBUM : item.type === "artist" ? GLYPH_USER
+    : item.type === "playlist" ? GLYPH_PLAYLIST : item.type === "query" ? GLYPH_SEARCH : GLYPH_NOTE
+}
+function resultTypeName(item) {
+  return { album: "Album", artist: "Artist", playlist: "Playlist", song: "Song" }[item.type] || ""
+}
+
 // Search results by site, in SEARCH_SITES order (a looked-up link first).
 // results: [{site, ...}] from `paattu search`; only: a site, or "" for all.
 function searchGroups(results, only) {
