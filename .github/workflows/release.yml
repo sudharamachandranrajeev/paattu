@@ -368,10 +368,19 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      # The builds only (not the smoke tests' screenshots and logs).
       - uses: actions/download-artifact@v4
         with:
+          name: android
           path: dist
-          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: dist
       - name: Checksums
         run: |
           cd dist
