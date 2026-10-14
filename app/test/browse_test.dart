@@ -129,7 +129,7 @@ void main() {
         'avatar_url': 'https://i1.sndcdn.com/avatars-x-large.jpg',
       })!;
       expect((user['type'], user['subtitle'], user['art']),
-          ('artist', '1200 followers', 'https://i1.sndcdn.com/avatars-x-t500x500.jpg'));
+          ('artist', '1.2K followers', 'https://i1.sndcdn.com/avatars-x-t500x500.jpg'));
       final set = {
         'kind': 'playlist', 'id': 9, 'title': 'Live', 'track_count': 6, 'user': {'username': 'Masala Coffee'},
         'permalink_url': 'https://soundcloud.com/masalacoffee/sets/live',

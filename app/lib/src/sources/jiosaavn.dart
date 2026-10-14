@@ -231,7 +231,9 @@ Future<List<Json>> suggestJioSaavn(String query) async {
     for (final raw in items.map(asJson)) {
       final type = asString(raw['type']);
       final title = htmlUnescape(asString(raw['title'])).trim();
-      if (title.isEmpty || !seen.add('$type|${raw['id']}')) continue;
+      final subtitle = htmlUnescape(asString(raw['subtitle'] ?? raw['description'])).trim();
+      // The same song or album often comes twice under different ids.
+      if (title.isEmpty || !seen.add('$type|${title.toLowerCase()}|${subtitle.toLowerCase()}')) continue;
       if (type == 'song') {
         final info = asJson(raw['more_info']);
         out.add({

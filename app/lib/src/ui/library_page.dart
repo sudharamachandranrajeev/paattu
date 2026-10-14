@@ -329,7 +329,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 title: Text(asString(user['name']), style: theme.textTheme.titleLarge),
                 subtitle: Text([
                   asString(user['handle']),
-                  if (toInt(user['followers']) != null) '${_short(toInt(user['followers'])!)} subscribers',
+                  if (toInt(user['followers']) != null) '${shortCount(toInt(user['followers'])!)} subscribers',
                 ].where((s) => s.isNotEmpty).join(' · ')),
               ),
               const Padding(
@@ -360,9 +360,3 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       });
 }
-
-String _short(int n) => n >= 1000000
-    ? '${(n / 1000000).toStringAsFixed(n >= 10000000 ? 0 : 1)}M'
-    : n >= 1000
-        ? '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1)}K'
-        : '$n';

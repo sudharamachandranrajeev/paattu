@@ -71,14 +71,15 @@ Json? youtubeCollection(SearchResult result) {
       'count': videoCount > 0 ? videoCount : null,
     };
   }
-  if (result case SearchChannel(:final id, :final name, :final videoCount, :final thumbnails) when name.isNotEmpty) {
+  if (result case SearchChannel(:final id, :final name, :final thumbnails) when name.isNotEmpty) {
     return {
       'type': 'artist',
       'site': 'youtube',
       'id': id.value,
       'url': 'https://www.youtube.com/channel/${id.value}',
       'title': name,
-      'subtitle': videoCount > 0 ? '${plural(videoCount, 'video')} on YouTube' : 'YouTube channel',
+      // (its videoCount is really the subscriber count, when YouTube gives one)
+      'subtitle': 'YouTube channel',
       'art': _biggest(thumbnails),
     };
   }

@@ -107,11 +107,12 @@ Json? soundcloudCollection(Object? raw) {
       'id': asString(item['id']),
       'url': url,
       'title': asString(item['username']),
-      'subtitle': followers == null ? '' : plural(followers, 'follower'),
+      'subtitle': followers == null ? '' : '${shortCount(followers)} ${followers == 1 ? 'follower' : 'followers'}',
       'art': asString(item['avatar_url']).replaceFirst('-large.', '-t500x500.'),
     };
   }
   final user = asJson(item['user']);
+  if (toInt(item['track_count']) == 0) return null;
   return {
     'type': item['is_album'] == true ? 'album' : 'playlist',
     'site': 'soundcloud',

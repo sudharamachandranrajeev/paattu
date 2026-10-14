@@ -392,7 +392,7 @@ class _ArtistPageState extends State<ArtistPage> {
             if (asString(data['name']).isNotEmpty) _name = asString(data['name']);
             if (asString(data['art']).isNotEmpty) _art = asString(data['art']);
             final followers = toInt(data['followers']);
-            _about = [asString(data['role']), if (followers != null) plural(followers, 'follower')]
+            _about = [asString(data['role']), if (followers != null) '${shortCount(followers)} followers']
                 .where((s) => s.isNotEmpty)
                 .join(' · ');
             _addAll(_playlists, asList(data['playlists']).map(asJson));

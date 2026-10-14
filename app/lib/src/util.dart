@@ -92,6 +92,13 @@ String formatDuration(Duration? d) => formatTime(d == null ? null : d.inMillisec
 /// "1 song", "12 songs".
 String plural(int n, String one, [String? many]) => '$n ${n == 1 ? one : (many ?? '${one}s')}';
 
+/// 12400 → 12K, 1250000 → 1.3M (as Model.js formatCount).
+String shortCount(int n) => n >= 1000000
+    ? '${(n / 1000000).toStringAsFixed(n >= 10000000 ? 0 : 1).replaceFirst(RegExp(r'\.0$'), '')}M'
+    : n >= 1000
+        ? '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1).replaceFirst(RegExp(r'\.0$'), '')}K'
+        : '$n';
+
 /// The time as library.json writes it: 2026-10-13T08:30:00Z.
 String nowStamp() {
   final t = DateTime.now().toUtc();
