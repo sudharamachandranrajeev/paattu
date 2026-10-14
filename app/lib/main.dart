@@ -23,6 +23,9 @@ Future<void> main() async {
     try {
       JustAudioMediaKit.ensureInitialized(linux: true, windows: true);
       JustAudioMediaKit.title = 'Paattu';
+      // Speed through mpv's own `speed`, which keeps the pitch: with pitch
+      // control on, media_kit puts scaletempo in `af`, over the equaliser.
+      JustAudioMediaKit.pitch = false;
     } catch (error) {
       debugPrint('libmpv: $error');
       playbackUnavailable = Platform.isLinux
@@ -46,6 +49,8 @@ Future<void> main() async {
     // Not every desktop has an audio session to configure.
   }
   if (desktop && playbackUnavailable == null) await player.setVolume(settings.volume);
+  // (On Android it waits for the first song, which brings the equaliser.)
+  fire(player.setSound(settings.sound));
 
   runApp(PaattuApp(state: AppState(library, settings, player)));
   final problem = playbackUnavailable;

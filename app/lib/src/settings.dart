@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'links.dart';
+import 'sound.dart';
 import 'util.dart';
 
 class PaattuTheme {
@@ -194,6 +195,10 @@ class Settings extends ChangeNotifier {
 
   double get volume => (_data['volume'] is num) ? (_data['volume'] as num).toDouble().clamp(0.0, 1.0) : 1.0;
   set volume(double v) => _set('volume', v);
+
+  /// The equaliser, tone, balance and speed (the desktop Paattu's "sound").
+  Sound get sound => Sound.fromJson(_data['sound']);
+  set sound(Sound s) => _set('sound', s.toJson());
 }
 
 const searchSitesAll = searchSites;

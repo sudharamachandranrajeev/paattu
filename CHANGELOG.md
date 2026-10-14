@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.0 — Equaliser, tone and speed
+
+Which file: the same as before (`Paattu-0.4.0-windows-x64-setup.exe`,
+`Paattu-0.4.0-android.apk`, the AppImage or the tarball). On Omarchy, pull
+and run `./install.sh` (or `git pull` for a `--dev` install), then
+`omarchy restart shell`.
+
+What's new:
+- **Sound page with a ten-band equaliser** (31 Hz to 16 kHz, ±12 dB), drawn
+  over its curve, in the style of Poweramp and AIMP. You hear a slider while
+  you drag it; double-click or double-tap puts it back to 0.
+- **Presets**: Flat, Melody, Kuthu, Bass boost, Treble boost, Classical,
+  Rock, Pop, Dance, Jazz, Acoustic, Loudness, Headphones and Late night.
+  Save your own bands as a preset, and delete them again.
+- **Tone knobs**: preamp, bass, treble, left / right balance, and speed
+  (0.5× to 2×) that keeps the pitch.
+- **Keep loud songs from clipping** (on by default) lowers the preamp by
+  the curve's biggest boost.
+- Windows and the Linux app run the same filters as the Omarchy engine.
+  Android uses the phone's own equaliser and loudness enhancer, matched to
+  the same curve (balance isn't available there).
+- Omarchy: the Sound page in the Paattu window, an equaliser button on the
+  now-playing bar, and the `paattu sound` command.
+
 ## 0.3.0 — Faster YouTube, albums, artists and suggestions
 
 Which file: the same as 0.2.0 (`Paattu-0.3.0-windows-x64-setup.exe`,

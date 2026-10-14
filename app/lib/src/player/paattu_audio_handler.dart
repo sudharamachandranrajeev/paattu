@@ -7,12 +7,15 @@
 // notification and lock screen; on the desktop it is used directly.
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../sound.dart';
 import '../sources/sources.dart';
 import '../titles.dart';
 import '../track.dart';
@@ -39,7 +42,15 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     });
   }
 
-  final _player = AudioPlayer(useProxyForRequestHeaders: false);
+  // Android's own equaliser and loudness enhancer carry the sound settings
+  // there; the desktop's libmpv gets them as audio filters instead.
+  final AndroidEqualizer? _equalizer = Platform.isAndroid ? AndroidEqualizer() : null;
+  final AndroidLoudnessEnhancer? _loudness = Platform.isAndroid ? AndroidLoudnessEnhancer() : null;
+  late final _player = AudioPlayer(
+    useProxyForRequestHeaders: false,
+    audioPipeline: _equalizer == null ? null : AudioPipeline(androidAudioEffects: [_equalizer, _loudness!]),
+  );
+  Sound _sound = const Sound();
   final _random = Random();
 
   /// Songs in play order, and where the queue was before shuffling.
@@ -409,6 +420,42 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       setShuffleMode(_shuffle ? AudioServiceShuffleMode.none : AudioServiceShuffleMode.all);
 
   Future<void> setVolume(double volume) => _player.setVolume(volume.clamp(0.0, 1.0));
+
+  // ---------------------------------------------------------------- sound
+
+  /// Play with [next]'s equaliser, tone, balance and speed. [live] is for a
+  /// control being dragged: on the desktop only the filters that moved
+  /// change, without rebuilding the chain; set it again (not live) when the
+  /// control is let go, so the next song gets it too.
+  Future<void> setSound(Sound next, {bool live = false}) async {
+    final before = _sound;
+    _sound = next;
+    if (next.speed != _player.speed) await _player.setSpeed(next.speed);
+    if (_equalizer != null) return _phoneSound();
+    if (live && before.on && next.on) {
+      for (final command in next.movesFrom(before)) {
+        await JustAudioMediaKit.command(command);
+      }
+    } else {
+      await JustAudioMediaKit.setAudioFilters(next.graph);
+    }
+  }
+
+  /// The sound on the phone's equaliser, once the player has one (it is
+  /// made with the first song). Always the latest settings.
+  Future<void> _phoneSound() async {
+    final equalizer = _equalizer!, loudness = _loudness!;
+    final parameters = await equalizer.parameters;
+    final s = _sound;
+    final (gains, boost) =
+        s.phone([for (final b in parameters.bands) b.centerFrequency], parameters.minDecibels, parameters.maxDecibels);
+    for (var i = 0; i < gains.length; i++) {
+      if (parameters.bands[i].gain != gains[i]) await parameters.bands[i].setGain(gains[i]);
+    }
+    if (loudness.targetGain != boost) await loudness.setTargetGain(boost);
+    if (equalizer.enabled != s.on) await equalizer.setEnabled(s.on);
+    if (loudness.enabled != boost > 0) await loudness.setEnabled(boost > 0);
+  }
 
   @override
   Future<void> onTaskRemoved() => stop();

@@ -306,6 +306,39 @@ paattu watch                            # this song's video in Brave, audio paus
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
+## Sound: equaliser, tone, balance and speed
+
+A ten-band equaliser (31 Hz to 16 kHz, ±12 dB) with presets (Melody, Kuthu,
+Bass boost, Rock, Late night and more, plus your own), a preamp, bass and
+treble, left / right balance, and speed that keeps the pitch. "Keep loud
+songs from clipping" (on by default) lowers the preamp by the biggest
+boost, so a bass boost doesn't distort.
+
+- **Omarchy**: the Sound page in the Paattu window (the equaliser button on
+  the now-playing bar opens it). Drag a slider or knob, scroll over it, or
+  double-click it to put it back; you hear it while you drag.
+- **Windows and the Linux app**: Settings → Sound, or the equaliser button
+  on Now playing. Same controls and presets.
+- **Android**: the same page, played through the phone's own equaliser
+  (usually five bands, so the curve is matched at those) and loudness
+  enhancer. There's no balance on Android.
+
+```
+paattu sound                              # what's on
+paattu sound presets
+paattu sound preset melody                # turns the equaliser on
+paattu sound set --band 1k=+2 --band 31=-1 --bass 3 --treble -1
+paattu sound set --preamp -2 --balance -0.2 --speed 1.25 --noclip on
+paattu sound save "Car"                   # keep the bands as your preset
+paattu sound delete "Car"
+paattu sound off | on | reset
+```
+
+Everything is one chain of FFmpeg `equalizer` filters in mpv, the only
+audio filter the Windows libmpv has; the desktop engine and the Windows /
+Linux app build the same chain from the same numbers
+(`tests/sound_cases.json`).
+
 ## Customising (Spicetify-style)
 
 Everything is a file that applies live, and everything can be set from the
@@ -372,11 +405,14 @@ added the rule before search existed, run it again to add the new sites.
    or keep a song from any link; Saved songs; stream quality on now playing
 5. ✅ Albums, artists and playlists in search, endless results, suggestions
    while typing; faster YouTube in the app
-6. EQ presets and a real spectrum visualizer on the widgets
-7. Malayalam / Tamil radio (Radio Browser)
-8. Synced lyrics in the app and on the desktop widget
-9. "Song radio" from a track
-10. Album-art accent colours (Spotify-style adaptive theme)
+6. ✅ Sound: a ten-band equaliser with presets, preamp, bass, treble,
+   balance and speed, on Omarchy, Windows, Linux and Android
+7. A new look, and the song's video softly blurred behind Now playing
+8. A real spectrum visualizer on the widgets
+9. Malayalam / Tamil radio (Radio Browser)
+10. Synced lyrics in the app and on the desktop widget
+11. "Song radio" from a track
+12. Album-art accent colours (Spotify-style adaptive theme)
 
 ## Development
 

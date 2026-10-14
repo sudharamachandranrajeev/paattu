@@ -12,6 +12,7 @@ import '../links.dart';
 import '../player/paattu_audio_handler.dart';
 import '../track.dart';
 import '../util.dart';
+import 'sound_page.dart';
 import 'widgets.dart';
 
 void openNowPlaying(BuildContext context) => Navigator.of(context).push(PageRouteBuilder<void>(
@@ -258,6 +259,16 @@ class NowPlayingPage extends StatelessWidget {
           leading: IconButton(icon: const Icon(Icons.keyboard_arrow_down), tooltip: 'Close', onPressed: () => Navigator.pop(context)),
           title: const Text('Now playing'),
           centerTitle: true,
+          actions: [
+            ListenableBuilder(
+              listenable: app.settings,
+              builder: (context, _) => IconButton(
+                tooltip: 'Sound',
+                icon: Icon(Icons.equalizer, color: app.settings.sound.on ? theme.colorScheme.primary : null),
+                onPressed: () => openSound(context),
+              ),
+            ),
+          ],
         ),
         body: SafeArea(
           child: Center(

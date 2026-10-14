@@ -1,4 +1,5 @@
-// Settings: theme, search sites, data saver, library import / export, about.
+// Settings: theme, sound, search sites, data saver, library import / export,
+// about.
 
 import 'dart:convert';
 import 'dart:io';
@@ -13,6 +14,7 @@ import '../links.dart';
 import '../settings.dart';
 import '../sources/jiosaavn.dart';
 import '../util.dart';
+import 'sound_page.dart';
 import 'widgets.dart';
 
 /// The desktop Paattu's library on this machine (Linux only).
@@ -73,6 +75,7 @@ class SettingsPage extends StatelessWidget {
         final settings = app.settings;
         final theme = Theme.of(context);
         final desktop = desktopLibrary();
+        final sound = settings.sound;
         return Scaffold(
           appBar: AppBar(title: const Text('Settings')),
           body: ListView(
@@ -89,6 +92,14 @@ class SettingsPage extends StatelessWidget {
                       _ThemeSwatch(theme: t, selected: settings.theme.id == t.id, onTap: () => settings.themeId = t.id),
                   ],
                 ),
+              ),
+              const SectionHeader('Sound'),
+              ListTile(
+                leading: Icon(Icons.equalizer, color: sound.on ? theme.colorScheme.primary : null),
+                title: const Text('Equaliser, tone and speed'),
+                subtitle: Text(sound.summary),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => openSound(context),
               ),
               const SectionHeader('Search'),
               for (final site in searchSites)
