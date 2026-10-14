@@ -227,7 +227,9 @@ Item {
   function drop(s) {
     if (!s) return
     if (s === socket) socket = null
-    s.destroy()
+    // A failed connect errors inside createObject(), before the Socket can be
+    // destroyed ("indestructible object"), so destroy it once that returns.
+    Qt.callLater(function() { s.destroy() })
   }
 
   Component.onCompleted: reconnect()
