@@ -83,6 +83,35 @@ void main() {
       expect(smallestVideo(_player([_format(278, 'video/webm; codecs="vp9"', 1, height: 144)])), isNull);
       expect(smallestVideo(_player([], status: 'LOGIN_REQUIRED')), isNull);
     });
+
+    test("an art track's still cover is no video", () {
+      Json still(int average) => _player([
+            _format(133, 'video/mp4; codecs="avc1.4D4015"', 16000, average: 13000, height: 240),
+            _format(160, 'video/mp4; codecs="avc1.4D400C"', 11468, average: average, height: 144),
+          ]);
+      expect(smallestVideo(still(10382)), isNull);
+      expect(smallestVideo(still(96879))?.uri.queryParameters['itag'], '160');
+    });
+
+    test('a song whose own video is still gets one found by search', () async {
+      final tried = <String>[];
+      Future<List<Json>> search(String query, {int limit = 12}) async {
+        expect(query, 'Naan Naan Anirudh');
+        Json found(String id, int duration) => {'id': id, 'duration': duration};
+        return [found('NAkQVL61BRI', 241), found('XXXXXXXXXXX', 400), found('rcdWUeVKFnA', 230), found('S3oq6IwPWBw', 250)];
+      }
+
+      Future<ResolvedStream?> video(String id) async {
+        tried.add(id);
+        if (id == 'rcdWUeVKFnA') throw SourceException('Video unavailable');
+        return id == 'S3oq6IwPWBw' ? ResolvedStream(Uri.parse('https://v/$id'), codec: 'h264') : null;
+      }
+
+      final song = {'id': 'NAkQVL61BRI', 'site': 'youtube', 'title': 'Naan Naan', 'credits': ['Anirudh'], 'duration': 240};
+      expect((await findVideo(song, search, video))?.uri.path, '/S3oq6IwPWBw');
+      expect(tried, ['NAkQVL61BRI', 'rcdWUeVKFnA', 'S3oq6IwPWBw']);
+      expect(await findVideo({...song, 'duration': null}, search, (_) async => null), isNull);
+    });
   });
 
   group('merging pages', () {

@@ -274,5 +274,39 @@ class ArtTest(unittest.TestCase):
         self.assertEqual(art.track_art("example.com_a.mp3"), "")
 
 
+
+class SongVideoTest(unittest.TestCase):
+    """The video behind Now Playing: a song's own unless it's a still."""
+
+    def small(self, kbps):
+        return {"requested_formats": [{"url": "https://rr1---sn-x.googlevideo.com/videoplayback?expire=1", "tbr": kbps}],
+                "duration": 248}
+
+    def test_a_still_cover_is_no_video(self):
+        with mock.patch.object(youtube, "_run", lambda *a, **k: self.small(10.4)):
+            self.assertIsNone(youtube.small_video("NAkQVL61BRI"))
+        with mock.patch.object(youtube, "_run", lambda *a, **k: self.small(96.9)):
+            self.assertEqual(youtube.small_video("isDo6u7QQ74")["id"], "isDo6u7QQ74")
+
+    def test_an_art_track_gets_a_video_found_by_search(self):
+        still = {"NAkQVL61BRI", "rcdWUeVKFnA"}
+        tried = []
+
+        def small_video(vid):
+            tried.append(vid)
+            return None if vid in still else {"id": vid}
+
+        found = [{"id": "NAkQVL61BRI", "duration": 248}, {"id": "RfbehsDXLMo", "duration": 211},
+                 {"id": "rcdWUeVKFnA", "duration": 249}, {"id": "S3oq6IwPWBw", "duration": 267}]
+        song = {"id": "NAkQVL61BRI", "title": "Naan Naan", "credits": ["Santhosh Narayanan"], "duration": 248}
+        with mock.patch.object(youtube, "small_video", small_video), \
+                mock.patch.object(sources, "search_youtube", lambda query, limit: found):
+            self.assertEqual(sources.video_for(song), {"id": "S3oq6IwPWBw"})
+        # Its own first, then the ones about as long, the still one passed over.
+        self.assertEqual(tried, ["NAkQVL61BRI", "rcdWUeVKFnA", "S3oq6IwPWBw"])
+        with mock.patch.object(youtube, "small_video", lambda vid: {"id": vid}):
+            self.assertEqual(sources.video_for({**song, "id": "isDo6u7QQ74"}), {"id": "isDo6u7QQ74"})
+
+
 if __name__ == "__main__":
     unittest.main()

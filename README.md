@@ -321,8 +321,11 @@ paattu video SONG                       # where to stream its small, silent vide
 Now Playing (in the app, and on Omarchy from the sidebar or by clicking the
 song in the player bar) shows the song's video behind it, blurred, silent
 and kept in time with the music: the smallest H.264 picture, about 1 MB a
-minute. JioSaavn and SoundCloud songs use a YouTube video of the same length
-when there is one. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`);
+minute. A YouTube Music song whose own video is only its cover held still
+(an "art track"), and JioSaavn and SoundCloud songs, use a YouTube video of
+about the same length found by search (a lyric or video song) when there is
+one. On a phone the cover sits, rounded, on a blurred copy of itself and fades
+out when the video comes on. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`);
 turn it off with `paattu config set videoBackground false` or in *Look &
 settings*.
 

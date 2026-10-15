@@ -256,32 +256,56 @@ String? _youTubeId(Json track) {
 
 final _videos = <String, ResolvedStream?>{};
 
-/// A silent picture to blur behind Now Playing: the song's own video, or for
-/// a song from elsewhere the first YouTube video about as long (most film
-/// songs are there). Null when there's none; looked up once a session.
+/// How many videos found by search are tried for a song's picture.
+const videoTries = 3;
+
+/// A silent picture to blur behind Now Playing: the song's own video, unless
+/// that is its cover held still (a YouTube Music art track), else the first
+/// YouTube video found by search that is about as long and whose picture
+/// moves (most film songs are there as a lyric or video song). Null when
+/// there's none; looked up once a session. Same as video_for on the desktop.
 Future<ResolvedStream?> videoFor(Json track) async {
   final key = '${track['site']}:${track['id']}';
   if (_videos.containsKey(key)) {
     final known = _videos[key];
     if (known == null || known.fresh) return known;
   }
-  var id = _youTubeId(track);
-  if (id == null) {
-    final seconds = toInt(track['duration']);
-    final credits = asStrings(track['credits']);
-    final query = [asString(track['title']), credits.isNotEmpty ? credits.first : asString(track['movie'])]
-        .where((s) => s.isNotEmpty)
-        .join(' ');
-    if (seconds == null || query.isEmpty) return _videos[key] = null;
-    final found = await searchYouTube(query, limit: 5);
-    id = found
-        .map((t) => (asString(t['id']), toInt(t['duration'])))
-        .where((t) => t.$2 != null && (t.$2! - seconds).abs() <= 20)
-        .firstOrNull
-        ?.$1;
-    if (id == null) return _videos[key] = null;
+  return _videos[key] = await findVideo(track, searchYouTube, videoYouTube);
+}
+
+/// [videoFor] with its two lookups given: [search] YouTube, and a [video]'s
+/// moving picture (null for a still).
+Future<ResolvedStream?> findVideo(
+  Json track,
+  Future<List<Json>> Function(String query, {int limit}) search,
+  Future<ResolvedStream?> Function(String id) video,
+) async {
+  final own = _youTubeId(track);
+  if (own != null) {
+    final picture = await video(own);
+    if (picture != null) return picture;
   }
-  return _videos[key] = await videoYouTube(id);
+  final seconds = toInt(track['duration']);
+  final credits = asStrings(track['credits']);
+  final query = [asString(track['title']), credits.isNotEmpty ? credits.first : asString(track['movie'])]
+      .where((s) => s.isNotEmpty)
+      .join(' ');
+  if (seconds == null || query.isEmpty) return null;
+  final found = await search(query, limit: 6);
+  final near = [
+    for (final t in found)
+      if (asString(t['id']) != own && toInt(t['duration']) != null && (toInt(t['duration'])! - seconds).abs() <= 20)
+        asString(t['id']),
+  ];
+  for (final id in near.take(videoTries)) {
+    try {
+      final picture = await video(id);
+      if (picture != null) return picture;
+    } catch (_) {
+      // That one won't play here; try the next.
+    }
+  }
+  return null;
 }
 
 /// How many different ways [streamFor] can try for a song.

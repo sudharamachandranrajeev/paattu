@@ -19,6 +19,10 @@ import '../sources/sources.dart' as sources;
 import '../track.dart';
 import '../util.dart';
 
+/// Whether a song's video is showing, for Now Playing on a phone to fade
+/// the cover out of its way.
+final songVideoShown = ValueNotifier<bool>(false);
+
 /// The video of [track], fading in over what's behind it once it's playing.
 /// Nothing shows for a song without one.
 class SongVideo extends StatefulWidget {
@@ -94,7 +98,7 @@ class _SongVideoState extends State<SongVideo> {
     if (_rate != 1) await playback.setRate(_rate);
     _playing = _player.playingStream.listen((on) => fire(on ? playback.play() : playback.pause()));
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _keepInStep());
-    if (mounted) setState(() => _shown = true);
+    if (mounted) setState(() => _shown = songVideoShown.value = true);
   }
 
   /// Follow the music: its place (after a seek, or when the video falls
@@ -106,7 +110,7 @@ class _SongVideoState extends State<SongVideo> {
     final music = _player.position;
     final length = playback.duration;
     final over = length > Duration.zero && music >= length;
-    if (over == _shown) setState(() => _shown = !over);
+    if (over == _shown) setState(() => _shown = songVideoShown.value = !over);
     if (over) return;
     // Android pauses and resumes videos with the app, whatever the music did.
     if (playback.playing != _player.playing) fire(_player.playing ? playback.play() : playback.pause());
@@ -133,6 +137,8 @@ class _SongVideoState extends State<SongVideo> {
     final playback = _playback;
     _playback = null;
     _shown = false;
+    // Called while the page builds or closes: say so once that is done.
+    if (songVideoShown.value) scheduleMicrotask(() => songVideoShown.value = false);
     if (playback != null) fire(playback.dispose());
   }
 

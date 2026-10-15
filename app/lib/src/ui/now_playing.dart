@@ -1,6 +1,6 @@
 // The song playing: the mini player under every page, the full screen (the
-// song's picture filling the top, the next songs on an arc, the controls in
-// a glass dome) and the queue.
+// song's cover on a blurred copy of itself, the next songs on an arc, the
+// controls in a glass dome) and the queue.
 
 import 'dart:io';
 import 'dart:math';
@@ -208,13 +208,21 @@ class NowPlayingPage extends StatelessWidget {
                 aspectRatio: 1,
                 child: Material(
                   elevation: 12,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(24),
                   clipBehavior: Clip.antiAlias,
-                  child: TrackCover(track, size: size, large: true, radius: 28),
+                  child: TrackCover(track, size: size, large: true, radius: 24),
                 ),
               ),
             ),
           );
+      // On a phone the cover sits on a blurred copy of itself, and fades out
+      // when the song's video comes on behind it.
+      final phoneCard = ValueListenableBuilder<bool>(
+        valueListenable: songVideoShown,
+        builder: (context, shown, card) =>
+            AnimatedOpacity(opacity: shown ? 0 : 1, duration: const Duration(milliseconds: 900), child: card),
+        child: artCard(null),
+      );
       return Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: Stack(
@@ -235,7 +243,7 @@ class NowPlayingPage extends StatelessWidget {
                     return Column(
                       children: [
                         bar,
-                        Expanded(child: wide ? artCard(null) : const SizedBox()),
+                        Expanded(child: wide ? artCard(null) : phoneCard),
                         if (room - _arcHeight > 120) _UpcomingArc(player: app.player),
                         dome,
                       ],
@@ -251,9 +259,9 @@ class NowPlayingPage extends StatelessWidget {
   }
 }
 
-/// The song's picture filling the top of the screen (on wide screens,
-/// blurred across all of it), fading into the page. Its video, blurred,
-/// fades in over the picture once it plays.
+/// The song's picture, blurred, filling the top of the screen (on wide
+/// screens, all of it), fading into the page. Its video, blurred, fades in
+/// over the picture once it plays.
 class _Background extends StatelessWidget {
   const _Background({required this.app, required this.track, required this.wide});
   final AppState app;
@@ -285,7 +293,21 @@ class _Background extends StatelessWidget {
           ] else
             Align(
               alignment: Alignment.topCenter,
-              child: AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [art, video])),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRect(
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28, tileMode: TileMode.clamp),
+                        child: art,
+                      ),
+                    ),
+                    video,
+                  ],
+                ),
+              ),
             ),
           DecoratedBox(
             decoration: BoxDecoration(

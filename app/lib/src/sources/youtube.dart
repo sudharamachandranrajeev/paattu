@@ -385,10 +385,16 @@ ResolvedStream bestAudio(Json response, {String agent = _visionAgent, bool? andr
       lifetime: Duration(seconds: max(600, seconds - 1800)));
 }
 
+/// Below this many kbps a video's picture doesn't move: a YouTube Music
+/// song's own video is often an "art track", its cover held still (about
+/// 10 kbps at 144p, where a video runs at about 100). Same as STILL_KBPS on
+/// the desktop.
+const stillKbps = 30;
+
 /// The smallest picture of a video, without sound, for the blurred
 /// background of Now Playing: H.264, which every phone and PC decodes in
-/// hardware, at 144p (about 130 kbps), plenty under a blur. Null when
-/// YouTube won't play it.
+/// hardware, at 144p (about 100 kbps), plenty under a blur. Null when
+/// YouTube won't play it, or when the picture is a still ([stillKbps]).
 ResolvedStream? smallestVideo(Json response, {String agent = _visionAgent, bool? android}) {
   if (asString(asJson(response['playabilityStatus'])['status']) != 'OK') return null;
   final streaming = asJson(response['streamingData']);
@@ -402,10 +408,13 @@ ResolvedStream? smallestVideo(Json response, {String agent = _visionAgent, bool?
   ];
   if (videos.isEmpty) return null;
   videos.sort((a, b) => toInt(a['height'])! - toInt(b['height'])!);
+  final smallest = videos.first;
+  final average = toInt(smallest['averageBitrate']) ?? toInt(smallest['bitrate']);
+  if (average != null && average < stillKbps * 1000) return null;
   final seconds = toInt(streaming['expiresInSeconds']) ?? 21600;
-  return ResolvedStream(Uri.parse(asString(videos.first['url'])),
+  return ResolvedStream(Uri.parse(asString(smallest['url'])),
       codec: 'h264',
-      kbps: ((toInt(videos.first['bitrate']) ?? 0) / 1000).round(),
+      kbps: ((toInt(smallest['bitrate']) ?? 0) / 1000).round(),
       headers: streamHeaders(agent, android: android),
       lifetime: Duration(seconds: max(600, seconds - 1800)));
 }

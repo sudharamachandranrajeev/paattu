@@ -1,10 +1,22 @@
 # Changelog
 
-## 0.6.2 — Songs play again on phones whose equaliser starts late
+## 0.6.2 — Songs play again on phones whose equaliser starts late, and the video behind Now Playing moves
 
-Which file: the same as before (`Paattu-0.6.2-android.apk` is the one that
-matters; the Windows and Linux builds and Omarchy only change their version
-number). On Omarchy, `git pull` (a `--dev` install).
+Which file: the same as before (`Paattu-0.6.2-android.apk`,
+`Paattu-0.6.2-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull` (a `--dev` install).
+
+What's new:
+- The video behind Now Playing now moves for far more songs. Many YouTube
+  Music songs' own videos are "art tracks", their cover held still (about
+  10 kbps where a real video runs at about 100), so the background looked
+  like a blurred photo. Such a still now counts as no video, and YouTube is
+  searched for the song's real video (a lyric or video song of about the
+  same length; up to three are tried). In the app and on Omarchy alike.
+- On a phone, Now Playing shows the cover with rounded corners on a
+  blurred copy of itself that fills the sides. When the song's video comes
+  on, the cover fades out of its way; for a song with no moving video on
+  YouTube the cover stays.
 
 What's fixed:
 - On some Android phones no song would play: every site and every try
