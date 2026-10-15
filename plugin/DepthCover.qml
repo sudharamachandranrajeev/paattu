@@ -134,7 +134,8 @@ Item {
       Behavior on opacity { NumberAnimation { duration: 600 } }
     }
 
-    // The subject, nearer: bigger, and moving further as the cover leans.
+    // The subject, nearer: bigger, and moving further as the cover leans
+    // (paattu/depth.py's LIFT and LEAN, which its cut-out allows for).
     Image {
       id: subject
       readonly property var centre: root.lifted && root.found.centre ? root.found.centre : [0.5, 0.5]

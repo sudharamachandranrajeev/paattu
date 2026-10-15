@@ -55,16 +55,25 @@ class SubjectMask {
   final double area;
 }
 
+/// How the subject is shown (depth_cover.dart, and the Omarchy app's
+/// DepthCover.qml): this much bigger, about its centre, moving up to
+/// [subjectLean] of the cover's side as it leans, on a cover rounded about
+/// [_corner] of its side.
+const subjectLift = 1.06;
+const subjectLean = 0.02;
+const _corner = 0.08;
+
 /// What [raw] (a [side] by [side] guess at how much each pixel is the
-/// subject) leaves to lift: stretched to 0–1, made firmer (the guess is often
-/// unsure inside the subject, which would let the picture behind show
-/// through) and faded out at the picture's edges, where a subject cut off by
-/// the frame would otherwise show a hard line once lifted. Unsure patches the
-/// subject closes around (a shirt the model half missed) are filled; what it
-/// is sure is background (the gap between an arm and the body) is kept.
-/// paattu/depth.py does the same for the Omarchy app. Null when the guess is
-/// no good: nothing stands out, the subject is a speck or most of the
-/// picture, or it is a haze, not a shape.
+/// subject) leaves to lift: stretched to 0–1 and made firmer (the guess is
+/// often unsure inside the subject, which would let the picture behind show
+/// through). Unsure patches the subject closes around (a shirt the model half
+/// missed) are filled; what it is sure is background (the gap between an arm
+/// and the body) is kept. The subject is shown a little bigger and moves as
+/// the cover leans, so it fades out before the cover's (rounded) edge
+/// wherever it is shown: a subject cut off by the frame would otherwise stick
+/// out past it. paattu/depth.py does the same for the Omarchy app. Null when
+/// the guess is no good: nothing stands out, the subject is a speck or most
+/// of the picture, or it is a haze, not a shape.
 SubjectMask? cleanMask(List<double> raw, int side) {
   final n = side * side;
   if (raw.length != n || n == 0) return null;
@@ -76,27 +85,22 @@ SubjectMask? cleanMask(List<double> raw, int side) {
   }
   if (!(hi >= 0.5 && hi - lo > 0.3)) return null;
   final span = hi - lo;
-  final edge = max(1, (side * 0.04).round());
   final alpha = Float32List(n);
   var solid = 0, haze = 0;
   var sx = 0.0, sy = 0.0, sum = 0.0;
-  for (var y = 0; y < side; y++) {
-    for (var x = 0; x < side; x++) {
-      final i = y * side + x;
-      final a = (raw[i] - lo) / span;
-      if (a > 0.5) solid++;
-      if (a > 0.15 && a < 0.85) haze++;
-      final t = ((a - 0.2) / 0.6).clamp(0.0, 1.0);
-      final firm = t * t * (3 - 2 * t);
-      final border = min(min(x, y), min(side - 1 - x, side - 1 - y));
-      alpha[i] = border >= edge ? firm : firm * border / edge;
-      sx += x * a;
-      sy += y * a;
-      sum += a;
-    }
+  for (var i = 0; i < n; i++) {
+    final a = (raw[i] - lo) / span;
+    if (a > 0.5) solid++;
+    if (a > 0.15 && a < 0.85) haze++;
+    final t = ((a - 0.2) / 0.6).clamp(0.0, 1.0);
+    alpha[i] = t * t * (3 - 2 * t);
+    sx += (i % side) * a;
+    sy += (i ~/ side) * a;
+    sum += a;
   }
   final area = solid / n;
   if (area < 0.03 || area > 0.8 || haze > solid) return null;
+  final cx = (sx / sum + 0.5) / side, cy = (sy / sum + 0.5) / side;
   // Close the subject (grow it, then shrink it back, by `reach`): what that
   // adds is gaps and dents narrower than twice `reach`. Of that, the unsure
   // pixels become subject, fading in over a few pixels so no hard line shows.
@@ -106,14 +110,27 @@ SubjectMask? cleanMask(List<double> raw, int side) {
   for (var i = 0; i < n; i++) {
     final fill = (inside[i] - reach) / 3;
     if (fill <= 0) continue;
-    final a = (raw[i] - lo) / span;
-    final sure = ((a - 0.1) / 0.1).clamp(0.0, 1.0);
-    final y = i ~/ side, x = i % side;
-    final border = min(min(x, y), min(side - 1 - x, side - 1 - y));
-    final keep = min(1.0, fill) * sure * (border >= edge ? 1.0 : border / edge);
-    if (keep > alpha[i]) alpha[i] = keep;
+    final sure = (((raw[i] - lo) / span - 0.1) / 0.1).clamp(0.0, 1.0);
+    alpha[i] = max(alpha[i], min(1.0, fill) * sure);
   }
-  return SubjectMask(alpha, Offset((sx / sum + 0.5) / side, (sy / sum + 0.5) / side), area);
+  for (var i = 0; i < n; i++) {
+    if (alpha[i] <= 0) continue;
+    final x = cx + ((i % side + 0.5) / side - cx) * subjectLift;
+    final y = cy + ((i ~/ side + 0.5) / side - cy) * subjectLift;
+    alpha[i] *= _inFrame(x, y);
+  }
+  return SubjectMask(alpha, Offset(cx, cy), area);
+}
+
+/// How far ([x], [y]), 0 to 1 across and down the cover as shown, is inside
+/// it: 0 outside the cover's rounded edge less the furthest the subject moves
+/// as it leans, 1 a little further in.
+double _inFrame(double x, double y) {
+  final across = min(x, 1 - x), down = min(y, 1 - y);
+  final edge = across < _corner && down < _corner
+      ? _corner - sqrt(pow(_corner - across, 2) + pow(_corner - down, 2))
+      : min(across, down);
+  return ((edge - subjectLean) / 0.04).clamp(0.0, 1.0);
 }
 
 /// How many steps (across, down or corner to corner) each pixel is from the

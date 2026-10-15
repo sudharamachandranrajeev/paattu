@@ -29,12 +29,19 @@ class CleanMaskTest(unittest.TestCase):
         self.assertEqual(alpha[5 * SIDE + 5], 0.0)
 
     def test_edges_fade_out(self):
-        # A subject cut off by the bottom of the frame fades out there.
+        # A subject cut off by the bottom of the frame fades out before it, as
+        # shown (bigger, and moving as the cover leans), so it never sticks out.
         alpha, _, _ = depth.clean_mask(blob(15, 30, 35, SIDE), SIDE)
         self.assertEqual(alpha[(SIDE - 1) * SIDE + 25], 0.0)
-        self.assertGreater(alpha[(SIDE - 2) * SIDE + 25], 0.0)
-        self.assertLess(alpha[(SIDE - 2) * SIDE + 25], 1.0)
+        self.assertEqual(alpha[(SIDE - 2) * SIDE + 25], 0.0)
+        self.assertGreater(alpha[(SIDE - 3) * SIDE + 25], 0.0)
+        self.assertLess(alpha[(SIDE - 3) * SIDE + 25], 1.0)
         self.assertEqual(alpha[40 * SIDE + 25], 1.0)
+        # And before the cover's rounded corner.
+        alpha, _, _ = depth.clean_mask(blob(0, 0, 30, 30), SIDE)
+        self.assertEqual(alpha[2 * SIDE + 2], 0.0)
+        self.assertEqual(alpha[0 * SIDE + 20], 0.0)
+        self.assertEqual(alpha[10 * SIDE + 10], 1.0)
 
     def test_holes(self):
         # A patch inside the subject the model was unsure of is filled; one it

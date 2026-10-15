@@ -34,6 +34,12 @@ PICTURE_SIDE = 720
 VERSION = 2
 # Covers whose pictures are kept (the oldest go).
 KEEP = 300
+# How the subject is shown (the app's DepthCover.qml, the Flutter app's
+# depth_cover.dart): this much bigger, about its centre, moving up to LEAN of
+# the cover's side as it leans, on a cover rounded about CORNER of its side.
+LIFT = 1.06
+LEAN = 0.02
+CORNER = 0.08
 
 HELPER = Path(__file__).resolve()
 MODEL = HELPER.parent.parent / "models" / "u2netp.onnx"
@@ -46,15 +52,16 @@ class DepthError(RuntimeError):
 
 def clean_mask(raw, side):
     """What `raw` (a side by side guess at how much each pixel is the subject,
-    row by row) leaves to lift: (alpha, (x, y), area), stretched to 0-1, made
-    firmer (the guess is often unsure inside the subject, which would let the
-    picture behind show through) and faded out at the picture's edges, where
-    a subject cut off by the frame would otherwise show a hard line once
-    lifted. Unsure patches the subject closes around (a shirt the model half
-    missed) are filled; what it is sure is background (the gap between an arm
-    and the body) is kept. The centre is 0 to 1 across and down. None when the
-    guess is no good: nothing stands out, the subject is a speck or most of
-    the picture, or it is a haze, not a shape."""
+    row by row) leaves to lift: (alpha, (x, y), area), stretched to 0-1 and
+    made firmer (the guess is often unsure inside the subject, which would let
+    the picture behind show through). Unsure patches the subject closes around
+    (a shirt the model half missed) are filled; what it is sure is background
+    (the gap between an arm and the body) is kept. The subject is shown a
+    little bigger (LIFT) and moves as the cover leans, so it fades out before
+    the cover's (rounded) edge wherever it is shown: a subject cut off by the
+    frame would otherwise stick out past it. The centre is 0 to 1 across and
+    down. None when the guess is no good: nothing stands out, the subject is a
+    speck or most of the picture, or it is a haze, not a shape."""
     n = side * side
     if len(raw) != n or n == 0 or not all(math.isfinite(v) for v in raw):
         return None
@@ -62,28 +69,25 @@ def clean_mask(raw, side):
     if not (hi >= 0.5 and hi - lo > 0.3):
         return None
     span = hi - lo
-    edge = max(1, round(side * 0.04))
     alpha = [0.0] * n
     solid = haze = 0
     sx = sy = total = 0.0
-    for y in range(side):
-        row = y * side
-        for x in range(side):
-            a = (raw[row + x] - lo) / span
-            if a > 0.5:
-                solid += 1
-            if 0.15 < a < 0.85:
-                haze += 1
-            t = min(1.0, max(0.0, (a - 0.2) / 0.6))
-            firm = t * t * (3 - 2 * t)
-            border = min(x, y, side - 1 - x, side - 1 - y)
-            alpha[row + x] = firm if border >= edge else firm * border / edge
-            sx += x * a
-            sy += y * a
-            total += a
+    for i, v in enumerate(raw):
+        a = (v - lo) / span
+        if a > 0.5:
+            solid += 1
+        if 0.15 < a < 0.85:
+            haze += 1
+        t = min(1.0, max(0.0, (a - 0.2) / 0.6))
+        alpha[i] = t * t * (3 - 2 * t)
+        y, x = divmod(i, side)
+        sx += x * a
+        sy += y * a
+        total += a
     area = solid / n
     if area < 0.03 or area > 0.8 or haze > solid:
         return None
+    cx, cy = (sx / total + 0.5) / side, (sy / total + 0.5) / side
     # Close the subject (grow it, then shrink it back, by `reach`): what that
     # adds is gaps and dents narrower than twice `reach`. Of that, the unsure
     # pixels become subject, fading in over a few pixels so no hard line shows.
@@ -93,15 +97,25 @@ def clean_mask(raw, side):
     for i in range(n):
         fill = (inside[i] - reach) / 3
         if fill > 0:
-            a = (raw[i] - lo) / span
-            sure = min(1.0, max(0.0, (a - 0.1) / 0.1))
+            sure = min(1.0, max(0.0, ((raw[i] - lo) / span - 0.1) / 0.1))
+            alpha[i] = max(alpha[i], min(1.0, fill) * sure)
+    for i in range(n):
+        if alpha[i] > 0:
             y, x = divmod(i, side)
-            border = min(x, y, side - 1 - x, side - 1 - y)
-            keep = min(1.0, fill) * sure * (1.0 if border >= edge else border / edge)
-            if keep > alpha[i]:
-                alpha[i] = keep
-    return alpha, ((sx / total + 0.5) / side, (sy / total + 0.5) / side), area
+            alpha[i] *= _in_frame(cx + ((x + 0.5) / side - cx) * LIFT, cy + ((y + 0.5) / side - cy) * LIFT)
+    return alpha, (cx, cy), area
 
+
+def _in_frame(x, y):
+    """How far (x, y), 0 to 1 across and down the cover as shown, is inside
+    it: 0 outside the cover's rounded edge less the furthest the subject moves
+    as it leans, 1 a little further in."""
+    across, down = min(x, 1 - x), min(y, 1 - y)
+    if across < CORNER and down < CORNER:
+        edge = CORNER - math.hypot(CORNER - across, CORNER - down)
+    else:
+        edge = min(across, down)
+    return min(1.0, max(0.0, (edge - LEAN) / 0.04))
 
 def _distances(seeds, side, limit):
     """How many steps (across, down or corner to corner) each pixel is from

@@ -26,12 +26,19 @@ void main() {
     });
 
     test('edges fade out', () {
-      // A subject cut off by the bottom of the frame fades out there.
-      final alpha = cleanMask(blob(15, 30, 35, side), side)!.alpha;
+      // A subject cut off by the bottom of the frame fades out before it, as
+      // shown (bigger, and moving as the cover leans), so it never sticks out.
+      var alpha = cleanMask(blob(15, 30, 35, side), side)!.alpha;
       expect(alpha[(side - 1) * side + 25], 0.0);
-      expect(alpha[(side - 2) * side + 25], greaterThan(0.0));
-      expect(alpha[(side - 2) * side + 25], lessThan(1.0));
+      expect(alpha[(side - 2) * side + 25], 0.0);
+      expect(alpha[(side - 3) * side + 25], greaterThan(0.0));
+      expect(alpha[(side - 3) * side + 25], lessThan(1.0));
       expect(alpha[40 * side + 25], 1.0);
+      // And before the cover's rounded corner.
+      alpha = cleanMask(blob(0, 0, 30, 30), side)!.alpha;
+      expect(alpha[2 * side + 2], 0.0);
+      expect(alpha[0 * side + 20], 0.0);
+      expect(alpha[10 * side + 10], 1.0);
     });
 
     test('holes', () {

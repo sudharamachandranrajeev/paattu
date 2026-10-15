@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -230,7 +231,7 @@ class _DepthPainter extends CustomPainter {
     final t = tilt.value;
     // The subject is nearer than the picture: it moves further as the cover
     // tilts, and its shadow falls the other way.
-    final lift = t * size.shortestSide * 0.02;
+    final lift = t * size.shortestSide * subjectLean;
     final centre = Offset(subject.centre.dx * size.width, subject.centre.dy * size.height);
 
     canvas.save();
@@ -241,7 +242,7 @@ class _DepthPainter extends CustomPainter {
 
     canvas.save();
     canvas.translate(centre.dx + lift.dx, centre.dy + lift.dy);
-    canvas.scale(1.06);
+    canvas.scale(subjectLift);
     canvas.translate(-centre.dx, -centre.dy);
     canvas.saveLayer(box.inflate(size.shortestSide * 0.05), Paint());
     canvas.drawImageRect(subject.picture, _all(subject.picture), box, smooth);
