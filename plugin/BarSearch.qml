@@ -19,14 +19,11 @@ Column {
   readonly property string fontFamily: widget.fontFamily
   readonly property var online: widget.online
   readonly property bool showing: online.query !== ""
-  readonly property var allGroups: Model.searchGroups(online.results, "")
-  readonly property var groups: Model.searchGroups(online.results, widget.onlineSite)
-  // A few from each site when they all show; more for one site.
+  readonly property var groups: Model.searchGroups(online.results)
+  // A few from a link and a few found; more when there's only one list.
   readonly property int perGroup: groups.length > 1 ? 4 : 10
   readonly property int shownCount: groups.reduce(function(n, g) { return n + Math.min(g.tracks.length, perGroup) }, 0)
-  readonly property var errors: Object.keys(online.errors || {}).map(function(site) {
-    return Model.siteName(site) + ": " + online.errors[site]
-  })
+  readonly property var errors: Model.searchErrors(online.errors)
 
   // The song whose add-to-playlist picker is open, and whether its
   // new-playlist box has the keyboard.
@@ -98,33 +95,13 @@ Column {
     spacing: Style.space(4)
     visible: root.showing
 
-    // Filter by site.
-    Flow {
-      width: parent.width
-      spacing: Style.space(6)
-      visible: root.allGroups.length > 1
-      Repeater {
-        model: [{ site: "", title: "All" }].concat(root.allGroups)
-        Chip {
-          required property var modelData
-          text: modelData.title + (modelData.tracks ? "  " + modelData.tracks.length : "")
-          textColor: root.fg
-          accent: Color.accent
-          selected: root.widget.onlineSite === modelData.site
-          fontSize: Style.font.caption
-          fontFamily: root.fontFamily
-          onClicked: root.widget.onlineSite = modelData.site
-        }
-      }
-    }
-
     Text {
       width: parent.width
       visible: text !== ""
       textFormat: Text.PlainText
       wrapMode: Text.WordWrap
       text: root.online.busy
-        ? (Model.isLink(root.online.query) ? "Looking up the link…" : "Searching JioSaavn, YouTube and SoundCloud…")
+        ? (Model.isLink(root.online.query) ? "Looking up the link…" : "Searching…")
         : root.online.error ? root.online.error
         : [root.online.results.length === 0 ? "Nothing found for “" + root.online.query + "”" : ""]
             .concat(root.errors).filter(function(x) { return x }).join("  ·  ")

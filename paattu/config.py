@@ -30,8 +30,9 @@ DEFAULTS = {
     },
     "queue": {"dedupe": True, "skipTrailers": True},
     "languages": ["Malayalam", "Tamil"],
-    # Where search looks (JioSaavn has the film songs at 320 kbps) and how many per site.
-    "search": {"sites": ["jiosaavn", "youtube", "soundcloud"], "limit": 12},
+    # Where the music comes from (YouTube, or JioSaavn's 320 kbps film songs,
+    # SoundCloud, or all three) and how many results a site.
+    "search": {"sites": ["youtube"], "limit": 12},
     # The equaliser, tone, balance and speed (paattu sound).
     "sound": sound.DEFAULTS,
     # Now Playing shows the song's video, blurred and silent, behind it (paattu video).
@@ -39,6 +40,7 @@ DEFAULTS = {
 }
 
 STYLES = ("vinyl", "card", "minimal")
+SITES = ("jiosaavn", "youtube", "soundcloud")
 POSITIONS = ("top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right")
 
 
@@ -95,6 +97,8 @@ def validate(key, value):
         raise ValueError(key + " is a number")
     if key == "videoBackground" and not isinstance(value, bool):
         raise ValueError("videoBackground is true or false")
+    if key == "search.sites" and not (isinstance(value, list) and value and all(s in SITES for s in value)):
+        raise ValueError("search.sites is a list of: " + ", ".join(SITES))
 
 
 def get(config, key):

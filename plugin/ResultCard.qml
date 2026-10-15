@@ -39,27 +39,6 @@ Item {
     fontFamily: root.app.fontFamily
   }
 
-  Rectangle {
-    anchors.left: art.left
-    anchors.top: art.top
-    anchors.margins: root.round ? 14 : 8
-    radius: height / 2
-    color: Qt.rgba(0, 0, 0, 0.4)
-    border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.18)
-    width: site.implicitWidth + 16
-    height: site.implicitHeight + 6
-    Text {
-      id: site
-      anchors.centerIn: parent
-      textFormat: Text.PlainText
-      text: Model.siteName(root.item.site)
-      color: "#ffffff"
-      font.family: root.app.fontFamily
-      font.pixelSize: 9
-    }
-  }
-
   Column {
     anchors.top: art.bottom
     anchors.topMargin: 8

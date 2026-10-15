@@ -154,6 +154,31 @@ Flickable {
       }
     }
 
+    // ---------- Music from ----------
+    Item { width: 1; height: 8 }
+    SectionTitle { app: root.app; text: "Music from" }
+    Hint { app: root.app; width: column.width; text: "Where search looks: YouTube has nearly everything, JioSaavn the film albums at 320 kbps, SoundCloud covers and remixes. Albums come from JioSaavn and SoundCloud whichever you pick." }
+
+    Flow {
+      width: column.width
+      spacing: 8
+      readonly property var sites: (root.app.store.config.search || {}).sites || ["youtube"]
+      readonly property string chosen: sites.length === 1 ? sites[0] : "all"
+      Repeater {
+        model: [{ id: "youtube", title: "YouTube" }, { id: "jiosaavn", title: "JioSaavn" },
+          { id: "soundcloud", title: "SoundCloud" }, { id: "all", title: "Every site" }]
+        Chip {
+          required property var modelData
+          text: modelData.title
+          textColor: root.pal.foreground; accent: root.pal.accent
+          selected: parent.chosen === modelData.id
+          fontSize: 12; fontFamily: root.app.fontFamily
+          onClicked: root.set("search.sites", modelData.id === "all"
+            ? ["jiosaavn", "youtube", "soundcloud"] : [modelData.id])
+        }
+      }
+    }
+
     // ---------- Now Playing ----------
     Item { width: 1; height: 8 }
     SectionTitle { app: root.app; text: "Now Playing" }

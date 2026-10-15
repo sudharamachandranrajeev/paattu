@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.1 — Songs play on Android again, and a problem log
+
+Which file: the same as before (`Paattu-0.5.1-windows-x64-setup.exe`,
+`Paattu-0.5.1-android.apk`, the AppImage or the tarball). On Omarchy, pull
+and run `./install.sh` (or `git pull` for a `--dev` install), then
+`omarchy restart shell`. 0.5.0's builds were never published (the Linux
+tarball failed its test), so this is the first release with 0.5.0's new
+look too.
+
+What's fixed and new:
+- **Songs play in the apps again.** JioSaavn changed the links its web
+  player gets (they're now for its copy-protected player and refuse a plain
+  request), and most search results were JioSaavn's copy. The apps now ask
+  for the links yt-dlp gets, which play.
+- **Music from** (Settings in the apps, *Look & settings* on Omarchy):
+  YouTube by default, or JioSaavn, SoundCloud or every site. Search results
+  no longer say which site they're from.
+- **A song that won't play is found elsewhere**: the apps try its stream
+  another way, then the same song on the other sites (best sound first:
+  JioSaavn, YouTube, SoundCloud), before skipping it. A skipped song says
+  why in plain words ("the site refused to stream it", "it took too long to
+  start") and the next one plays. Shorter waits for a dead stream.
+- **Problem log** in the apps' Settings: what the app tried and what went
+  wrong (each stream, the player's errors with the server's answer, failed
+  searches, crashes). Save it to a file, copy it, read it or clear it;
+  attach it to a bug report. It's `paattu.log` in the app's folder, and
+  Android's `adb logcat` shows the same lines.
+- The Linux tarball asks for libmpv.so.2, which Debian 12+, Ubuntu 24.04+,
+  Fedora and Arch have (older systems: the AppImage).
+
 ## 0.5.0 — A new look, and the song's video behind Now Playing
 
 Which file: the same as before (`Paattu-0.5.0-windows-x64-setup.exe`,

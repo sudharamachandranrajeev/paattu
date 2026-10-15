@@ -386,24 +386,28 @@ function resultTypeName(item) {
   return { album: "Album", artist: "Artist", playlist: "Playlist", song: "Song" }[item.type] || ""
 }
 
-// Search results by site, in SEARCH_SITES order (a looked-up link first).
-// results: [{site, ...}] from `paattu search`; only: a site, or "" for all.
-function searchGroups(results, only) {
-  var by = {}
-  var order = ["link"].concat(SEARCH_SITES)
+// Search results as lists to show: a looked-up link's songs first, then
+// everything found by searching, as one list (which site a song is from
+// doesn't matter). results: [{site, ...}] from `paattu search`.
+function searchGroups(results) {
+  var link = [], found = []
   for (var i = 0; i < (results || []).length; i++) {
     var t = results[i]
-    var site = SEARCH_SITES.indexOf(t.site) !== -1 ? t.site : "link"
-    if (only && site !== only) continue
-    if (!by[site]) {
-      by[site] = []
-      if (order.indexOf(site) === -1) order.push(site)
-    }
-    by[site].push(t)
+    if (SEARCH_SITES.indexOf(t.site) === -1) link.push(t)
+    else found.push(t)
   }
-  return order.filter(function(site) { return by[site] }).map(function(site) {
-    return { site: site, title: site === "link" ? "From the link" : siteName(site), tracks: by[site] }
-  })
+  var out = []
+  if (link.length) out.push({ site: "link", title: "From the link", tracks: link })
+  if (found.length) out.push({ site: "", title: "Songs", tracks: found })
+  return out
+}
+
+// Why a search failed, a line a site; the site named only when several
+// were asked. errors: {site: reason} from `paattu search` / `paattu browse`.
+function searchErrors(errors) {
+  var sites = Object.keys(errors || {})
+  if (sites.length === 1) return ["Couldn't search: " + errors[sites[0]]]
+  return sites.map(function(site) { return "Couldn't search " + siteName(site) + ": " + errors[site] })
 }
 
 // Optimistic toggles: what a button shows while its command runs. pending

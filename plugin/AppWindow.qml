@@ -30,8 +30,6 @@ FloatingWindow {
   property bool focusAdd: false
   // Online search (`paattu search`): the last query and what came back.
   property var online: ({ query: "", results: [], errors: ({}), busy: false, error: "" })
-  // Which site's results show ("" for all).
-  property string onlineSite: ""
   // Browsing (`paattu browse search`): the query, the tab showing (a kind, or
   // "library") and a feed per kind that grows a page at a time.
   property var browse: ({ query: "", kind: "song", feeds: ({}) })
@@ -99,7 +97,6 @@ FloatingWindow {
       return
     }
     if (search.text.trim() !== text) search.text = text
-    onlineSite = ""
     if (!Model.isLink(text)) {
       startBrowse(text)
       return

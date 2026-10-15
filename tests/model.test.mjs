@@ -212,13 +212,12 @@ test("quality: from the site, and from the stream", () => {
   assert.equal(M.siteOf({ id: "hvqnG6VjqV0" }), "youtube")
 })
 
-test("search results group by site, a link first", () => {
+test("search results show as one list, a link's songs first", () => {
   const results = [{ id: "a", site: "youtube" }, { id: "b", site: "jiosaavn" }, { id: "c", site: "artist.bandcamp.com" },
     { id: "d", site: "jiosaavn" }]
-  eq(M.searchGroups(results, "").map(g => [g.site, g.title, g.tracks.map(t => t.id)]),
-     [["link", "From the link", ["c"]], ["jiosaavn", "JioSaavn", ["b", "d"]], ["youtube", "YouTube", ["a"]]])
-  eq(M.searchGroups(results, "youtube").map(g => g.site), ["youtube"])
-  eq(M.searchGroups([], ""), [])
+  eq(M.searchGroups(results).map(g => [g.site, g.title, g.tracks.map(t => t.id)]),
+     [["link", "From the link", ["c"]], ["", "Songs", ["a", "b", "d"]]])
+  eq(M.searchGroups([]), [])
 })
 
 test("optimistic toggles settle once the files agree", () => {

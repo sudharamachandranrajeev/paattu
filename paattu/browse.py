@@ -585,7 +585,8 @@ def search(query, kind="song", sites=sources.SEARCH_SITES, cursors=None, seen=()
     Returns (results, {site: next cursor}, {site: error})."""
     if kind not in KIND_SITES:
         raise ValueError("search for one of: " + ", ".join(KINDS))
-    sites = [s for s in sources.SEARCH_SITES if s in sites and s in KIND_SITES[kind]]
+    sites = [s for s in sources.SEARCH_SITES if s in sites and s in KIND_SITES[kind]] or [
+        s for s in sources.SEARCH_SITES if s in KIND_SITES[kind]]  # none of them has it: the sites that do
     if cursors is not None:
         sites = [s for s in sites if cursors.get(s)]
     pages, following, errors = {}, {}, {}

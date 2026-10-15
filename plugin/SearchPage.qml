@@ -25,18 +25,15 @@ Flickable {
   readonly property bool browsing: !isLink && browse.query !== "" && !typing
   readonly property string kind: browse.kind || "song"
   readonly property var feed: kind !== "library" ? browse.feeds[kind] || null : null
-  readonly property var shown: !feed ? [] : app.onlineSite
-    ? feed.items.filter(function(i) { return i.site === root.app.onlineSite }) : feed.items
-  readonly property var feedErrors: feed ? Object.keys(feed.errors || {}).map(function(site) {
-    return "Couldn't search " + Model.siteName(site) + ": " + feed.errors[site]
-  }) : []
+  readonly property var shown: feed ? feed.items : []
+  readonly property var feedErrors: feed ? Model.searchErrors(feed.errors) : []
   readonly property var suggestions: app.suggestions.query !== "" && query.indexOf(app.suggestions.query) === 0
     ? app.suggestions.items : []
 
   // ---------- a pasted link (`paattu search`)
   readonly property var online: app.online
   readonly property bool fresh: isLink && online.query !== "" && online.query === query
-  readonly property var groups: fresh ? Model.searchGroups(online.results, "") : []
+  readonly property var groups: fresh ? Model.searchGroups(online.results) : []
 
   contentWidth: width
   contentHeight: column.implicitHeight + 40
@@ -150,22 +147,6 @@ Flickable {
           fontSize: 13
           fontFamily: root.app.fontFamily
           onClicked: root.app.showKind(modelData.kind)
-        }
-      }
-      Item { width: 16; height: 1 }
-      // Which site's results show.
-      Repeater {
-        model: root.kind === "library" ? [] : [{ site: "", title: "All sites" }].concat(
-          (Model.KIND_SITES[root.kind] || []).map(function(s) { return { site: s, title: Model.siteName(s) } }))
-        Chip {
-          required property var modelData
-          text: modelData.title
-          textColor: root.pal.foreground
-          accent: root.pal.accent
-          selected: root.app.onlineSite === modelData.site
-          fontSize: 11
-          fontFamily: root.app.fontFamily
-          onClicked: root.app.onlineSite = modelData.site
         }
       }
     }

@@ -48,8 +48,8 @@ signed yet, so SmartScreen says "Windows protected your PC": choose **More
 info → Run anyway**. On Android, allow your browser or file manager to
 install unknown apps when asked. On Linux, the AppImage brings its own mpv
 and uses your desktop's GTK 3 (`chmod +x` it and run it); the tarball also
-needs mpv's library (`mpv` on Arch, `libmpv2` on Debian / Ubuntu, `mpv-libs`
-on Fedora).
+needs mpv's library, libmpv.so.2 (`mpv` on Arch, `libmpv2` on Debian 12+ /
+Ubuntu 24.04+, `mpv-libs` on Fedora; on older systems use the AppImage).
 
 The apps search and play by themselves (no yt-dlp or mpv to install):
 JioSaavn songs at 320 kbps AAC, YouTube's best audio (Opus), SoundCloud,
@@ -57,6 +57,14 @@ and direct links to audio files. They have the same library as the Linux
 command: Home with your mixes and shelves, Search, Library (your playlists,
 YouTube profiles and playlists), Favourites, a queue and a now-playing
 screen, and the Paattu themes.
+
+Songs come from YouTube unless **Settings → Music from** says JioSaavn,
+SoundCloud or every site. A song that won't play is tried another way, then
+as the same song on the other sites (best sound first); if nothing works,
+the app says why in plain words and plays the next one. When something goes
+wrong, **Settings → Problem log → Save the problem log** writes what the app
+tried and what failed to a text file: attach it to an
+[issue](../../issues).
 
 ## How it works
 
@@ -190,11 +198,14 @@ Your playlists live in `library.json` next to the saved ones (`local: true`,
 ids `paattu-…`; Favourites is `paattu-favourites`) and appear in `shelf.json`
 under `mine` for the bar and the desktop widget.
 
-## Search: new songs from JioSaavn, YouTube, SoundCloud or a link
+## Search: new songs from YouTube, JioSaavn, SoundCloud or a link
 
 The search box at the top of the app and of the bar panel (press `/` in
 either) looks beyond your library. Type a song, a film or a singer and press
-**Enter** to search three sites at once:
+**Enter** to search where the music comes from: YouTube unless *Look &
+settings → Music from* (the apps: *Settings → Music from*) picks another
+site or all three. Albums come from JioSaavn and SoundCloud whichever you
+pick.
 
 | Site | What it has | Plays at |
 |---|---|---|
@@ -219,7 +230,7 @@ uploads and playlists, and **Follow** adds it to YouTube users.
 Click a result to play it. Hover it for its buttons: heart (Favourites),
 save (Saved songs), add to any of your playlists or a new one, and play
 next. In the app, typing filters your library as before and the online
-results sit above it; the site chips narrow them to one site. In the bar
+results sit above it, without saying which site each is from. In the bar
 panel, *All N in Paattu* opens the same search in the app.
 
 Every now-playing view shows what mpv is decoding: *AAC · 320 kbps* from
@@ -228,7 +239,7 @@ doesn't say. Paattu streams; it doesn't download, and it doesn't scrape mp3
 download sites.
 
 ```
-paattu search kaathalae kaathalae               # all three sites, grouped
+paattu search kaathalae kaathalae               # where the music comes from (search.sites)
 paattu search --site jiosaavn --limit 20 malare
 paattu search 'https://www.jiosaavn.com/album/…'   # what's at a link
 paattu browse search --kind album chithra       # songs, albums, artists or playlists, a page at a time
@@ -245,8 +256,9 @@ Songs from other sites get ids made from their page address
 (`jiosaavn.com_song_kaathalae-kaathalae-from-96_QyVdYxxAZgM`). The last 400
 search results are remembered in `~/.cache/paattu/search.json`, so their ids
 work after the search. A song you save, heart or add to a playlist is copied
-into `library.json`. Search settings (`search.sites`, `search.limit`) are in
-`paattu config`.
+into `library.json`. Search settings are in `paattu config`:
+`search.sites` (`["youtube"]`, or any of jiosaavn, youtube, soundcloud) and
+`search.limit`.
 
 ## Mixes (the shuffle buttons)
 

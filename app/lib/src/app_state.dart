@@ -15,7 +15,7 @@ import 'sources/youtube.dart';
 import 'track.dart';
 import 'util.dart';
 
-const appVersion = '0.5.0';
+const appVersion = '0.5.1';
 const repoUrl = 'https://github.com/sudharamachandranrajeev/paattu';
 
 class AppState {

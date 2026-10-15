@@ -35,12 +35,10 @@ Panel {
   // The panel's online search: what was searched and what came back.
   readonly property var noSearch: ({ query: "", results: [], errors: ({}), busy: false, error: "" })
   property var online: noSearch
-  property string onlineSite: ""
 
   function searchOnline(text) {
     text = String(text || "").trim()
     if (!text) return
-    onlineSite = ""
     online = { query: text, results: [], errors: ({}), busy: true, error: "" }
     searchJobs.run(Model.searchArgs(text, []), "", function(ok, e) {
       if (root.online.query !== text) return  // a newer search took over
@@ -51,7 +49,6 @@ Panel {
   }
   function clearSearch() {
     online = noSearch
-    onlineSite = ""
   }
   // The same search in the app, with room for every result.
   function searchInApp(text) {
