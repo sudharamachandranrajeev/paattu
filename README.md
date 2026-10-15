@@ -301,7 +301,16 @@ paattu play --user @ARRahman
 paattu toggle | next | prev | seek +10 | volume 60 | shuffle | repeat
 paattu status | queue | jump 5
 paattu watch                            # this song's video in Brave, audio pauses
+paattu video SONG                       # where to stream its small, silent video
 ```
+
+Now Playing (in the app, and on Omarchy from the sidebar or by clicking the
+song in the player bar) shows the song's video behind it, blurred, silent
+and kept in time with the music: the smallest H.264 picture, about 1 MB a
+minute. JioSaavn and SoundCloud songs use a YouTube video of the same length
+when there is one. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`);
+turn it off with `paattu config set videoBackground false` or in *Look &
+settings*.
 
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
@@ -352,11 +361,13 @@ paattu config set desktop.position top-right
 paattu config set desktop.workspace 1
 paattu config set desktop.scale 1.2
 paattu config set desktop.opacity 0.8
+paattu config set videoBackground false # no video behind Now Playing
 ```
 
 - **Themes** are JSON files in `~/.config/paattu/themes/` (`background`,
-  `surface`, `foreground`, `muted`, `accent`, `highlight`). Six ship with it:
-  Kasavu, Kanjeevaram, Monsoon, Neelakurinji, Filter Coffee, Theyyam.
+  `surface`, `foreground`, `muted`, `accent`, `highlight`). Seven ship with
+  it: Kasavu, Kanjeevaram, Monsoon, Neelakurinji, Filter Coffee, Theyyam,
+  Chembarathi.
   Copy one, edit the colours, and it appears in *Look & settings*.
 - **Desktop widget:** right-click it to cycle styles, scroll for volume,
   middle-click to open the app. Hover for style / video / open buttons.
@@ -407,7 +418,7 @@ added the rule before search existed, run it again to add the new sites.
    while typing; faster YouTube in the app
 6. ✅ Sound: a ten-band equaliser with presets, preamp, bass, treble,
    balance and speed, on Omarchy, Windows, Linux and Android
-7. A new look, and the song's video softly blurred behind Now playing
+7. ✅ A new look, and the song's video softly blurred behind Now playing
 8. A real spectrum visualizer on the widgets
 9. Malayalam / Tamil radio (Radio Browser)
 10. Synced lyrics in the app and on the desktop widget
@@ -426,7 +437,9 @@ The app is in `app/` (Flutter, Dart): `lib/src/` has the library model
 (a port of `paattu/library.py`), title cleaning (`titles.py`), the sources
 (JioSaavn, YouTube via youtube_explode_dart, SoundCloud) and the player
 (just_audio: ExoPlayer on Android, libmpv on Windows / Linux, with
-audio_service for Android's media controls). `app/test/` runs the same
+audio_service for Android's media controls). Now Playing's silent video is
+video_player on Android and media_kit_video on Windows / Linux. `lib/src/ui/`
+holds the glass look (`glass.dart`). `app/test/` runs the same
 title and track-id cases as `tests/`. With Flutter installed:
 
 ```

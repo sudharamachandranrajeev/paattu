@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0 — A new look, and the song's video behind Now Playing
+
+Which file: the same as before (`Paattu-0.5.0-windows-x64-setup.exe`,
+`Paattu-0.5.0-android.apk`, the AppImage or the tarball). On Omarchy, pull
+and run `./install.sh` (or `git pull` for a `--dev` install), then
+`omarchy restart shell`.
+
+What's new:
+- **A new look** in the app and the Omarchy window: a dark page lit from
+  the top by your colour scheme, frosted-glass panels with big round
+  corners, pill-shaped song rows, round glass buttons, and Poppins in the
+  app (Malayalam and Tamil still use the system's fonts). Album, artist,
+  playlist and profile pages open with a large glowing picture.
+- **The song's video behind Now Playing**: a small piece of it, blurred,
+  silent and kept in time with the music (it follows seeks, pauses and
+  speed). Songs from JioSaavn or SoundCloud use a YouTube video of the
+  same length when there is one. It costs about 1 MB a minute; turn it off
+  in Settings (the app) or *Look & settings* (Omarchy).
+- **Omarchy: a Now Playing page**, from the sidebar or by clicking the song
+  in the player bar: the cover big, the song, its stream and what's up
+  next. The video needs Qt Multimedia (`qt6-multimedia-ffmpeg`, which
+  `install.sh` now offers); without it the page works without the video.
+- `paattu video SONG` prints where to stream a song's small video.
+- A new colour scheme, **Chembarathi** (hibiscus red and marigold).
+- The Favourites tile on Omarchy says "Songs you hearted" again.
+
 ## 0.4.0 — Equaliser, tone and speed
 
 Which file: the same as before (`Paattu-0.4.0-windows-x64-setup.exe`,
