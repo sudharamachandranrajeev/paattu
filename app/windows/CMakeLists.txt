@@ -57,6 +57,11 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# audio_service_win uses C++/WinRT under C++17, which pulls in
+# <experimental/coroutine>: Visual Studio 2026 (MSVC 14.51) refuses that
+# unless told to carry on.
+target_compile_definitions(audio_service_win_plugin PRIVATE _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

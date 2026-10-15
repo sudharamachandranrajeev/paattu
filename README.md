@@ -34,8 +34,8 @@ old for YouTube) and **deno** (yt-dlp needs a JavaScript runtime for
 YouTube), then the program into `~/.local/lib/paattu`, the `paattu` command,
 and an mpv engine service for systemd users. Nothing else runs as root.
 `--yes` answers its questions; `--dev` links your checkout instead of
-copying it (for working on Paattu). Without systemd, `paattu` starts mpv
-itself.
+copying it (for working on Paattu; the bar plugin is still a copy, so run it
+again after `git pull`). Without systemd, `paattu` starts mpv itself.
 
 On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the
 widget on workspace 1, or Super+Space → Paattu. Elsewhere, use the command:

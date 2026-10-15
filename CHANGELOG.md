@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 — 0.7.0, built for Windows again
+
+Which file: the same as before (`Paattu-0.7.1-android.apk`,
+`Paattu-0.7.1-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh --dev` (the bar plugin is a copy, so
+new Now Playing files only reach it this way), then `omarchy restart shell`.
+
+0.7.0's builds were never published: its Windows build failed on GitHub's
+newer Visual Studio (2026), which refuses the way the Windows media controls
+(audio_service_win) are built. This release is 0.7.0 (below) with that fixed.
+
 ## 0.7.0 — Now Playing your way: four looks, the video behind the cover, its colours, and the cover in 3D
 
 Which file: the same as before (`Paattu-0.7.0-android.apk`,
