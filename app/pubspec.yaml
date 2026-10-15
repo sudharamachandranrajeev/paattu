@@ -39,8 +39,14 @@ dependencies:
   # Our copy, with hooks for the equaliser (mpv's audio filters).
   just_audio_media_kit:
     path: packages/just_audio_media_kit
+  media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
-  media_kit_libs_windows_audio: ^1.0.9
+  # The video libmpv on Windows (it plays audio too): Now Playing shows the
+  # song's video, blurred.
+  media_kit_libs_windows_video: ^1.0.11
+  media_kit_video: ^2.0.1
+  # The same on Android, with ExoPlayer (a libmpv there would add ~20 MB per CPU).
+  video_player: ^2.14.1
   youtube_explode_dart: ^3.1.0
   http: ^1.6.0
   path_provider: ^2.1.6

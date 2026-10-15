@@ -104,6 +104,16 @@ class SettingsPage extends StatelessWidget {
                   onTap: () => openSound(context),
                 ),
               ]),
+              const SectionHeader('Now Playing'),
+              GlassGroup(children: [
+                SwitchListTile(
+                  title: const Text('Video in the background'),
+                  subtitle: const Text("A blurred, silent bit of the song's video, kept in time with it "
+                      '(about 1 MB a minute)'),
+                  value: settings.videoBackground,
+                  onChanged: (on) => settings.videoBackground = on,
+                ),
+              ]),
               const SectionHeader('Search'),
               GlassGroup(children: [
                 for (final site in searchSites)

@@ -8,12 +8,13 @@ import 'package:paattu/src/sources/sources.dart';
 import 'package:paattu/src/sources/youtube.dart';
 import 'package:paattu/src/util.dart';
 
-Json _format(int itag, String mime, int bitrate, {int? average, bool drc = false, bool? original}) => {
+Json _format(int itag, String mime, int bitrate, {int? average, bool drc = false, bool? original, int? height}) => {
       'itag': itag,
       'url': 'https://rr1---sn-x.googlevideo.com/videoplayback?itag=$itag',
       'mimeType': mime,
       'bitrate': bitrate,
       'averageBitrate': ?average,
+      'height': ?height,
       if (drc) 'isDrc': true,
       if (original != null) 'audioTrack': {'displayName': original ? 'English original' : 'Hindi', 'audioIsDefault': original},
     };
@@ -65,6 +66,22 @@ void main() {
         throwsA(isA<SourceException>().having((e) => e.message, 'message', 'Sign in to confirm you’re not a bot')),
       );
       expect(() => bestAudio(_player([_format(137, 'video/mp4', 1)])), throwsA(isA<SourceException>()));
+    });
+
+    test('the smallest H.264 picture for the background', () {
+      final video = smallestVideo(
+        _player([
+          _format(140, 'audio/mp4; codecs="mp4a.40.2"', 130000),
+          _format(133, 'video/mp4; codecs="avc1.4D4015"', 282634, height: 240),
+          _format(278, 'video/webm; codecs="vp9"', 247685, height: 144),
+          _format(160, 'video/mp4; codecs="avc1.4D400C"', 133229, height: 144),
+        ]),
+        android: true,
+      );
+      expect((video?.uri.queryParameters['itag'], video?.codec, video?.kbps), ('160', 'h264', 133));
+      expect(video?.headers?['Range'], 'bytes=0-');
+      expect(smallestVideo(_player([_format(278, 'video/webm; codecs="vp9"', 1, height: 144)])), isNull);
+      expect(smallestVideo(_player([], status: 'LOGIN_REQUIRED')), isNull);
     });
   });
 

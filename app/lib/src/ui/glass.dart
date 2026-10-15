@@ -49,7 +49,7 @@ class BackdropTransitions extends FadeForwardsPageTransitionsBuilder {
   const BackdropTransitions();
 
   @override
-  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation,
+  Widget buildTransitions<T>(PageRoute<T>? route, BuildContext? context, Animation<double> animation,
           Animation<double> secondaryAnimation, Widget child) =>
       super.buildTransitions(route, context, animation, secondaryAnimation, Backdrop(child: child));
 }

@@ -17,6 +17,7 @@ import '../track.dart';
 import '../util.dart';
 import 'glass.dart';
 import 'sound_page.dart';
+import 'video_background.dart';
 import 'widgets.dart';
 
 void openNowPlaying(BuildContext context) => Navigator.of(context).push(PageRouteBuilder<void>(
@@ -218,7 +219,7 @@ class NowPlayingPage extends StatelessWidget {
         backgroundColor: theme.colorScheme.surface,
         body: Stack(
           children: [
-            Positioned.fill(child: _Background(track: track, wide: wide)),
+            Positioned.fill(child: _Background(app: app, track: track, wide: wide)),
             SafeArea(
               child: Center(
                 child: ConstrainedBox(
@@ -251,9 +252,11 @@ class NowPlayingPage extends StatelessWidget {
 }
 
 /// The song's picture filling the top of the screen (on wide screens,
-/// blurred across all of it), fading into the page.
+/// blurred across all of it), fading into the page. Its video, blurred,
+/// fades in over the picture once it plays.
 class _Background extends StatelessWidget {
-  const _Background({required this.track, required this.wide});
+  const _Background({required this.app, required this.track, required this.wide});
+  final AppState app;
   final Json track;
   final bool wide;
 
@@ -261,19 +264,29 @@ class _Background extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final art = TrackCover(track, size: null, large: true, radius: 0);
+    final video = ListenableBuilder(
+      listenable: app.settings,
+      builder: (context, _) => app.settings.videoBackground
+          ? SongVideo(app: app, track: track, blur: wide ? 36 : 12)
+          : const SizedBox.expand(),
+    );
     return LayoutBuilder(builder: (context, box) {
       // How much of the height the square picture covers.
       final cover = wide ? 1.0 : (box.maxWidth / max(1, box.maxHeight)).clamp(0.3, 1.0);
       return Stack(
         fit: StackFit.expand,
         children: [
-          if (wide)
+          if (wide) ...[
             ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40, tileMode: TileMode.decal),
               child: Opacity(opacity: 0.6, child: art),
-            )
-          else
-            Align(alignment: Alignment.topCenter, child: AspectRatio(aspectRatio: 1, child: art)),
+            ),
+            Opacity(opacity: 0.6, child: video),
+          ] else
+            Align(
+              alignment: Alignment.topCenter,
+              child: AspectRatio(aspectRatio: 1, child: Stack(fit: StackFit.expand, children: [art, video])),
+            ),
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

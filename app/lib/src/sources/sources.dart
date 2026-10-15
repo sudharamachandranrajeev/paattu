@@ -234,17 +234,51 @@ Future<ResolvedStream> streamFor(Json track, {int attempt = 0}) async {
   final site = asString(track['site']).isNotEmpty ? asString(track['site']) : (url.isEmpty ? 'youtube' : siteOf(url));
   if (site == 'jiosaavn') return streamJioSaavn(track, lower: attempt >= 2);
   if (site == 'soundcloud') return streamSoundCloud(track);
-  final id = asString(track['id']);
-  if ((url.isEmpty || isYouTube(url)) && isVideoId(id)) return streamYouTube(id, attempt: attempt);
-  if (url.isNotEmpty && isYouTube(url)) {
-    final vid = videoId(url);
-    if (vid != null) return streamYouTube(vid, attempt: attempt);
-  }
+  final id = _youTubeId(track);
+  if (id != null) return streamYouTube(id, attempt: attempt);
   if (isAudioFile(url)) {
     final codec = asString(track['codec']);
     return ResolvedStream(Uri.parse(url), codec: codec, kbps: toInt(track['quality']), lifetime: const Duration(days: 1));
   }
   throw SourceException("${hostOf(url)} songs can't be played in the app yet");
+}
+
+/// The YouTube video a song is, if it's one.
+String? _youTubeId(Json track) {
+  final url = asString(track['url']);
+  final id = asString(track['id']);
+  if ((url.isEmpty || isYouTube(url)) && isVideoId(id)) return id;
+  return url.isNotEmpty && isYouTube(url) ? videoId(url) : null;
+}
+
+final _videos = <String, ResolvedStream?>{};
+
+/// A silent picture to blur behind Now Playing: the song's own video, or for
+/// a song from elsewhere the first YouTube video about as long (most film
+/// songs are there). Null when there's none; looked up once a session.
+Future<ResolvedStream?> videoFor(Json track) async {
+  final key = '${track['site']}:${track['id']}';
+  if (_videos.containsKey(key)) {
+    final known = _videos[key];
+    if (known == null || known.fresh) return known;
+  }
+  var id = _youTubeId(track);
+  if (id == null) {
+    final seconds = toInt(track['duration']);
+    final credits = asStrings(track['credits']);
+    final query = [asString(track['title']), credits.isNotEmpty ? credits.first : asString(track['movie'])]
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+    if (seconds == null || query.isEmpty) return _videos[key] = null;
+    final found = await searchYouTube(query, limit: 5);
+    id = found
+        .map((t) => (asString(t['id']), toInt(t['duration'])))
+        .where((t) => t.$2 != null && (t.$2! - seconds).abs() <= 20)
+        .firstOrNull
+        ?.$1;
+    if (id == null) return _videos[key] = null;
+  }
+  return _videos[key] = await videoYouTube(id);
 }
 
 /// How many different ways [streamFor] can try for a song.

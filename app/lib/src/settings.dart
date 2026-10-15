@@ -234,6 +234,10 @@ class Settings extends ChangeNotifier {
   bool get saveData => _data['saveData'] == true;
   set saveData(bool on) => _set('saveData', on);
 
+  /// The song's video, blurred, behind Now Playing (on unless turned off).
+  bool get videoBackground => _data['videoBackground'] != false;
+  set videoBackground(bool on) => _set('videoBackground', on);
+
   /// What was searched lately, newest first.
   List<String> get recentSearches => asStrings(_data['recentSearches']);
 
