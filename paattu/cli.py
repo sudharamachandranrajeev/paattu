@@ -1171,8 +1171,7 @@ def cmd_played(args, out):
 
 def _made_summary(h, kind, today):
     key = made.period_key(kind, today)
-    stored = h.made(kind)
-    songs = stored[1] if stored and stored[0] == key else []
+    songs = made.kept_made(h.made(kind), key) or []
     return {"kind": kind, "title": made.TITLES[kind], "blurb": made.BLURBS[kind], "key": key,
             "count": len(songs), "art": next((s.get("art") for s in songs if s.get("art")), "")}
 
@@ -1196,7 +1195,7 @@ def cmd_made(args, out):
     out.progress("Making your %s…" % made.TITLES[args.kind])
     with history.editing() as h:
         songs = made.MadeForYou(h, data).playlist(args.kind, refresh=args.refresh)
-        key = h.made(args.kind)[0]
+    key = made.period_key(args.kind, datetime.date.today())
     sources.remember(songs)
     title = "%s %s" % (made.TITLES[args.kind], key)
     if args.play:

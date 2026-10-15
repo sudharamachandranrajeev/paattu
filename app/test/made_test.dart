@@ -77,6 +77,14 @@ void main() {
       }
       expect(heavyIn, greaterThan(180));
     });
+
+    test('a cut-short playlist is not kept', () {
+      List<Json> songs(int n) => [for (var i = 0; i < n; i++) <String, dynamic>{'id': 's$i', 'title': 'Song $i'}];
+      expect(keptMade((key: '2026-10-15', tracks: songs(1)), '2026-10-15'), isNull);
+      expect(keptMade((key: '2026-10-15', tracks: songs(madeKeep)), '2026-10-15'), hasLength(madeKeep));
+      expect(keptMade((key: '2026-10-14', tracks: songs(20)), '2026-10-15'), isNull);
+      expect(keptMade(null, '2026-10-15'), isNull);
+    });
   });
 
   group('play history', () {

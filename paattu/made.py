@@ -21,6 +21,10 @@ KINDS = ("daily", "weekly", "monthly")
 # Songs in a made playlist.
 SIZE = 30
 
+# A made playlist with fewer songs was cut short (YouTube Music didn't
+# answer): it plays, but isn't kept, so the next try makes it again.
+KEEP = SIZE // 2
+
 TITLES = {"daily": "Daily mix", "weekly": "Weekly discovery", "monthly": "Monthly top"}
 BLURBS = {
     "daily": "Songs you love and a few like them. New every day",
@@ -38,6 +42,14 @@ def period_key(kind, day):
         year, week, _ = day.isocalendar()
         return "%d-W%02d" % (year, week)
     return day.strftime("%Y-%m")
+
+
+def kept_made(stored, key):
+    """The songs of a stored made playlist ((key, songs) or None) if it's the
+    one for key and whole enough to keep; else None."""
+    if stored and stored[0] == key and len(stored[1]) >= KEEP:
+        return stored[1]
+    return None
 
 
 def weighted_pick(items, weight, count, rng):
@@ -140,16 +152,18 @@ class MadeForYou:
 
     def playlist(self, kind, refresh=False, now=None):
         """This period's playlist of kind, made now if there isn't one yet (or
-        refresh makes a new one). The history keeps it; save the history after."""
+        refresh makes a new one). The history keeps it (unless it was cut
+        short); save the history after."""
         now = time.time() if now is None else now
         key = period_key(kind, datetime.date.fromtimestamp(now))
-        made = self.history.made(kind)
-        if not refresh and made and made[0] == key and made[1]:
-            return made[1]
+        kept = kept_made(self.history.made(kind), key)
+        if kept and not refresh:
+            return kept
         songs = self._make(kind, now)
         if not songs:
             raise SourceError("couldn't make %s. Check the internet connection" % TITLES[kind])
-        self.history.set_made(kind, key, songs)
+        if len(songs) >= KEEP:
+            self.history.set_made(kind, key, songs)
         return songs
 
     def _make(self, kind, now):

@@ -76,6 +76,24 @@ class MadeTest(unittest.TestCase):
             heavy_in += 3 in picked
         self.assertGreater(heavy_in, 180)
 
+    def test_a_cut_short_playlist_is_not_kept(self):
+        def songs(n):
+            return [{"id": "s%d" % i, "title": "Song %d" % i} for i in range(n)]
+
+        h = history.History(pathlib.Path("/nonexistent/history.json"))
+        key = made.period_key("daily", datetime.date.fromtimestamp(NOW))
+        h.set_made("daily", key, songs(1))  # made while YouTube Music didn't answer
+        m = made.MadeForYou(h, {"tracks": {}, "playlists": {}})
+        with mock.patch.object(m, "_make", return_value=songs(3)) as make:
+            self.assertEqual(len(m.playlist("daily", now=NOW)), 3)
+            self.assertEqual(len(h.made("daily")[1]), 1)
+            make.return_value = songs(20)
+            self.assertEqual(len(m.playlist("daily", now=NOW)), 20)
+            self.assertEqual(len(m.playlist("daily", now=NOW)), 20)
+            self.assertEqual(make.call_count, 2)
+        self.assertEqual(len(made.kept_made(h.made("daily"), key)), 20)
+        self.assertIsNone(made.kept_made(h.made("daily"), "2026-10-14"))
+
     def test_describe_playlist_tops_up_from_the_radio(self):
         def song(tid, title):
             return {"id": tid, "title": title, "duration": 240, "kind": "audio"}

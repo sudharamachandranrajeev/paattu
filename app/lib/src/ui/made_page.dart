@@ -39,8 +39,7 @@ class MadeForYouShelf extends StatelessWidget {
               );
             }
             final kind = madeKinds[i];
-            final made = app.history.made(kind);
-            final songs = made != null && made.key == periodKey(kind, DateTime.now()) ? made.tracks : null;
+            final songs = keptMade(app.history.made(kind), periodKey(kind, DateTime.now()));
             return _MadeTile(
               index: i,
               icon: switch (kind) {

@@ -18,6 +18,15 @@ const madeKinds = ['daily', 'weekly', 'monthly'];
 /// Songs in a made playlist.
 const madeSize = 30;
 
+/// A made playlist with fewer songs was cut short (YouTube Music didn't
+/// answer): it plays, but isn't kept, so the next try makes it again.
+const madeKeep = madeSize ~/ 2;
+
+/// The songs of a stored made playlist if it's the one for [key] and whole
+/// enough to keep (made.py's kept_made).
+List<Json>? keptMade(({String key, List<Json> tracks})? made, String key) =>
+    made != null && made.key == key && made.tracks.length >= madeKeep ? made.tracks : null;
+
 String madeTitle(String kind) => switch (kind) {
       'daily' => 'Daily mix',
       'weekly' => 'Weekly discovery',
@@ -144,15 +153,15 @@ class MadeForYou {
   Json? _track(String id) => history.track(id) ?? library.track(id);
 
   /// This period's playlist of [kind], made now if there isn't one yet (or
-  /// [refresh] makes a new one).
+  /// [refresh] makes a new one). The history keeps it, unless it was cut short.
   Future<List<Json>> playlist(String kind, {bool refresh = false}) async {
     final now = DateTime.now();
     final key = periodKey(kind, now);
-    final made = history.made(kind);
-    if (!refresh && made != null && made.key == key && made.tracks.isNotEmpty) return made.tracks;
+    final kept = keptMade(history.made(kind), key);
+    if (kept != null && !refresh) return kept;
     final songs = await _make(kind, now);
     if (songs.isEmpty) throw SourceException("couldn't make ${madeTitle(kind)}. Check the internet connection");
-    history.setMade(kind, key, songs);
+    if (songs.length >= madeKeep) history.setMade(kind, key, songs);
     return songs;
   }
 

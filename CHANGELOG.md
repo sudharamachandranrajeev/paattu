@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1 — Made-for-you playlists that came out short are made again
+
+Which file: the same as before (`Paattu-0.6.1-windows-x64-setup.exe`,
+`Paattu-0.6.1-android.apk`, the AppImage or the tarball). On Omarchy,
+`git pull` (a `--dev` install) or pull and run `./install.sh`.
+
+What's fixed:
+- A Daily mix, Weekly discovery or Monthly top made while YouTube Music
+  didn't answer could come out with a song or two and stay like that all
+  day. A playlist with fewer than 15 songs still plays, but isn't kept, so
+  opening it again makes it again (and a short one already kept is made
+  again).
+
 ## 0.6.0 — Radio, playlists made for you, and fades between songs
 
 Which file: the same as before (`Paattu-0.6.0-windows-x64-setup.exe`,
