@@ -100,7 +100,7 @@ Flickable {
           readonly property var colors: modelData.name === "omarchy" ? root.app.store.rawPalette : modelData
           width: 172
           height: 104
-          radius: 12
+          radius: 22
           color: colors.background || "#000000"
           border.width: current ? 2 : 1
           border.color: current ? root.pal.accent : Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.15)
@@ -151,6 +151,33 @@ Flickable {
             onClicked: root.set("theme", swatch.modelData.name)
           }
         }
+      }
+    }
+
+    // ---------- Now Playing ----------
+    Item { width: 1; height: 8 }
+    SectionTitle { app: root.app; text: "Now Playing" }
+    Hint { app: root.app; width: column.width; text: "Behind Now Playing: a bit of the song's video, blurred, silent and kept in time with the music (about 1 MB a minute). Songs from JioSaavn or SoundCloud use a YouTube video of the same length when there is one." }
+
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Video"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.videoBackground !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("videoBackground", !on)
       }
     }
 

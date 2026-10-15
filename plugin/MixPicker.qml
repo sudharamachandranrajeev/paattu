@@ -59,7 +59,7 @@ Rectangle {
 
   width: 300
   height: column.implicitHeight + 24
-  radius: 14
+  radius: 22
   color: Qt.tint(pal.surface, Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, 0.03))
   border.width: 1
   border.color: Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, 0.12)

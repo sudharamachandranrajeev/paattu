@@ -16,7 +16,8 @@
 #                                  OpenSnitch: let the player reach the music sites
 #
 # Packages, through your package manager (asks for sudo): mpv, mpv-mpris (media
-# keys), python3. On Arch-based distros yt-dlp and deno come from pacman too;
+# keys), python3, and on Arch-based distros qt6-multimedia-ffmpeg (the Omarchy
+# app's video behind Now Playing). There yt-dlp and deno come from pacman too;
 # elsewhere they come from their official GitHub releases into ~/.local/bin,
 # since distro yt-dlp is usually too old for YouTube. Supported: Arch (and
 # Omarchy, Manjaro, EndeavourOS, CachyOS), Debian, Ubuntu (and Mint, Pop!_OS),
@@ -106,7 +107,7 @@ required_packages() {
 }
 optional_packages() {
   case $1 in
-    pacman) echo "mpv-mpris deno yt-dlp-ejs" ;;
+    pacman) echo "mpv-mpris deno yt-dlp-ejs qt6-multimedia-ffmpeg" ;;
     apt | dnf | xbps | apk) echo "mpv-mpris" ;;
     zypper) echo "mpv-plugin-mpris" ;;
   esac

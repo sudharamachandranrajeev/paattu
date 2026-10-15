@@ -415,7 +415,7 @@ Flickable {
     signal clicked()
 
     height: 46
-    radius: 8
+    radius: 23
     color: rowMouse.containsMouse ? Qt.rgba(row.app.pal.foreground.r, row.app.pal.foreground.g, row.app.pal.foreground.b, 0.06)
       : "transparent"
 
@@ -425,7 +425,7 @@ Flickable {
       anchors.verticalCenter: parent.verticalCenter
       width: 32
       height: 32
-      radius: 6
+      radius: 12
       circle: row.round
       source: row.art
       tint: row.accent ? Qt.rgba(row.app.pal.accent.r, row.app.pal.accent.g, row.app.pal.accent.b, 0.22)

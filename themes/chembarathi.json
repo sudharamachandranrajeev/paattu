@@ -1,0 +1,11 @@
+{
+  "name": "Chembarathi",
+  "description": "Hibiscus red and marigold on a night sky",
+  "mode": "dark",
+  "background": "#0D0608",
+  "surface": "#1C0D11",
+  "foreground": "#FFF1F2",
+  "muted": "#BC979D",
+  "accent": "#F0405A",
+  "highlight": "#F7942E"
+}

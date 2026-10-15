@@ -115,7 +115,7 @@ Flickable {
       Cover {
         width: 200
         height: 200
-        radius: 12
+        radius: 28
         circle: root.isArtist
         source: root.app.store.artFor("c", root.item.artKey)
         revision: root.app.artRevision

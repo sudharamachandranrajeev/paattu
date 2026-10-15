@@ -34,6 +34,8 @@ DEFAULTS = {
     "search": {"sites": ["jiosaavn", "youtube", "soundcloud"], "limit": 12},
     # The equaliser, tone, balance and speed (paattu sound).
     "sound": sound.DEFAULTS,
+    # Now Playing shows the song's video, blurred and silent, behind it (paattu video).
+    "videoBackground": True,
 }
 
 STYLES = ("vinyl", "card", "minimal")
@@ -91,6 +93,8 @@ def validate(key, value):
         raise ValueError("desktop.workspace is a workspace number")
     if key in ("desktop.scale", "desktop.opacity") and not isinstance(value, (int, float)):
         raise ValueError(key + " is a number")
+    if key == "videoBackground" and not isinstance(value, bool):
+        raise ValueError("videoBackground is true or false")
 
 
 def get(config, key):

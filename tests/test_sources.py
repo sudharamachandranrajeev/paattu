@@ -5,6 +5,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -124,6 +125,27 @@ class ParseTest(unittest.TestCase):
         self.assertNotIn("url", t)
         self.assertIsNone(sources.youtube_track({"id": "hvqnG6VjqV0", "title": "x", "live_status": "is_live"}))
         self.assertIsNone(sources.youtube_track({"id": "hvqnG6VjqV0", "title": "[Private video]"}))
+
+    def test_video_for_a_background(self):
+        url = "https://rr3.googlevideo.com/videoplayback?expire=1792071358&itag=160"
+        asked = []
+
+        def run(target, timeout=180, extra=()):
+            asked.append((target, extra))
+            return {"duration": 316, "url": url}
+
+        found = [{"id": "XotCQRUbqMM", "duration": 295}, {"id": "0G2VxhV_gXM", "duration": 314}]
+        with mock.patch.object(youtube, "_run", run), \
+                mock.patch.object(sources, "search_youtube", lambda query, limit=12: found):
+            # A YouTube song: its own video, the smallest H.264 picture.
+            self.assertEqual(sources.video_for({"id": "hvqnG6VjqV0"}),
+                             {"id": "hvqnG6VjqV0", "url": url, "duration": 316, "expires": 1792071358})
+            self.assertEqual(asked[-1], ("https://www.youtube.com/watch?v=hvqnG6VjqV0", ("-f", youtube.SMALL_VIDEO)))
+            # Another site's: the first search result as long as the song (within 20 s).
+            saavn = sources.jiosaavn_track(SAAVN_MALARE)
+            self.assertEqual(sources.video_for(saavn)["id"], "0G2VxhV_gXM")
+            self.assertIsNone(sources.video_for(dict(saavn, duration=200)))
+            self.assertIsNone(sources.video_for({"id": saavn["id"], "title": "Malare"}))  # length unknown
 
     def test_soundcloud_result(self):
         t = sources.soundcloud_track({

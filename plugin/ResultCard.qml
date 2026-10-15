@@ -20,7 +20,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     anchors.margins: -8
-    radius: 12
+    radius: 26
     color: root.hovered ? Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.06) : "transparent"
     Behavior on color { ColorAnimation { duration: 120 } }
   }
@@ -29,7 +29,7 @@ Item {
     id: art
     width: root.size
     height: root.size
-    radius: 10
+    radius: 20
     circle: root.round
     source: root.app.store.artFor("c", root.item.artKey)
     revision: root.app.artRevision
@@ -43,10 +43,12 @@ Item {
     anchors.left: art.left
     anchors.top: art.top
     anchors.margins: root.round ? 14 : 8
-    radius: 4
-    color: Qt.rgba(0, 0, 0, 0.55)
-    width: site.implicitWidth + 10
-    height: site.implicitHeight + 4
+    radius: height / 2
+    color: Qt.rgba(0, 0, 0, 0.4)
+    border.width: 1
+    border.color: Qt.rgba(1, 1, 1, 0.18)
+    width: site.implicitWidth + 16
+    height: site.implicitHeight + 6
     Text {
       id: site
       anchors.centerIn: parent

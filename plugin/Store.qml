@@ -30,7 +30,8 @@ Item {
     theme: "omarchy",
     desktop: { enabled: true, workspace: 1, monitor: "", style: "vinyl", position: "bottom-left",
       marginX: 56, marginY: 56, scale: 1.0, opacity: 0.92, showQuickPicks: true, showUpNext: true },
-    languages: ["Malayalam", "Tamil"]
+    languages: ["Malayalam", "Tamil"],
+    videoBackground: true
   })
   readonly property var desktop: config.desktop || defaults.desktop
   readonly property var languages: config.languages && config.languages.length ? config.languages : Model.LANGUAGES

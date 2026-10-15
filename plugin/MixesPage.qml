@@ -75,7 +75,7 @@ Flickable {
           readonly property bool empty: !modelData.sources || modelData.sources.length === 0 || !modelData.playlists
           width: column.width
           height: 72
-          radius: 12
+          radius: 24
           color: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, rowHover.hovered ? 0.08 : 0.04)
 
           HoverHandler { id: rowHover }

@@ -71,7 +71,7 @@ Rectangle {
 
   width: 290 * s
   height: column.implicitHeight + 24 * s
-  radius: 14 * s
+  radius: 22 * s
   color: background
   border.width: 1
   border.color: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.12)

@@ -16,6 +16,8 @@ Rectangle {
   property bool removable: false
   // A search result: not in the library yet.
   property bool found: false
+  // In a narrow list (Now Playing's up next): no film or kind columns.
+  property bool compact: false
   // Small text before the length: the kind of video, or a result's quality.
   property string badge: Model.qualityLabel(track) || (!found && track.kind && track.kind !== "video" ? track.kind : "")
 
@@ -30,14 +32,17 @@ Rectangle {
 
   HoverHandler { id: hover }
 
+  // A pill, lit with the accent while it plays.
   height: 46
-  radius: 8
-  color: root.hovered ? Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, 0.06)
-    : current ? Qt.rgba(pal.accent.r, pal.accent.g, pal.accent.b, 0.10) : "transparent"
+  radius: height / 2
+  color: root.hovered ? Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, 0.07)
+    : current ? Qt.rgba(pal.accent.r, pal.accent.g, pal.accent.b, 0.14) : "transparent"
+  border.width: current ? 1 : 0
+  border.color: Qt.rgba(pal.accent.r, pal.accent.g, pal.accent.b, 0.4)
 
   Item {
     id: lead
-    x: 8
+    x: 10
     width: 34
     height: parent.height
 
@@ -68,7 +73,7 @@ Rectangle {
     anchors.verticalCenter: parent.verticalCenter
     width: 34
     height: 34
-    radius: 5
+    radius: 12
     source: root.app.store.artFor("v", root.track.id)
     revision: root.app.artRevision
     tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
@@ -111,7 +116,8 @@ Rectangle {
     anchors.right: actionSlot.left
     anchors.rightMargin: 12
     anchors.verticalCenter: parent.verticalCenter
-    width: Math.min(220, root.width * 0.26)
+    width: root.compact ? 0 : Math.min(220, root.width * 0.26)
+    visible: !root.compact
     textFormat: Text.PlainText
     text: root.track.movie || ""
     color: root.pal.muted
@@ -165,7 +171,8 @@ Rectangle {
     anchors.right: durationText.left
     anchors.rightMargin: 12
     anchors.verticalCenter: parent.verticalCenter
-    width: 56
+    width: root.compact ? 0 : 56
+    visible: !root.compact
     textFormat: Text.PlainText
     text: root.badge
     color: root.pal.muted

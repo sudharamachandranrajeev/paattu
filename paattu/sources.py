@@ -222,6 +222,25 @@ def search_youtube(query, limit=12):
     return [t for t in (youtube_track(e) for e in data.get("entries") or []) if t]
 
 
+def video_for(track):
+    """The song's video, small and silent, for a blurred background
+    (youtube.small_video): its own for a YouTube song, else one found by
+    searching YouTube whose length is within 20 s of the song's. None when
+    there isn't one. Keep in step with videoFor in the app."""
+    vid = track.get("id") or ""
+    if not is_video_id(vid):
+        seconds = _int(track.get("duration"))
+        credits = track.get("credits") or []
+        query = " ".join(s for s in (track.get("title") or "", credits[0] if credits else track.get("movie") or "") if s)
+        if not seconds or not query:
+            return None
+        found = [t for t in search_youtube(query, limit=5) if t["duration"] and abs(t["duration"] - seconds) <= 20]
+        if not found:
+            return None
+        vid = found[0]["id"]
+    return youtube.small_video(vid)
+
+
 def _thumbnail(thumbnails, prefer=("t500x500", "crop", "t300x300", "original")):
     by_id = {t.get("id"): t.get("url") for t in thumbnails or [] if t.get("url")}
     for key in prefer:

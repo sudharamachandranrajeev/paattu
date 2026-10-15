@@ -16,7 +16,7 @@ Rectangle {
   function focusInput() { input.forceActiveFocus() }
 
   height: 36
-  radius: 10
+  radius: 18
   color: Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, input.activeFocus ? 0.10 : 0.06)
   border.width: input.activeFocus ? 1 : 0
   border.color: pal.accent

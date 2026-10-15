@@ -34,16 +34,16 @@ Item {
   }
 
   // ---------- left: follow form + users ----------
-  Rectangle {
+  Glass {
     id: left
+    pal: root.pal
     width: 300
     anchors.top: parent.top
     anchors.bottom: parent.bottom
     anchors.left: parent.left
     anchors.leftMargin: 20
     anchors.bottomMargin: 16
-    radius: 12
-    color: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.03)
+    radius: 28
 
     Column {
       id: form

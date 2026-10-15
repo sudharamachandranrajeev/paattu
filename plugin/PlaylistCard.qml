@@ -23,7 +23,7 @@ Item {
   Rectangle {
     anchors.fill: parent
     anchors.margins: -8
-    radius: 12
+    radius: 26
     color: root.hovered ? Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.06) : "transparent"
     Behavior on color { ColorAnimation { duration: 120 } }
   }
@@ -32,7 +32,7 @@ Item {
     id: art
     width: root.size
     height: root.size
-    radius: 10
+    radius: 20
     // Favourites and Saved songs are tiles; your playlists wear their first song's art.
     source: root.builtin ? "" : root.app.store.artFor(root.cover.kind, root.cover.id)
     revision: root.app.artRevision
@@ -63,10 +63,12 @@ Item {
     anchors.top: art.top
     anchors.margins: 8
     visible: !root.saved
-    radius: 4
-    color: Qt.rgba(0, 0, 0, 0.55)
-    width: notSaved.implicitWidth + 10
-    height: notSaved.implicitHeight + 4
+    radius: height / 2
+    color: Qt.rgba(0, 0, 0, 0.4)
+    border.width: 1
+    border.color: Qt.rgba(1, 1, 1, 0.18)
+    width: notSaved.implicitWidth + 16
+    height: notSaved.implicitHeight + 6
     Text {
       id: notSaved
       anchors.centerIn: parent
@@ -99,7 +101,7 @@ Item {
     Text {
       width: parent.width
       textFormat: Text.PlainText
-      text: root.own ? (root.isFavourites ? "Songs you hearted" : "Your playlist") + " · " + Model.plural(root.playlist.count || 0, "song")
+      text: root.own ? (root.playlist.id === Model.FAVOURITES ? "Songs you hearted" : "Your playlist") + " · " + Model.plural(root.playlist.count || 0, "song")
         : (root.playlist.auto ? (root.playlist.title.indexOf("New releases") !== -1 ? "New releases" : "Most played")
           : Model.ownerName(root.app.store.lib, root.playlist))
         + (root.playlist.count ? " · " + root.playlist.count : "")

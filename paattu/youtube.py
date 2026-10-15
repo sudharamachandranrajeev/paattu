@@ -170,6 +170,24 @@ def video_details(vid):
             "duration": data.get("duration"), "views": data.get("view_count")}
 
 
+# A video's smallest H.264 picture, without sound: plenty for a blurred
+# background (about 1 MB a minute), and every player can show it.
+SMALL_VIDEO = "wv*[vcodec^=avc1][protocol=https][height>=100]/wv*[vcodec^=avc1][protocol=https]"
+
+
+def small_video(vid):
+    """Where to stream a video's smallest picture: {"id", "url", "duration",
+    "expires"} (expires: Unix time the link stops working, or None)."""
+    data = _run(watch_url(vid), timeout=60, extra=("-f", SMALL_VIDEO))
+    chosen = (data.get("requested_formats") or [data])[0]
+    url = chosen.get("url") or ""
+    if not url:
+        raise YouTubeError("that video has no picture to show")
+    expires = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("expire", [None])[0]
+    return {"id": vid, "url": url, "duration": data.get("duration"),
+            "expires": int(expires) if expires and expires.isdigit() else None}
+
+
 def playlist_details(query):
     """A public playlist and its available videos."""
     pid = normalize_playlist(query)

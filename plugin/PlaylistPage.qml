@@ -89,7 +89,7 @@ ListView {
       Cover {
         width: 180
         height: 180
-        radius: 12
+        radius: 28
         // Favourites and Saved songs are tiles; your playlists wear their first song's art.
         source: root.builtin ? "" : root.app.store.artFor(root.cover.kind, root.cover.id)
         revision: root.app.artRevision

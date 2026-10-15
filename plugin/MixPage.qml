@@ -87,7 +87,7 @@ Flickable {
       Rectangle {
         width: 180
         height: 180
-        radius: 12
+        radius: 28
         color: root.pal.accent
         Text {
           anchors.centerIn: parent

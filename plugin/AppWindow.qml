@@ -18,7 +18,7 @@ FloatingWindow {
   readonly property string fontFamily: Style.font.family
   property int artRevision: 0
 
-  // Navigation: home | language | mixes | mix | users | user | playlist | queue | settings | search
+  // Navigation: home | playing | language | mixes | mix | users | user | playlist | queue | settings | search
   // | collection (an album, singer or playlist from a search; arg: the result)
   // ("add" opens users with the link box focused; "pick" opens the
   // add-to-playlist picker for the song playing)
@@ -395,17 +395,35 @@ FloatingWindow {
       }
     }
 
+    Backdrop {
+      anchors.fill: parent
+      pal: win.pal
+    }
+
+    // Now Playing: the song's video behind everything, blurred and silent.
+    // Loaded by name, so without Qt Multimedia only the video is missing.
+    Loader {
+      anchors.fill: parent
+      active: win.view === "playing" && win.store.config.videoBackground !== false && GraphicsInfo.api !== GraphicsInfo.Software
+      opacity: 0.55
+      Component.onCompleted: setSource(Qt.resolvedUrl("VideoBackdrop.qml"), { app: win })
+    }
+
     // Sidebar
-    Rectangle {
+    Glass {
       id: sidebar
-      width: 232
+      pal: win.pal
+      x: 12
+      width: 220
       anchors.top: parent.top
+      anchors.topMargin: 12
       anchors.bottom: nowBar.top
-      color: win.pal.surface
+      anchors.bottomMargin: 10
+      radius: 28
 
       Column {
         anchors.fill: parent
-        anchors.margins: 18
+        anchors.margins: 16
         spacing: 4
 
         Row {
@@ -432,6 +450,7 @@ FloatingWindow {
         Repeater {
           model: [
             { view: "home", arg: null, glyph: Model.GLYPH_HOME, label: "Home" },
+            { view: "playing", arg: null, glyph: Model.GLYPH_NOTE, label: "Now playing" },
             { view: "search", arg: null, glyph: Model.GLYPH_SEARCH, label: "Search" },
             { view: "mixes", arg: null, glyph: Model.GLYPH_SHUFFLE, label: "Mixes" },
             { view: "language", arg: "Malayalam", glyph: "മ", label: "Malayalam" },
@@ -452,15 +471,17 @@ FloatingWindow {
               || (modelData.view === "users" && win.view === "user")
               || (modelData.view === "mixes" && win.view === "mix")
               || (modelData.view === "search" && win.view === "collection")
-            width: sidebar.width - 36
+            width: sidebar.width - 32
             height: 38
-            radius: 8
-            color: selected ? Qt.rgba(win.pal.accent.r, win.pal.accent.g, win.pal.accent.b, 0.16)
-              : navMouse.containsMouse ? Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.06) : "transparent"
+            radius: height / 2
+            color: selected ? Qt.rgba(win.pal.accent.r, win.pal.accent.g, win.pal.accent.b, 0.2)
+              : navMouse.containsMouse ? Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.07) : "transparent"
+            border.width: selected ? 1 : 0
+            border.color: Qt.rgba(win.pal.accent.r, win.pal.accent.g, win.pal.accent.b, 0.45)
 
             Row {
               anchors.verticalCenter: parent.verticalCenter
-              x: 12
+              x: 14
               spacing: 12
               Text {
                 width: 20
@@ -531,16 +552,17 @@ FloatingWindow {
     Item {
       id: main
       anchors.left: sidebar.right
+      anchors.leftMargin: 4
       anchors.right: parent.right
       anchors.top: parent.top
       anchors.bottom: nowBar.top
 
       Row {
         id: topBar
-        x: 28
-        y: 18
+        x: 24
+        y: 16
         spacing: 10
-        height: 36
+        height: 40
 
         GlyphButton {
           anchors.verticalCenter: parent.verticalCenter
@@ -552,18 +574,19 @@ FloatingWindow {
           onClicked: win.back()
         }
 
-        Rectangle {
+        Glass {
           anchors.verticalCenter: parent.verticalCenter
-          width: Math.min(420, main.width - 300)
-          height: 36
-          radius: 18
-          color: Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, search.activeFocus ? 0.10 : 0.06)
-          border.width: search.activeFocus ? 1 : 0
-          border.color: win.pal.accent
+          pal: win.pal
+          width: Math.min(440, main.width - 300)
+          height: 40
+          radius: 20
+          hovered: search.activeFocus
+          border.color: search.activeFocus ? win.pal.accent
+            : Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.11)
 
           Text {
             id: searchGlyph
-            x: 14
+            x: 16
             anchors.verticalCenter: parent.verticalCenter
             textFormat: Text.PlainText
             text: Model.GLYPH_SEARCH
@@ -642,7 +665,8 @@ FloatingWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        sourceComponent: win.view === "playlist" ? playlistPage
+        sourceComponent: win.view === "playing" ? playingPage
+          : win.view === "playlist" ? playlistPage
           : win.view === "users" || win.view === "user" ? usersPage
           : win.view === "queue" ? queuePage
           : win.view === "settings" ? settingsPage
@@ -660,6 +684,7 @@ FloatingWindow {
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.bottom: parent.bottom
+      anchors.margins: 12
       app: win
     }
 
@@ -669,11 +694,11 @@ FloatingWindow {
       anchors.bottomMargin: 12
       visible: win.toast !== ""
       width: Math.min(toastText.implicitWidth + 32, main.width - 40)
-      height: 36
-      radius: 18
+      height: 40
+      radius: 20
       color: Qt.tint(win.pal.surface, Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.08))
       border.width: 1
-      border.color: Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.12)
+      border.color: Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.14)
       Text {
         id: toastText
         anchors.centerIn: parent
@@ -733,6 +758,7 @@ FloatingWindow {
     }
   }
 
+  Component { id: playingPage; NowPlayingPage { app: win } }
   Component { id: homePage; HomePage { app: win; language: win.view === "language" ? win.arg : "" } }
   Component { id: usersPage; UsersPage { app: win; userId: win.view === "user" ? win.arg : "" } }
   Component { id: playlistPage; PlaylistPage { app: win; playlistId: win.arg || "" } }

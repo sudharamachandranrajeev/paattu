@@ -235,14 +235,12 @@ Flickable {
     Hint { app: root.app; width: column.width; text: root.status }
 
     // ---------- Equaliser ----------
-    Rectangle {
+    Glass {
       id: panel
+      pal: root.pal
       width: column.width
       height: 300
-      radius: 18
-      color: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.04)
-      border.width: 1
-      border.color: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
+      radius: 28
 
       readonly property real columnWidth: (width - 32) / Model.SOUND_BANDS.length
       readonly property real trackTop: bandRepeater.count ? bandRepeater.itemAt(0).trackTop : 0

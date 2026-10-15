@@ -1248,6 +1248,16 @@ def cmd_browse_play(args, out):
              track=first["id"], count=len(tracks))
 
 
+def cmd_video(args, out):
+    tid = sources.track_id(args.target)
+    track = _known(library.load(), tid) or {"id": tid}
+    video = sources.video_for(track)
+    if args.json:
+        out.done("", video=video)
+    else:
+        print(video["url"] if video else "No video for that song")
+
+
 def cmd_theme(args, out):
     if args.action == "list" or not args.name:
         current = config.load()["theme"]
@@ -1656,6 +1666,10 @@ def build_parser():
     a = sub.add_parser("jump", help="play queue entry N")
     a.add_argument("index", type=int)
     a.set_defaults(func=cmd_jump)
+
+    a = sub.add_parser("video", help="where to stream a song's video, small and silent (for a background)")
+    a.add_argument("target", help="the song: a link or id")
+    a.set_defaults(func=cmd_video)
 
     a = sub.add_parser("engine", help="the mpv playback engine")
     a.add_argument("action", choices=("start", "stop", "restart", "status"))

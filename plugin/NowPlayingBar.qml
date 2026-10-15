@@ -2,30 +2,34 @@ import QtQuick
 import qs.Ui
 import "Model.js" as Model
 
-// The app's bottom bar: track (with heart / add to playlist), transport +
-// seek, volume.
-Rectangle {
+// The app's bottom bar, floating on glass: track (with heart / add to
+// playlist; click it for Now Playing), transport + seek, volume.
+Glass {
   id: root
 
   required property var app
-  readonly property var pal: app.pal
+  pal: app.pal
   readonly property var player: app.player
   readonly property var track: Model.nowPlaying(app.store.lib.tracks, player.path, player.mediaTitle)
 
-  height: 88
-  color: Qt.tint(pal.background, Qt.rgba(pal.foreground.r, pal.foreground.g, pal.foreground.b, 0.04))
+  height: 84
+  radius: 28
 
-  Rectangle {
-    anchors.top: parent.top
-    width: parent.width
-    height: 1
-    color: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
+  // Under the track (declared first) so its buttons keep their clicks.
+  MouseArea {
+    x: trackInfo.x
+    y: trackInfo.y
+    width: trackInfo.width
+    height: trackInfo.height
+    enabled: root.player.hasTrack
+    cursorShape: Qt.PointingHandCursor
+    onClicked: root.app.view === "playing" ? root.app.back() : root.app.navigate("playing")
   }
 
   // Track
   Row {
     id: trackInfo
-    x: 18
+    x: 14
     anchors.verticalCenter: parent.verticalCenter
     width: Math.min(360, root.width * 0.3)
     spacing: 12
@@ -33,7 +37,7 @@ Rectangle {
     Cover {
       width: 56
       height: 56
-      radius: 8
+      radius: 18
       source: root.track.id ? root.app.store.artFor("v", root.track.id) : ""
       revision: root.app.artRevision
       tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
