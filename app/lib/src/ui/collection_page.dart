@@ -10,6 +10,7 @@ import '../sources/jiosaavn.dart';
 import '../sources/sources.dart' as sources;
 import '../sources/youtube.dart';
 import '../util.dart';
+import 'glass.dart';
 import 'widgets.dart';
 
 /// Open a search result: an album or playlist's songs, or an artist's page.
@@ -48,7 +49,7 @@ class ResultCard extends StatelessWidget {
     ].where((s) => s.isNotEmpty).join(' · ');
     return InkWell(
       onTap: () => openResult(context, item),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(24),
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: Column(
@@ -59,8 +60,8 @@ class ResultCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Cover(url: asString(item['art']), size: null, radius: 12, icon: resultIcon(item)),
-                  Positioned(left: 6, top: 6, child: SiteBadge(site: asString(item['site']))),
+                  Cover(url: asString(item['art']), size: null, radius: 22, icon: resultIcon(item)),
+                  Positioned(left: 8, top: 8, child: GlassChip(label: siteName(asString(item['site'])))),
                 ],
               ),
             ),
@@ -89,31 +90,14 @@ class ResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final round = asString(item['type']) == 'artist';
-    return ListTile(
+    return PillTile(
       onTap: () => openResult(context, item),
-      leading: Cover(url: asString(item['art']), size: 52, radius: round ? 26 : 8, icon: resultIcon(item)),
-      title: Text(asString(item['title']), maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [asString(item['subtitle']), siteName(asString(item['site']))].where((s) => s.isNotEmpty).join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: const Icon(Icons.chevron_right),
+      leading: Cover(url: asString(item['art']), size: 50, radius: round ? 25 : 14, icon: resultIcon(item)),
+      title: asString(item['title']),
+      subtitle: [asString(item['subtitle']), siteName(asString(item['site']))].where((s) => s.isNotEmpty).join(' · '),
+      trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
     );
   }
-}
-
-/// A small label saying which site a result is from.
-class SiteBadge extends StatelessWidget {
-  const SiteBadge({super.key, required this.site});
-  final String site;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(6)),
-        child: Text(siteName(site), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-      );
 }
 
 /// A row of albums or artists that scrolls sideways.
@@ -159,47 +143,6 @@ class ResultShelf extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// The header of an album, playlist or artist page: picture, name, details
-/// and the play / save buttons.
-class _Header extends StatelessWidget {
-  const _Header({required this.art, required this.title, required this.lines, required this.actions, this.round = false});
-  final String art;
-  final String title;
-  final List<String> lines;
-  final List<Widget> actions;
-  final bool round;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final wide = MediaQuery.sizeOf(context).width >= 600;
-    final picture = Cover(url: art, size: wide ? 200 : 168, radius: round ? (wide ? 100 : 84) : 14, icon: round ? Icons.person : Icons.album);
-    final text = Column(
-      crossAxisAlignment: wide ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        Text(title,
-            textAlign: wide ? TextAlign.start : TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-        for (final line in lines.where((l) => l.isNotEmpty))
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(line,
-                textAlign: wide ? TextAlign.start : TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ),
-        const SizedBox(height: 14),
-        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: actions),
-      ],
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: wide
-          ? Row(children: [picture, const SizedBox(width: 24), Expanded(child: text)])
-          : Column(children: [picture, const SizedBox(height: 16), text]),
     );
   }
 }
@@ -259,7 +202,7 @@ class _CollectionPageState extends State<CollectionPage> {
         future: _songs,
         builder: (context, snapshot) {
           final songs = snapshot.data ?? const <Json>[];
-          final header = _Header(
+          final header = PageHeader(
             art: asString(c['art']),
             title: asString(c['title']),
             lines: [
@@ -439,7 +382,7 @@ class _ArtistPageState extends State<ArtistPage> {
   Widget build(BuildContext context) {
     final app = Paattu.of(context);
     final url = asString(widget.artist['url']);
-    final header = _Header(
+    final header = PageHeader(
       art: _art,
       title: _name,
       round: true,

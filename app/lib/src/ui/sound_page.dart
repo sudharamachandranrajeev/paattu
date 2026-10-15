@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../sound.dart';
+import 'glass.dart';
 import 'widgets.dart';
 
 void openSound(BuildContext context) =>
@@ -81,29 +82,31 @@ class _SoundPageState extends State<SoundPage> {
           AnimatedOpacity(
             opacity: s.on ? 1 : 0.55,
             duration: const Duration(milliseconds: 200),
-            child: Container(
-              height: 300,
+            child: Glass(
+              radius: 28,
               padding: const EdgeInsets.fromLTRB(4, 14, 4, 10),
-              decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(20)),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(painter: _CurvePainter(s, scheme.primary, scheme.onSurfaceVariant)),
-                  ),
-                  Row(
-                    children: [
-                      for (var i = 0; i < soundBands.length; i++)
-                        Expanded(
-                          child: _BandSlider(
-                            label: bandLabel(soundBands[i]),
-                            value: s.bands[i],
-                            onChanged: (v) => _move(s.withBands([...s.bands]..[i] = v)),
-                            onChangeEnd: (v) => _keep(_sound.withBands([..._sound.bands]..[i] = v)),
+              child: SizedBox(
+                height: 276,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(painter: _CurvePainter(s, scheme.primary, scheme.onSurfaceVariant)),
+                    ),
+                    Row(
+                      children: [
+                        for (var i = 0; i < soundBands.length; i++)
+                          Expanded(
+                            child: _BandSlider(
+                              label: bandLabel(soundBands[i]),
+                              value: s.bands[i],
+                              onChanged: (v) => _move(s.withBands([...s.bands]..[i] = v)),
+                              onChangeEnd: (v) => _keep(_sound.withBands([..._sound.bands]..[i] = v)),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

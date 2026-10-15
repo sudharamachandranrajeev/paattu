@@ -12,6 +12,7 @@ import '../search_feed.dart';
 import '../sources/sources.dart' as sources;
 import '../util.dart';
 import 'collection_page.dart';
+import 'glass.dart';
 import 'widgets.dart';
 
 const _tabs = [
@@ -159,6 +160,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     final app = Paattu.of(context);
     final chosen = _sites ?? app.settings.searchSites.toSet();
     final showTabs = _feeds.isNotEmpty && !_suggesting;
+    final scheme = Theme.of(context).colorScheme;
+    OutlineInputBorder pill(BorderSide side) => OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: side);
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
@@ -182,8 +185,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                       _focus.requestFocus();
                     },
                   ),
-            filled: true,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
+            // The theme's glass field, as a pill.
+            border: pill(BorderSide(color: scheme.glassEdge)),
+            enabledBorder: pill(BorderSide(color: scheme.glassEdge)),
+            focusedBorder: pill(BorderSide(color: scheme.primary, width: 1.5)),
             contentPadding: const EdgeInsets.symmetric(vertical: 0),
           ),
         ),

@@ -1,5 +1,5 @@
 // The app's own settings (settings.json beside library.json) and themes: the
-// desktop Paattu's six palettes plus the default teal.
+// desktop Paattu's palettes, led by Chembarathi (the default since 0.5).
 
 import 'dart:async';
 import 'dart:convert';
@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'links.dart';
 import 'sound.dart';
+import 'ui/glass.dart';
 import 'util.dart';
 
 class PaattuTheme {
@@ -49,33 +50,85 @@ class PaattuTheme {
       outline: muted.withValues(alpha: 0.6),
       outlineVariant: muted.withValues(alpha: 0.25),
     );
+    final edge = BorderSide(color: scheme.glassEdge);
     return ThemeData(
       colorScheme: scheme,
-      scaffoldBackgroundColor: background,
       useMaterial3: true,
-      cardTheme: CardThemeData(color: surface, elevation: 0, margin: EdgeInsets.zero),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surface,
-        indicatorColor: accent.withValues(alpha: 0.22),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      fontFamily: 'Poppins',
+      // Pages are see-through: the backdrop is painted under each one (glass.dart).
+      scaffoldBackgroundColor: Colors.transparent,
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {for (final platform in TargetPlatform.values) platform: const BackdropTransitions()},
       ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: surface,
-        indicatorColor: accent.withValues(alpha: 0.22),
+      cardTheme: CardThemeData(
+        color: scheme.glass,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: edge),
       ),
-      appBarTheme: AppBarTheme(backgroundColor: background, surfaceTintColor: Colors.transparent),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.glass,
+        selectedColor: accent.withValues(alpha: 0.28),
+        side: edge,
+        shape: const StadiumBorder(),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.w600, color: foreground),
+      ),
+      tabBarTheme: TabBarThemeData(
+        dividerColor: Colors.transparent,
+        indicatorColor: accent,
+        labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        showDragHandle: true,
+        dragHandleColor: muted.withValues(alpha: 0.5),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28), side: edge),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: edge),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.glass,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: edge),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: edge),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: accent, width: 1.5)),
+      ),
       sliderTheme: SliderThemeData(
         activeTrackColor: accent,
-        thumbColor: accent,
+        thumbColor: foreground,
         inactiveTrackColor: muted.withValues(alpha: 0.25),
         trackHeight: 3,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
       ),
-      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
     );
   }
 }
 
 const themes = [
+  PaattuTheme('chembarathi', 'Chembarathi', 'Hibiscus red and marigold on a night sky',
+      dark: true,
+      background: Color(0xFF0D0608),
+      surface: Color(0xFF1C0D11),
+      foreground: Color(0xFFFFF1F2),
+      muted: Color(0xFFBC979D),
+      accent: Color(0xFFF0405A),
+      highlight: Color(0xFFF7942E)),
   PaattuTheme('paattu', 'Paattu', 'Teal, the app icon\'s colours',
       dark: true,
       background: Color(0xFF0B1514),

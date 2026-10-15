@@ -118,7 +118,6 @@ class _PlaylistPageState extends State<PlaylistPage> {
         }
         final own = p['local'] == true;
         final tracks = library.playlistTracks(widget.playlistId);
-        final theme = Theme.of(context);
         return Scaffold(
           appBar: AppBar(
             title: Text(asString(p['title']), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -140,53 +139,29 @@ class _PlaylistPageState extends State<PlaylistPage> {
             valueListenable: app.fetching,
             builder: (context, fetching, _) {
               final loading = fetching.contains(widget.playlistId);
-              final header = Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
-                  children: [
-                    Cover(
-                      url: asString(p['thumbnail']),
-                      size: 96,
-                      radius: 10,
-                      icon: widget.playlistId == favouritesId ? Icons.favorite : Icons.queue_music,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            [
-                              asString(p['ownerName']),
-                              if (asString(p['language']).isNotEmpty) asString(p['language']),
-                              if (p['tracks'] is List) plural(tracks.length, 'song'),
-                            ].where((s) => s.isNotEmpty).join(' · '),
-                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              FilledButton.icon(
-                                onPressed: tracks.isEmpty ? null : () => fire(app.playPlaylist(widget.playlistId)),
-                                icon: const Icon(Icons.play_arrow),
-                                label: const Text('Play'),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: tracks.isEmpty
-                                    ? null
-                                    : () => fire(app.playPlaylist(widget.playlistId, shuffled: true)),
-                                icon: const Icon(Icons.shuffle),
-                                label: const Text('Shuffle'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              final header = PageHeader(
+                art: asString(p['thumbnail']),
+                title: asString(p['title']),
+                icon: widget.playlistId == favouritesId ? Icons.favorite : Icons.queue_music,
+                lines: [
+                  [
+                    asString(p['ownerName']),
+                    if (asString(p['language']).isNotEmpty) asString(p['language']),
+                    if (p['tracks'] is List) plural(tracks.length, 'song'),
+                  ].where((s) => s.isNotEmpty).join(' · '),
+                ],
+                actions: [
+                  FilledButton.icon(
+                    onPressed: tracks.isEmpty ? null : () => fire(app.playPlaylist(widget.playlistId)),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Play'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: tracks.isEmpty ? null : () => fire(app.playPlaylist(widget.playlistId, shuffled: true)),
+                    icon: const Icon(Icons.shuffle),
+                    label: const Text('Shuffle'),
+                  ),
+                ],
               );
               if (tracks.isEmpty) {
                 return ListView(children: [

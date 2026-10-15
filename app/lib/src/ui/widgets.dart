@@ -8,6 +8,7 @@ import '../library.dart';
 import '../links.dart';
 import '../track.dart';
 import '../util.dart';
+import 'glass.dart';
 
 /// Cover art from the network, with a fallback picture and a placeholder.
 class Cover extends StatelessWidget {
@@ -74,7 +75,8 @@ class NowPlayingBuilder extends StatelessWidget {
   }
 }
 
-/// A song in a list: cover, title, film · singer, length and a menu.
+/// A song in a list, as a glass pill: round cover, title, film · singer,
+/// length and a menu.
 class TrackTile extends StatelessWidget {
   const TrackTile({
     super.key,
@@ -105,45 +107,112 @@ class TrackTile extends StatelessWidget {
       if (showSite && qualityLabel(track).isNotEmpty) qualityLabel(track),
     ].where((s) => s.isNotEmpty).join(' · ');
     final duration = trackDuration(track);
-    return ListTile(
+    final scheme = theme.colorScheme;
+    return PillTile(
+      active: playing,
       onTap: onTap,
       onLongPress: () => showTrackMenu(context, track, playlistId: playlistId),
-      contentPadding: const EdgeInsets.only(left: 16, right: 4),
-      leading: Stack(
-        alignment: Alignment.center,
-        children: [
-          TrackCover(track),
-          if (playing)
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(6),
+      leading: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: playing ? scheme.primary : Colors.transparent, width: 2),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            TrackCover(track, size: 46, radius: 23),
+            if (playing)
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), shape: BoxShape.circle),
+                child: Icon(Icons.graphic_eq, color: scheme.primary),
               ),
-              child: Icon(Icons.graphic_eq, color: theme.colorScheme.primary),
-            ),
-        ],
+          ],
+        ),
       ),
-      title: Text(
-        trackTitle(track),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: playing ? TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600) : null,
-      ),
-      subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ?trailing,
-          if (duration != null)
-            Text(formatDuration(duration), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          IconButton(
-            tooltip: 'More',
-            icon: const Icon(Icons.more_vert),
-            onPressed: () => showTrackMenu(context, track, playlistId: playlistId),
+      title: trackTitle(track),
+      subtitle: subtitle,
+      trailing: [
+        ?trailing,
+        if (duration != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: Text(formatDuration(duration),
+                style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
           ),
-        ],
+        IconButton(
+          tooltip: 'More',
+          icon: const Icon(Icons.more_horiz),
+          onPressed: () => showTrackMenu(context, track, playlistId: playlistId),
+        ),
+      ],
+    );
+  }
+}
+
+/// A row in a list since 0.5: a glass pill with a round picture, a title and
+/// a muted line under it. [active] tints it, for the song playing now.
+class PillTile extends StatelessWidget {
+  const PillTile({
+    super.key,
+    required this.leading,
+    required this.title,
+    this.subtitle = '',
+    this.trailing = const [],
+    this.onTap,
+    this.onLongPress,
+    this.active = false,
+  });
+
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final List<Widget> trailing;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Glass(
+        radius: 999,
+        color: active ? scheme.primary.withValues(alpha: 0.16) : null,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        padding: EdgeInsets.fromLTRB(6, 6, trailing.isEmpty ? 18 : 2, 6),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.w600, color: active ? scheme.primary : null),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            ...trailing,
+          ],
+        ),
       ),
     );
   }
@@ -371,7 +440,10 @@ class SectionHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 20, 8, 8),
         child: Row(
           children: [
-            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+            Expanded(
+              child: Text(title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 18, fontWeight: FontWeight.w600)),
+            ),
             ?action,
           ],
         ),
@@ -423,26 +495,33 @@ class PlaylistCard extends StatelessWidget {
     final theme = Theme.of(context);
     final count = playlist['tracks'] is List ? plural(asList(playlist['tracks']).length, 'song') : '';
     final owner = asString(playlist['ownerName']);
+    final subtitle = owner.isNotEmpty ? owner : count;
     return SizedBox(
       width: width,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.all(4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Cover(
-                url: asString(playlist['thumbnail']),
-                size: width - 8,
-                radius: 10,
-                icon: icon ?? Icons.queue_music,
+              Stack(
+                children: [
+                  Cover(
+                    url: asString(playlist['thumbnail']),
+                    size: width - 8,
+                    radius: 22,
+                    icon: icon ?? Icons.queue_music,
+                  ),
+                  if (count.isNotEmpty && owner.isNotEmpty)
+                    Positioned(left: 8, top: 8, child: GlassChip(icon: Icons.headphones, label: count)),
+                ],
               ),
               const SizedBox(height: 6),
               Text(asString(playlist['title']), maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-              Text([owner, count].where((s) => s.isNotEmpty).join(' · '),
+              Text(subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -450,6 +529,64 @@ class PlaylistCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The top of an album, playlist or artist page: the picture glowing in the
+/// theme's colour, the name, details and the play buttons.
+class PageHeader extends StatelessWidget {
+  const PageHeader({
+    super.key,
+    required this.art,
+    required this.title,
+    required this.lines,
+    required this.actions,
+    this.round = false,
+    this.icon,
+  });
+  final String art;
+  final String title;
+  final List<String> lines;
+  final List<Widget> actions;
+  final bool round;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    final size = wide ? 200.0 : 168.0;
+    final radius = round ? size / 2 : 28.0;
+    final picture = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.4), blurRadius: 40, offset: const Offset(0, 8))],
+      ),
+      child: Cover(url: art, size: size, radius: radius, icon: icon ?? (round ? Icons.person : Icons.album)),
+    );
+    final text = Column(
+      crossAxisAlignment: wide ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Text(title,
+            textAlign: wide ? TextAlign.start : TextAlign.center,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+        for (final line in lines.where((l) => l.isNotEmpty))
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(line,
+                textAlign: wide ? TextAlign.start : TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+        const SizedBox(height: 14),
+        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: actions),
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: wide
+          ? Row(children: [picture, const SizedBox(width: 24), Expanded(child: text)])
+          : Column(children: [picture, const SizedBox(height: 18), text]),
     );
   }
 }

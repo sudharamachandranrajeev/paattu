@@ -14,6 +14,7 @@ import '../links.dart';
 import '../settings.dart';
 import '../sources/jiosaavn.dart';
 import '../util.dart';
+import 'glass.dart';
 import 'sound_page.dart';
 import 'widgets.dart';
 
@@ -94,79 +95,87 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
               const SectionHeader('Sound'),
-              ListTile(
-                leading: Icon(Icons.equalizer, color: sound.on ? theme.colorScheme.primary : null),
-                title: const Text('Equaliser, tone and speed'),
-                subtitle: Text(sound.summary),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => openSound(context),
-              ),
+              GlassGroup(children: [
+                ListTile(
+                  leading: Icon(Icons.equalizer, color: sound.on ? theme.colorScheme.primary : null),
+                  title: const Text('Equaliser, tone and speed'),
+                  subtitle: Text(sound.summary),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => openSound(context),
+                ),
+              ]),
               const SectionHeader('Search'),
-              for (final site in searchSites)
-                CheckboxListTile(
-                  title: Text(siteName(site)),
-                  subtitle: Text(switch (site) {
-                    'jiosaavn' => 'Film albums from the labels, mostly 320 kbps AAC',
-                    'youtube' => 'Nearly everything, Opus around 130–160 kbps',
-                    _ => 'Covers, remixes and independent artists',
-                  }),
-                  value: settings.searchSites.contains(site),
+              GlassGroup(children: [
+                for (final site in searchSites)
+                  CheckboxListTile(
+                    title: Text(siteName(site)),
+                    subtitle: Text(switch (site) {
+                      'jiosaavn' => 'Film albums from the labels, mostly 320 kbps AAC',
+                      'youtube' => 'Nearly everything, Opus around 130–160 kbps',
+                      _ => 'Covers, remixes and independent artists',
+                    }),
+                    value: settings.searchSites.contains(site),
+                    onChanged: (on) {
+                      final next = List.of(settings.searchSites);
+                      if (on == true) {
+                        next.add(site);
+                      } else if (next.length > 1) {
+                        next.remove(site);
+                      }
+                      settings.searchSites = [for (final s in searchSites) if (next.contains(s)) s];
+                    },
+                  ),
+                SwitchListTile(
+                  title: const Text('Save data'),
+                  subtitle: const Text('Stream JioSaavn songs at 128 kbps instead of 320'),
+                  value: settings.saveData,
                   onChanged: (on) {
-                    final next = List.of(settings.searchSites);
-                    if (on == true) {
-                      next.add(site);
-                    } else if (next.length > 1) {
-                      next.remove(site);
-                    }
-                    settings.searchSites = [for (final s in searchSites) if (next.contains(s)) s];
+                    settings.saveData = on;
+                    jiosaavnSaveData = on;
                   },
                 ),
-              SwitchListTile(
-                title: const Text('Save data'),
-                subtitle: const Text('Stream JioSaavn songs at 128 kbps instead of 320'),
-                value: settings.saveData,
-                onChanged: (on) {
-                  settings.saveData = on;
-                  jiosaavnSaveData = on;
-                },
-              ),
+              ]),
               const SectionHeader('Library'),
-              ListTile(
-                leading: const Icon(Icons.upload_file),
-                title: const Text('Export the library'),
-                subtitle: const Text('A library.json the desktop Paattu and other devices can import'),
-                onTap: () => _export(context, app),
-              ),
-              ListTile(
-                leading: const Icon(Icons.download),
-                title: const Text('Import a library'),
-                subtitle: const Text("From the desktop Paattu (~/.local/share/paattu/library.json) or another device"),
-                onTap: () => _import(context, app),
-              ),
-              if (desktop != null)
+              GlassGroup(children: [
                 ListTile(
-                  leading: const Icon(Icons.computer),
-                  title: const Text('Use the desktop Paattu library'),
-                  subtitle: Text(desktop.path),
-                  onTap: () => attempt(app, () async {
-                    final bytes = await desktop.readAsBytes();
-                    if (!context.mounted) return;
-                    await _importBytes(context, app, bytes, 'The desktop library');
-                  }, failure: "Couldn't import"),
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('Export the library'),
+                  subtitle: const Text('A library.json the desktop Paattu and other devices can import'),
+                  onTap: () => _export(context, app),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.download),
+                  title: const Text('Import a library'),
+                  subtitle: const Text("From the desktop Paattu (~/.local/share/paattu/library.json) or another device"),
+                  onTap: () => _import(context, app),
+                ),
+                if (desktop != null)
+                  ListTile(
+                    leading: const Icon(Icons.computer),
+                    title: const Text('Use the desktop Paattu library'),
+                    subtitle: Text(desktop.path),
+                    onTap: () => attempt(app, () async {
+                      final bytes = await desktop.readAsBytes();
+                      if (!context.mounted) return;
+                      await _importBytes(context, app, bytes, 'The desktop library');
+                    }, failure: "Couldn't import"),
+                  ),
+              ]),
               const SectionHeader('About'),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('Paattu $appVersion'),
-                subtitle: Text('Malayalam & Tamil music from YouTube, JioSaavn and SoundCloud. MIT licence.',
-                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.code),
-                title: const Text('Source code and releases'),
-                subtitle: const Text(repoUrl),
-                onTap: () => fire(launchUrl(Uri.parse(repoUrl), mode: LaunchMode.externalApplication)),
-              ),
+              GlassGroup(children: [
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('Paattu $appVersion'),
+                  subtitle: Text('Malayalam & Tamil music from YouTube, JioSaavn and SoundCloud. MIT licence.',
+                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.code),
+                  title: const Text('Source code and releases'),
+                  subtitle: const Text(repoUrl),
+                  onTap: () => fire(launchUrl(Uri.parse(repoUrl), mode: LaunchMode.externalApplication)),
+                ),
+              ]),
             ],
           ),
         );
@@ -186,13 +195,13 @@ class _ThemeSwatch extends StatelessWidget {
       message: theme.description,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           width: 108,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: theme.background,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: selected ? scheme.primary : scheme.outlineVariant, width: selected ? 2.5 : 1),
           ),
           child: Column(

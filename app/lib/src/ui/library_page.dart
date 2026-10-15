@@ -7,24 +7,28 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../library.dart';
 import '../util.dart';
+import 'glass.dart';
 import 'home_page.dart';
 import 'playlist_page.dart';
 import 'widgets.dart';
 
+/// Ask for a name and make a playlist. Returns its id.
+Future<String?> newPlaylist(BuildContext context) async {
+  final app = Paattu.of(context);
+  final name = await askText(context, title: 'New playlist', label: 'Name', action: 'Create');
+  if (name == null) return null;
+  try {
+    final p = app.library.createPlaylist(name);
+    app.library.changed();
+    return asString(p['id']);
+  } on LibraryException catch (error) {
+    app.toast(error.message);
+    return null;
+  }
+}
+
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
-
-  Future<void> _newPlaylist(BuildContext context, AppState app) async {
-    final name = await askText(context, title: 'New playlist', label: 'Name', action: 'Create');
-    if (name == null || !context.mounted) return;
-    try {
-      final p = app.library.createPlaylist(name);
-      app.library.changed();
-      openPlaylist(context, asString(p['id']));
-    } on LibraryException catch (error) {
-      app.toast(error.message);
-    }
-  }
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
@@ -39,38 +43,6 @@ class LibraryPage extends StatelessWidget {
               title: const Text('Library'),
               bottom: const TabBar(tabs: [Tab(text: 'Playlists'), Tab(text: 'Profiles')]),
             ),
-            floatingActionButton: FloatingActionButton.extended(
-              onPressed: () async {
-                final choice = await showModalBottomSheet<String>(
-                  context: context,
-                  showDragHandle: true,
-      useRootNavigator: true,
-                  builder: (sheet) => SafeArea(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.add_link),
-                          title: const Text('Add from YouTube'),
-                          subtitle: const Text('A profile (@handle) or a playlist link'),
-                          onTap: () => Navigator.pop(sheet, 'youtube'),
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.playlist_add),
-                          title: const Text('New playlist'),
-                          onTap: () => Navigator.pop(sheet, 'new'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-                if (!context.mounted) return;
-                if (choice == 'youtube') await showAddFromYouTube(context);
-                if (choice == 'new' && context.mounted) await _newPlaylist(context, app);
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-            ),
             body: TabBarView(
               children: [
                 ListView(
@@ -79,10 +51,10 @@ class LibraryPage extends StatelessWidget {
                     const SectionHeader('Yours'),
                     for (final p in own) _PlaylistRow(playlist: p),
                     if (!own.any((p) => p['id'] == favouritesId))
-                      ListTile(
-                        leading: const Cover(icon: Icons.favorite),
-                        title: const Text('Favourites'),
-                        subtitle: const Text('Heart a song to put it here'),
+                      PillTile(
+                        leading: const Cover(icon: Icons.favorite, size: 50, radius: 25),
+                        title: 'Favourites',
+                        subtitle: 'Heart a song to put it here',
                         onTap: () {
                           library.favourites();
                           library.changed();
@@ -113,17 +85,15 @@ class LibraryPage extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 96),
                         children: [
                           for (final u in users)
-                            ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: asString(u['avatar']).isEmpty ? null : NetworkImage(asString(u['avatar'])),
-                                child: asString(u['avatar']).isEmpty ? const Icon(Icons.person) : null,
-                              ),
-                              title: Text(asString(u['name'])),
-                              subtitle: Text([
+                            PillTile(
+                              leading: Cover(url: asString(u['avatar']), icon: Icons.person, size: 50, radius: 25),
+                              title: asString(u['name']),
+                              subtitle: [
                                 asString(u['handle']),
                                 asString(u['language']),
                                 plural(asList(u['playlists']).length, 'playlist'),
-                              ].where((s) => s.isNotEmpty).join(' · ')),
+                              ].where((s) => s.isNotEmpty).join(' · '),
+                              trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
                               onTap: () => openProfile(context, asString(u['id'])),
                             ),
                         ],
@@ -144,17 +114,20 @@ class _PlaylistRow extends StatelessWidget {
     final id = asString(playlist['id']);
     final count = playlist['tracks'] is List ? plural(asList(playlist['tracks']).length, 'song') : 'Not loaded yet';
     final owner = playlist['local'] == true ? '' : asString(playlist['ownerName']);
-    return ListTile(
+    return PillTile(
       leading: Cover(
         url: asString(playlist['thumbnail']),
+        size: 50,
+        radius: 25,
         icon: id == favouritesId
             ? Icons.favorite
             : id == savedId
                 ? Icons.library_music
                 : Icons.queue_music,
       ),
-      title: Text(asString(playlist['title']), maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text([owner, count].where((s) => s.isNotEmpty).join(' · ')),
+      title: asString(playlist['title']),
+      subtitle: [owner, count].where((s) => s.isNotEmpty).join(' · '),
+      trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
       onTap: () => openPlaylist(context, id),
     );
   }
@@ -290,7 +263,6 @@ class _ProfilePageState extends State<ProfilePage> {
         final theme = Theme.of(context);
         return Scaffold(
           appBar: AppBar(
-            title: Text(asString(user['name'])),
             actions: [
               IconButton(
                 tooltip: 'Refresh from YouTube',
@@ -321,42 +293,96 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               if (_syncing) const LinearProgressIndicator(),
-              ListTile(
-                leading: CircleAvatar(
-                  radius: 28,
-                  backgroundImage: asString(user['avatar']).isEmpty ? null : NetworkImage(asString(user['avatar'])),
-                ),
-                title: Text(asString(user['name']), style: theme.textTheme.titleLarge),
-                subtitle: Text([
-                  asString(user['handle']),
-                  if (toInt(user['followers']) != null) '${shortCount(toInt(user['followers'])!)} subscribers',
-                ].where((s) => s.isNotEmpty).join(' · ')),
-              ),
+              _ProfileHeader(user: user, playlists: playlists),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Text('Save playlists to put them on your shelves and in mixes.'),
               ),
               for (final p in playlists)
-                ListTile(
-                  leading: Cover(url: asString(p['thumbnail'])),
-                  title: Text(asString(p['title']), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(p['tracks'] is List ? plural(asList(p['tracks']).length, 'song') : 'Not loaded yet'),
+                PillTile(
+                  leading: Cover(url: asString(p['thumbnail']), size: 50, radius: 25),
+                  title: asString(p['title']),
+                  subtitle: p['tracks'] is List ? plural(asList(p['tracks']).length, 'song') : 'Not loaded yet',
                   onTap: () => openPlaylist(context, asString(p['id'])),
-                  trailing: IconButton(
-                    tooltip: p['saved'] == true ? 'Take off the shelves' : 'Save',
-                    icon: Icon(p['saved'] == true ? Icons.bookmark : Icons.bookmark_add_outlined,
-                        color: p['saved'] == true ? theme.colorScheme.primary : null),
-                    onPressed: () {
-                      final id = asString(p['id']);
-                      final saving = p['saved'] != true;
-                      library.setSaved(id, saving);
-                      library.changed();
-                      if (saving && !library.fetched(id)) fire(attempt(app, () => app.fetchPlaylist(id)));
-                    },
-                  ),
+                  trailing: [
+                    IconButton(
+                      tooltip: p['saved'] == true ? 'Take off the shelves' : 'Save',
+                      icon: Icon(p['saved'] == true ? Icons.bookmark : Icons.bookmark_add_outlined,
+                          color: p['saved'] == true ? theme.colorScheme.primary : null),
+                      onPressed: () {
+                        final id = asString(p['id']);
+                        final saving = p['saved'] != true;
+                        library.setSaved(id, saving);
+                        library.changed();
+                        if (saving && !library.fetched(id)) fire(attempt(app, () => app.fetchPlaylist(id)));
+                      },
+                    ),
+                  ],
                 ),
             ],
           ),
         );
       });
+}
+
+/// A profile's picture glowing in the theme's colour, its name, and its
+/// numbers in a glass strip.
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.user, required this.playlists});
+  final Json user;
+  final List<Json> playlists;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final followers = toInt(user['followers']);
+    final stats = [
+      if (followers != null) (shortCount(followers), 'subscribers'),
+      (playlists.length.toString(), 'playlists'),
+      (playlists.where((p) => p['saved'] == true).length.toString(), 'saved'),
+    ];
+    final muted = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: tileColours(scheme, 0)),
+              boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.45), blurRadius: 36)],
+            ),
+            child: Cover(url: asString(user['avatar']), icon: Icons.person, size: 104, radius: 52),
+          ),
+          const SizedBox(height: 14),
+          Text(asString(user['name']),
+              textAlign: TextAlign.center, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
+          if (asString(user['handle']).isNotEmpty) Text(asString(user['handle']), style: muted),
+          const SizedBox(height: 16),
+          Glass(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  for (final (i, (number, label)) in stats.indexed) ...[
+                    if (i > 0) VerticalDivider(width: 1, color: scheme.glassEdge),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(number, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(label, style: muted),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
