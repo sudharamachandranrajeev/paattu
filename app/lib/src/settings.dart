@@ -242,6 +242,14 @@ class Settings extends ChangeNotifier {
   bool get videoBackground => _data['videoBackground'] != false;
   set videoBackground(bool on) => _set('videoBackground', on);
 
+  /// Seconds one song fades into the next (0 for none).
+  int get crossfade => (toInt(_data['crossfade']) ?? 3).clamp(0, 12);
+  set crossfade(int seconds) => _set('crossfade', seconds.clamp(0, 12));
+
+  /// When the queue runs out, carry on with songs like the last one.
+  bool get autoRadio => _data['autoRadio'] != false;
+  set autoRadio(bool on) => _set('autoRadio', on);
+
   /// What was searched lately, newest first.
   List<String> get recentSearches => asStrings(_data['recentSearches']);
 

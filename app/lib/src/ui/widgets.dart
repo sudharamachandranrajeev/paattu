@@ -262,6 +262,15 @@ Future<void> showTrackMenu(BuildContext context, Json track, {String? playlistId
               },
             ),
             ListTile(
+              leading: const Icon(Icons.radio),
+              title: const Text('Start radio'),
+              subtitle: const Text('This song, then songs like it'),
+              onTap: () {
+                Navigator.pop(sheet);
+                fire(app.player.startRadio(track));
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.playlist_play),
               title: const Text('Play next'),
               onTap: () {

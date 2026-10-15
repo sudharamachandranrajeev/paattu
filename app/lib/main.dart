@@ -11,9 +11,12 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'src/app_state.dart';
+import 'src/history.dart';
 import 'src/library.dart';
 import 'src/log.dart';
 import 'src/player/paattu_audio_handler.dart';
+import 'src/player/song_cache.dart';
+import 'src/radio.dart';
 import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
 import 'src/ui/shell.dart';
@@ -53,7 +56,8 @@ Future<void> main() async {
       header: 'Paattu $appVersion on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}'));
   final library = Library(File('${dir.path}${Platform.pathSeparator}library.json'));
   final settings = Settings(File('${dir.path}${Platform.pathSeparator}settings.json'));
-  await Future.wait([library.load(), settings.load()]);
+  final history = History(File('${dir.path}${Platform.pathSeparator}history.json'));
+  await Future.wait([library.load(), settings.load(), history.load()]);
   jiosaavnSaveData = settings.saveData;
 
   final player = await _player();
@@ -66,8 +70,24 @@ Future<void> main() async {
   if (desktop && playbackUnavailable == null) await player.setVolume(settings.volume);
   // (On Android it waits for the first song, which brings the equaliser.)
   fire(player.setSound(settings.sound));
+  final songs = SongCache(Directory('${(await getTemporaryDirectory()).path}${Platform.pathSeparator}paattu-songs'));
+  fire(songs.start());
+  player
+    ..cache = songs
+    ..radioSongs = SongRadio(history).next
+    ..onPlayed = ((track, heard, length) => history.played(track, heard, length: length));
+  void playback() {
+    jiosaavnSaveData = settings.saveData;
+    player
+      ..crossfade = settings.crossfade
+      ..autoRadio = settings.autoRadio
+      ..cacheAhead = !settings.saveData;
+  }
 
-  runApp(PaattuApp(state: AppState(library, settings, player)));
+  playback();
+  settings.addListener(playback);
+
+  runApp(PaattuApp(state: AppState(library, settings, player, history)));
   final problem = playbackUnavailable;
   if (problem != null) fire(Future.delayed(const Duration(seconds: 1), () => player.messages.add(problem)));
 }

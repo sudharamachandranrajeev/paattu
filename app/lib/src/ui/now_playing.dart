@@ -500,6 +500,7 @@ class _Dome extends StatelessWidget {
                         if (target != null) app.addToPlaylist(target, [track]);
                       },
                     ),
+                    RadioButton(track: track),
                     IconButton(
                       tooltip: 'Queue',
                       icon: const Icon(Icons.queue_music),
@@ -521,6 +522,39 @@ class _Dome extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Start the radio of [track] (songs like it, without end), or stop it.
+class RadioButton extends StatelessWidget {
+  const RadioButton({super.key, required this.track});
+  final Json track;
+
+  @override
+  Widget build(BuildContext context) {
+    final app = Paattu.of(context);
+    final player = app.player;
+    return StreamBuilder<Json?>(
+      stream: player.radio,
+      initialData: player.radio.value,
+      builder: (context, snapshot) {
+        final on = snapshot.data != null;
+        return IconButton(
+          tooltip: on ? 'Radio of ${trackTitle(snapshot.data!)}: tap to stop' : 'Start radio',
+          isSelected: on,
+          icon: const Icon(Icons.radio_outlined),
+          selectedIcon: Icon(Icons.radio, color: Theme.of(context).colorScheme.primary),
+          onPressed: () {
+            if (on) {
+              player.stopRadio();
+              app.toast('Radio off');
+            } else {
+              fire(player.startRadio(track));
+            }
+          },
+        );
+      },
     );
   }
 }

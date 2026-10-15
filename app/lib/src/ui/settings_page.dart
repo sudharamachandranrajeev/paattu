@@ -118,6 +118,44 @@ class SettingsPage extends StatelessWidget {
                   onTap: () => openSound(context),
                 ),
               ]),
+              const SectionHeader('Playback'),
+              GlassGroup(children: [
+                ListTile(
+                  leading: const Icon(Icons.compare_arrows),
+                  title: const Text('Crossfade'),
+                  subtitle: Text(settings.crossfade == 0
+                      ? 'Off: each song starts as the last one ends'
+                      : 'Each song fades into the next over ${plural(settings.crossfade, 'second')}'),
+                ),
+                Slider(
+                  value: settings.crossfade.toDouble(),
+                  max: 12,
+                  divisions: 12,
+                  label: settings.crossfade == 0 ? 'Off' : '${settings.crossfade} s',
+                  onChanged: (v) => settings.crossfade = v.round(),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.radio),
+                  title: const Text('Auto radio'),
+                  subtitle: const Text('When the songs you picked run out, carry on with songs like them'),
+                  value: settings.autoRadio,
+                  onChanged: (on) => settings.autoRadio = on,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text('Forget what I played'),
+                  subtitle: const Text('The play history the daily, weekly and monthly playlists are made from'),
+                  onTap: () async {
+                    if (await confirm(context,
+                        title: 'Forget the play history?',
+                        body: 'The playlists made for you start again from your favourites.',
+                        action: 'Forget')) {
+                      app.history.clear();
+                      app.toast('Forgot the play history');
+                    }
+                  },
+                ),
+              ]),
               const SectionHeader('Now Playing'),
               GlassGroup(children: [
                 SwitchListTile(
@@ -152,7 +190,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 SwitchListTile(
                   title: const Text('Save data'),
-                  subtitle: const Text('Stream JioSaavn songs at 128 kbps instead of 320'),
+                  subtitle: const Text("Stream JioSaavn songs at 128 kbps instead of 320, and don't download the next songs ahead"),
                   value: settings.saveData,
                   onChanged: (on) {
                     settings.saveData = on;

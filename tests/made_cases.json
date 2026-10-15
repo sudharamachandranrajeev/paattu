@@ -1,0 +1,150 @@
+{
+ "period": [
+  {
+   "kind": "daily",
+   "date": "2026-10-15",
+   "key": "2026-10-15"
+  },
+  {
+   "kind": "weekly",
+   "date": "2026-10-15",
+   "key": "2026-W42"
+  },
+  {
+   "kind": "weekly",
+   "date": "2026-01-01",
+   "key": "2026-W01"
+  },
+  {
+   "kind": "weekly",
+   "date": "2027-01-01",
+   "key": "2026-W53"
+  },
+  {
+   "kind": "weekly",
+   "date": "2024-12-30",
+   "key": "2025-W01"
+  },
+  {
+   "kind": "weekly",
+   "date": "2026-10-18",
+   "key": "2026-W42"
+  },
+  {
+   "kind": "monthly",
+   "date": "2026-10-15",
+   "key": "2026-10"
+  },
+  {
+   "kind": "monthly",
+   "date": "2027-01-03",
+   "key": "2027-01"
+  }
+ ],
+ "describe": [
+  {
+   "text": "songs from Premam, rain songs and Ilaiyaraaja",
+   "phrases": [
+    "Premam",
+    "rain songs",
+    "Ilaiyaraaja"
+   ]
+  },
+  {
+   "text": "A playlist of Vidyasagar melodies with K. S. Chithra",
+   "phrases": [
+    "Vidyasagar melodies",
+    "K. S. Chithra"
+   ]
+  },
+  {
+   "text": "best songs of A. R. Rahman; 90s Tamil hits / kuthu",
+   "phrases": [
+    "A. R. Rahman",
+    "90s Tamil hits",
+    "kuthu"
+   ]
+  },
+  {
+   "text": "Rain songs, rain songs, RAIN SONGS",
+   "phrases": [
+    "Rain songs"
+   ]
+  },
+  {
+   "text": "one, two, three, four, five, six, seven",
+   "phrases": [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six"
+   ]
+  },
+  {
+   "text": "Top hits from Bangalore Days\n  Ustad Hotel  ",
+   "phrases": [
+    "Bangalore Days",
+    "Ustad Hotel"
+   ]
+  },
+  {
+   "text": "   ",
+   "phrases": []
+  }
+ ],
+ "daily": {
+  "familiar": [
+   {
+    "id": "f1",
+    "title": "F one"
+   },
+   {
+    "id": "f2",
+    "title": "F two"
+   },
+   {
+    "id": "f3",
+    "title": "F three"
+   },
+   {
+    "id": "f4",
+    "title": "F four"
+   },
+   {
+    "id": "f5",
+    "title": "F five"
+   }
+  ],
+  "fresh": [
+   {
+    "id": "n1",
+    "title": "N one"
+   },
+   {
+    "id": "x2",
+    "title": "F three"
+   },
+   {
+    "id": "n3",
+    "title": "N three"
+   },
+   {
+    "id": "n4",
+    "title": "N four"
+   }
+  ],
+  "size": 8,
+  "ids": [
+   "f1",
+   "f2",
+   "n1",
+   "f3",
+   "f4",
+   "n3",
+   "f5",
+   "n4"
+  ]
+ }
+}

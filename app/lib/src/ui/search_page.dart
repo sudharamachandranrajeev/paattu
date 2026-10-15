@@ -378,7 +378,10 @@ class _FeedView extends StatelessWidget {
                   return TrackTile(
                     track: items[i - 1],
                     playingId: playingId,
-                    onTap: () => fire(app.player.playTracks(List.of(items), start: i - 1)),
+                    // The song, then its radio (or, without auto radio, the songs found after it).
+                    onTap: () => fire(app.settings.autoRadio
+                        ? app.player.playTrack(items[i - 1])
+                        : app.player.playTracks(List.of(items), start: i - 1)),
                   );
                 },
               ),

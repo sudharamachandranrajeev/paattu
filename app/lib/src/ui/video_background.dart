@@ -76,7 +76,7 @@ class _SongVideoState extends State<SongVideo> {
     final playback = _Playback.of(video);
     try {
       // Loading takes a moment, which the music plays on through.
-      final music = _player.player.position;
+      final music = _player.position;
       await playback
           .open(_player.playing ? music + const Duration(milliseconds: 1500) : music, play: _player.playing)
           .timeout(const Duration(seconds: 20));
@@ -90,7 +90,7 @@ class _SongVideoState extends State<SongVideo> {
       return;
     }
     _playback = playback;
-    _rate = _player.player.speed;
+    _rate = _player.speed;
     if (_rate != 1) await playback.setRate(_rate);
     _playing = _player.playingStream.listen((on) => fire(on ? playback.play() : playback.pause()));
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _keepInStep());
@@ -103,14 +103,14 @@ class _SongVideoState extends State<SongVideo> {
   void _keepInStep() {
     final playback = _playback;
     if (playback == null) return;
-    final music = _player.player.position;
+    final music = _player.position;
     final length = playback.duration;
     final over = length > Duration.zero && music >= length;
     if (over == _shown) setState(() => _shown = !over);
     if (over) return;
     // Android pauses and resumes videos with the app, whatever the music did.
     if (playback.playing != _player.playing) fire(_player.playing ? playback.play() : playback.pause());
-    final rate = _player.player.speed;
+    final rate = _player.speed;
     if (rate != _rate) {
       _rate = rate;
       fire(playback.setRate(rate));

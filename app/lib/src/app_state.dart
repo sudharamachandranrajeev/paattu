@@ -6,24 +6,28 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'history.dart';
 import 'library.dart';
 import 'log.dart';
 import 'links.dart';
+import 'made.dart';
 import 'player/paattu_audio_handler.dart';
 import 'settings.dart';
 import 'sources/youtube.dart';
 import 'track.dart';
 import 'util.dart';
 
-const appVersion = '0.5.1';
+const appVersion = '0.6.0';
 const repoUrl = 'https://github.com/sudharamachandranrajeev/paattu';
 
 class AppState {
-  AppState(this.library, this.settings, this.player);
+  AppState(this.library, this.settings, this.player, this.history) : made = MadeForYou(history, library);
 
   final Library library;
   final Settings settings;
   final PaattuAudioHandler player;
+  final History history;
+  final MadeForYou made;
   final messenger = GlobalKey<ScaffoldMessengerState>();
   final navigator = GlobalKey<NavigatorState>();
 

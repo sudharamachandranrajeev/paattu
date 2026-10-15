@@ -1,5 +1,5 @@
-// Home: a big card that shuffles your first mix, the mixes as bright tiles,
-// a few of your favourites, your playlists and the saved YouTube playlists
+// Home: a big card that shuffles your first mix, the playlists made for you
+// and the mixes as bright tiles, a few of your favourites, your playlists and the saved YouTube playlists
 // by language.
 
 import 'package:flutter/material.dart';
@@ -9,6 +9,7 @@ import '../library.dart';
 import '../util.dart';
 import 'glass.dart';
 import 'library_page.dart';
+import 'made_page.dart';
 import 'mix_editor.dart';
 import 'playlist_page.dart';
 import 'widgets.dart';
@@ -49,6 +50,8 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               _Hero(app: app, onSearch: onSearch),
+              const SectionHeader('Made for you'),
+              const MadeForYouShelf(),
               const SectionHeader('Mixes'),
               _Mixes(app: app),
               if (empty)

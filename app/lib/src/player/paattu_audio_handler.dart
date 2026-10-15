@@ -1,8 +1,12 @@
 // The player: a queue of songs (library JSON maps), streamed one at a time.
-// Stream links are found just before a song plays (they expire), the next
-// song's link is fetched while this one plays, and a stream that fails is
-// tried again another way, then as the same song on another site, before
-// the song is skipped with the reason why.
+// Stream links are found just before a song plays (they expire); the next two
+// songs are fetched (and downloaded, song_cache.dart) while this one plays,
+// and a stream that fails is tried again another way, then as the same song
+// on another site, before the song is skipped with the reason why.
+//
+// There are two players ("decks"): the next song gets ready on the other one
+// before this one ends, so it starts at once, and the two cross-fade. When
+// the queue runs low, the radio (radio.dart) adds songs like the one playing.
 //
 // On Android this is the audio_service handler behind the media
 // notification and lock screen; on the desktop it is used directly.
@@ -24,6 +28,7 @@ import '../titles.dart';
 import '../track.dart';
 import '../util.dart';
 import 'reasons.dart';
+import 'song_cache.dart';
 
 /// Why this device can't play (libmpv didn't load on the desktop), or null.
 /// The app still opens; picking a song shows this instead.
@@ -31,31 +36,59 @@ String? playbackUnavailable;
 
 class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   PaattuAudioHandler() {
-    // Errors are handled from errorStream; this one only reports state.
-    _player.playbackEventStream.listen(_broadcast, onError: (Object _, StackTrace _) {});
-    _player.playingStream.listen((_) => _broadcast(_player.playbackEvent));
-    _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) unawaited(_completed());
-    });
-    _player.errorStream.listen(_failed);
-    _player.durationStream.listen((duration) {
-      final item = mediaItem.value;
-      if (item != null && duration != null && item.duration != duration) {
-        mediaItem.add(item.copyWith(duration: duration));
-      }
-    });
+    for (final deck in _decks) {
+      final p = deck.player;
+      // Errors are handled from errorStream; this one only reports state.
+      p.playbackEventStream.listen((event) {
+        if (deck == _deck) _broadcast(event);
+      }, onError: (Object _, StackTrace _) {});
+      p.playingStream.listen((_) {
+        if (deck == _deck) _broadcast(p.playbackEvent);
+      });
+      p.processingStateStream.listen((state) {
+        if (state == ProcessingState.completed && deck == _deck) unawaited(_completed());
+      });
+      p.errorStream.listen((error) => _deckFailed(deck, error));
+      p.durationStream.listen((duration) {
+        final item = mediaItem.value;
+        if (deck == _deck && item != null && duration != null && item.duration != duration) {
+          mediaItem.add(item.copyWith(duration: duration));
+        }
+      });
+    }
+    Timer.periodic(_tickEvery, (_) => _tick());
   }
 
-  // Android's own equaliser and loudness enhancer carry the sound settings
-  // there; the desktop's libmpv gets them as audio filters instead.
-  final AndroidEqualizer? _equalizer = Platform.isAndroid ? AndroidEqualizer() : null;
-  final AndroidLoudnessEnhancer? _loudness = Platform.isAndroid ? AndroidLoudnessEnhancer() : null;
-  late final _player = AudioPlayer(
-    useProxyForRequestHeaders: false,
-    audioPipeline: _equalizer == null ? null : AudioPipeline(androidAudioEffects: [_equalizer, _loudness!]),
-  );
+  final _decks = [_Deck(), _Deck()];
+  int _live = 0;
+
+  /// The deck playing (the one the controls and the screen follow), and the
+  /// other, where the next song gets ready.
+  _Deck get _deck => _decks[_live];
+  _Deck get _spare => _decks[1 - _live];
+  late final _liveDeck = BehaviorSubject<_Deck>.seeded(_deck);
+  AudioPlayer get _player => _deck.player;
+
   Sound _sound = const Sound();
   final _random = Random();
+  double _volume = 1;
+  final _volumes = BehaviorSubject<double>.seeded(1);
+
+  /// Seconds the songs overlap, fading one into the next (0 for none).
+  int crossfade = 3;
+
+  /// Download the next songs while this one plays (off to save data).
+  bool cacheAhead = true;
+  SongCache? cache;
+
+  /// Carry on with songs like the last one when the queue runs out.
+  bool autoRadio = true;
+
+  /// Songs like a song, for the radio (radio.dart's SongRadio.next).
+  Future<List<Json>> Function(Json station, List<Json> queue)? radioSongs;
+
+  /// A song was played (or skipped): how many seconds of how long it is.
+  void Function(Json track, int heard, int? length)? onPlayed;
 
   /// Songs in play order, and where the queue was before shuffling.
   final List<Json> _queue = [];
@@ -77,6 +110,26 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   int _generation = 0;
   bool _loading = false;
 
+  /// The next song, loading or loaded on the spare deck; the last song tried
+  /// there (a song that wouldn't get ready isn't tried again).
+  _Ready? _ready;
+  Json? _triedReady;
+
+  /// The deck fading out, and the fade's number.
+  _Deck? _fadingOut;
+  int _fade = 0;
+
+  /// The song being listened to, and for how long.
+  Json? _heardTrack;
+  Duration _heard = Duration.zero;
+  int? _heardLength;
+
+  /// The radio's song (null when the radio is off); whether it was turned
+  /// off for this queue; the station whose songs are being fetched.
+  final radio = BehaviorSubject<Json?>.seeded(null);
+  bool _radioStopped = false;
+  Json? _extendingFor;
+
   /// The song playing (or loading), with the stream's quality.
   final current = BehaviorSubject<Json?>.seeded(null);
   final quality = BehaviorSubject<String>.seeded('');
@@ -89,14 +142,15 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   int get index => _index;
   bool get shuffleOn => _shuffle;
   AudioServiceRepeatMode get repeat => _repeat;
-  AudioPlayer get player => _player;
-  Stream<Duration> get positionStream => _player.positionStream;
-  Stream<Duration> get bufferedStream => _player.bufferedPositionStream;
-  Stream<Duration?> get durationStream => _player.durationStream;
-  Stream<bool> get playingStream => _player.playingStream;
+  Duration get position => _player.position;
+  double get speed => _player.speed;
+  Stream<Duration> get positionStream => _liveDeck.switchMap((d) => d.player.positionStream);
+  Stream<Duration> get bufferedStream => _liveDeck.switchMap((d) => d.player.bufferedPositionStream);
+  Stream<Duration?> get durationStream => _liveDeck.switchMap((d) => d.player.durationStream);
+  Stream<bool> get playingStream => _liveDeck.switchMap((d) => d.player.playingStream);
   bool get playing => _player.playing;
-  double get volume => _player.volume;
-  Stream<double> get volumeStream => _player.volumeStream;
+  double get volume => _volume;
+  Stream<double> get volumeStream => _volumes.stream;
 
   // ---------------------------------------------------------------- the queue
 
@@ -118,6 +172,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       _shuffle = true;
       at = 0;
     }
+    // A new queue: the radio starts again when it runs low (auto radio).
+    radio.add(null);
+    _radioStopped = false;
     _publishQueue();
     await _playAt(at);
   }
@@ -191,6 +248,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _publishQueue() {
+    _checkReady();
     queueTracks.add(List.unmodifiable(_queue));
     queue.add([for (final t in _queue) _mediaItem(t)]);
     _broadcast(_player.playbackEvent);
@@ -218,18 +276,25 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       messages.add(problem);
       return;
     }
+    _endFade();
     final generation = ++_generation;
-    _index = index;
     final track = _queue[index];
     // A new song (or the same one picked again) starts with its own stream;
     // resuming one that broke part way carries on with the next way.
-    if (!identical(track, _waysFor) || from == null) {
-      _waysFor = track;
-      _ways = [for (var a = 0; a < streamAttempts(track); a++) _Way(track, a)];
-      _way = 0;
-      _lookedElsewhere = false;
-      _firstReason = null;
+    final resuming = from != null && identical(track, _waysFor);
+    if (!resuming) {
+      _listened();
+      _startWays(track);
     }
+    _index = index;
+    // Ready on the other deck: it starts at once.
+    final ready = _ready;
+    if (!resuming && ready != null && ready.loaded && identical(ready.track, track)) {
+      _ready = null;
+      await _swapTo(ready, play: autoplay);
+      return;
+    }
+    _dropReady();
     current.add(track);
     quality.add('');
     mediaItem.add(_mediaItem(track));
@@ -237,6 +302,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     loading.add(true);
     _broadcast(_player.playbackEvent);
 
+    final deck = _deck;
     while (true) {
       if (_way >= _ways.length) {
         if (!_lookedElsewhere) {
@@ -262,33 +328,254 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       try {
         stream = await _resolve(way.track, way.attempt);
         if (generation != _generation) return;
-        await _player
-            .setAudioSource(
-              AudioSource.uri(stream.uri, headers: stream.headers, tag: trackId(track)),
-              initialPosition: from,
-            )
+        await deck.player
+            .setAudioSource(_source(deck, way, stream), initialPosition: from)
             .timeout(const Duration(seconds: 15));
         if (generation != _generation) return;
-        quality.add(stream.label);
-        mediaItem.add(_mediaItem(track, _player.duration).copyWith(extras: {'quality': stream.label}));
+        _loaded(deck);
+        await deck.player.setVolume(_volume);
+        _showSong(track, stream.label);
         _loading = false;
         loading.add(false);
         _failures = 0;
-        problemLog.info('playing ${_describe(track)}: ${way.describe}, ${stream.label}, ${stream.uri.host}');
-        if (autoplay) unawaited(_player.play());
-        _broadcast(_player.playbackEvent);
-        unawaited(_prefetch());
+        problemLog.info('playing ${_describe(track)}: ${way.describe}, ${stream.label}, '
+            '${deck.cached != null ? 'downloaded' : stream.uri.host}');
+        if (autoplay) unawaited(deck.player.play());
+        _broadcast(deck.player.playbackEvent);
+        _started();
         return;
       } on PlayerInterruptedException {
         return; // another song was picked meanwhile
       } catch (error, stack) {
         if (generation != _generation) return;
+        // A downloaded file that won't play: stream the song instead.
+        if (_dropCached(deck)) continue;
         _streams.remove(_streamKey(way.track));
         await _noteFailure(track, way, error, stack, stream);
         if (generation != _generation) return;
         _way++;
       }
     }
+  }
+
+  void _startWays(Json track) {
+    _waysFor = track;
+    _ways = [for (var a = 0; a < streamAttempts(track); a++) _Way(track, a)];
+    _way = 0;
+    _lookedElsewhere = false;
+    _firstReason = null;
+  }
+
+  /// What [deck] should play for [way]: the song's download, if it has one,
+  /// or its stream.
+  AudioSource _source(_Deck deck, _Way way, ResolvedStream stream) {
+    final key = _streamKey(way.track);
+    final file = way.attempt == 0 ? cache?.file(key) : null;
+    deck.cached = file == null ? null : key;
+    return file != null
+        ? AudioSource.file(file.path, tag: trackId(way.track))
+        : AudioSource.uri(stream.uri, headers: stream.headers, tag: trackId(way.track));
+  }
+
+  /// Forget the download [deck] was playing (it wouldn't play). Whether it
+  /// was playing one.
+  bool _dropCached(_Deck deck) {
+    final key = deck.cached;
+    if (key == null) return false;
+    deck.cached = null;
+    cache?.drop(key);
+    problemLog.warn('the download of $key would not play; streaming it');
+    return true;
+  }
+
+  /// A deck that has played a song has the phone's equaliser: give it the sound.
+  void _loaded(_Deck deck) {
+    if (deck.loaded) return;
+    deck.loaded = true;
+    if (deck.equalizer != null) unawaited(_phoneSound(deck).catchError((Object e) => problemLog.warn('equaliser: $e')));
+  }
+
+  void _showSong(Json track, String label) {
+    current.add(track);
+    quality.add(label);
+    mediaItem.add(_mediaItem(track, _player.duration).copyWith(extras: {'quality': label}));
+    if (!identical(_heardTrack, track)) {
+      _heardTrack = track;
+      _heard = Duration.zero;
+      _heardLength = toInt(track['duration']);
+    }
+  }
+
+  /// A song started: more radio songs if the queue is running low, and the
+  /// next songs fetched a few seconds in (once this one has what it needs).
+  void _started() {
+    unawaited(_extendRadio());
+    final generation = _generation;
+    unawaited(Future<void>.delayed(const Duration(seconds: 4), () async {
+      if (generation == _generation) await _prefetch();
+    }));
+  }
+
+  /// Play the song made ready on the spare deck, at once or fading in.
+  Future<void> _swapTo(_Ready ready, {required bool play, bool fade = false}) async {
+    final old = _deck, next = ready.deck;
+    _live = _decks.indexOf(next);
+    _liveDeck.add(next);
+    _loading = false;
+    loading.add(false);
+    _failures = 0;
+    _showSong(ready.track, ready.label);
+    problemLog.info('playing ${_describe(ready.track)} (ready${fade ? ', fading in' : ''}): ${ready.label}');
+    if (fade) {
+      _fadeIn(old, next);
+    } else {
+      await next.player.setVolume(_volume);
+      unawaited(old.player.stop());
+      if (play) unawaited(next.player.play());
+    }
+    _broadcast(next.player.playbackEvent);
+    _started();
+  }
+
+  /// The two decks overlap for [crossfade] seconds, one fading out as the
+  /// other fades in (equal power, so the sound doesn't dip).
+  void _fadeIn(_Deck old, _Deck next) {
+    final fade = ++_fade;
+    _fadingOut = old;
+    final total = max(1, crossfade) * 1000;
+    unawaited(() async {
+      await next.player.setVolume(0);
+      if (fade != _fade) return; // paused or moved on already
+      unawaited(next.player.play());
+      final clock = Stopwatch()..start();
+      while (fade == _fade) {
+        final t = (clock.elapsedMilliseconds / total).clamp(0.0, 1.0);
+        await Future.wait([
+          old.player.setVolume(_volume * cos(t * pi / 2)),
+          next.player.setVolume(_volume * sin(t * pi / 2)),
+        ]);
+        if (t >= 1) break;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      if (fade == _fade) _endFade();
+    }());
+  }
+
+  /// Finish a fade now: the old song stops, the new one at full volume.
+  void _endFade() {
+    final old = _fadingOut;
+    if (old == null) return;
+    _fade++;
+    _fadingOut = null;
+    unawaited(old.player.stop());
+    unawaited(_player.setVolume(_volume));
+  }
+
+  static const _tickEvery = Duration(milliseconds: 250);
+
+  /// Four times a second: count what's heard, get the next song ready 25
+  /// seconds before this one ends, and start the cross-fade.
+  void _tick() {
+    final deck = _deck, player = deck.player;
+    if (_loading || _index < 0 || !player.playing) return;
+    if (player.processingState == ProcessingState.ready && identical(_heardTrack, current.value)) {
+      _heard += _tickEvery;
+    }
+    final duration = player.duration;
+    if (duration == null || duration <= Duration.zero) return;
+    _heardLength = duration.inSeconds;
+    final left = duration - player.position;
+    final next = _nextIndex();
+    if (next == null || _fadingOut != null) return;
+    if (_ready == null && left <= const Duration(seconds: 25) && !identical(_triedReady, _queue[next])) {
+      unawaited(_prepare(next));
+    }
+    final ready = _ready;
+    final fade = Duration(seconds: crossfade);
+    if (crossfade > 0 && ready != null && ready.loaded && ready.index == next && left <= fade && duration > fade * 3) {
+      _ready = null;
+      _listened();
+      _generation++;
+      _index = next;
+      _startWays(ready.track);
+      unawaited(_swapTo(ready, play: true, fade: true));
+    }
+  }
+
+  /// Load the song at [index] on the spare deck, ready to play.
+  Future<void> _prepare(int index) async {
+    final track = _queue[index];
+    final deck = _spare;
+    final ready = _ready = _Ready(index, track, deck);
+    _triedReady = track;
+    final way = _Way(track, 0);
+    try {
+      final stream = await _resolve(track, 0);
+      if (_ready != ready) return;
+      await deck.player.setVolume(0);
+      await deck.player.setAudioSource(_source(deck, way, stream)).timeout(const Duration(seconds: 15));
+      if (_ready != ready) return;
+      _loaded(deck);
+      ready
+        ..label = stream.label
+        ..loaded = true;
+    } on PlayerInterruptedException {
+      // dropped meanwhile
+    } catch (error) {
+      if (_ready != ready) return;
+      // It gets the usual tries when its turn comes.
+      problemLog.warn('getting ${_describe(track)} ready: ${errorText(error)}');
+      _dropCached(deck);
+      _dropReady();
+      _triedReady = track;
+    }
+  }
+
+  /// Forget the song readied on the spare deck (the queue changed).
+  void _dropReady() {
+    final ready = _ready;
+    _ready = null;
+    _triedReady = null;
+    if (ready != null && ready.deck != _deck && ready.deck != _fadingOut) unawaited(ready.deck.player.stop());
+  }
+
+  /// Whether the song readied is still the next one.
+  void _checkReady() {
+    final ready = _ready;
+    if (ready == null) return;
+    final next = _nextIndex();
+    if (next != ready.index || !identical(_queue[next!], ready.track)) _dropReady();
+  }
+
+  /// Where the queue goes after this song on its own, or null.
+  int? _nextIndex() {
+    if (_index < 0 || _repeat == AudioServiceRepeatMode.one) return null;
+    if (_index + 1 < _queue.length) return _index + 1;
+    return _repeat == AudioServiceRepeatMode.all && _queue.length > 1 ? 0 : null;
+  }
+
+  /// The next [count] songs to play.
+  List<Json> _upcoming(int count) {
+    if (_index < 0 || _repeat == AudioServiceRepeatMode.one) return const [];
+    final out = <Json>[];
+    for (var i = 1; i <= count && i < _queue.length; i++) {
+      var at = _index + i;
+      if (at >= _queue.length) {
+        if (_repeat != AudioServiceRepeatMode.all) break;
+        at -= _queue.length;
+      }
+      out.add(_queue[at]);
+    }
+    return out;
+  }
+
+  /// The song just played (or skipped) goes into the history.
+  void _listened() {
+    final track = _heardTrack;
+    final heard = _heard.inSeconds;
+    _heardTrack = null;
+    _heard = Duration.zero;
+    if (track != null && heard > 0) onPlayed?.call(track, heard, _heardLength);
   }
 
   /// Log why [way] failed, and keep the first reason to tell the person.
@@ -310,31 +597,37 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<ResolvedStream> _resolve(Json track, int attempt) async {
     final key = _streamKey(track);
     final known = _streams[key];
-    if (attempt == 0 && known != null && known.fresh) return known;
+    // A downloaded song doesn't need a fresh link.
+    if (attempt == 0 && known != null && (known.fresh || cache?.file(key) != null)) return known;
     final stream = await streamFor(track, attempt: attempt).timeout(const Duration(seconds: 12));
     _streams[key] = stream;
     return stream;
   }
 
-  /// Find the next song's stream while this one plays.
+  /// Find the next two songs' streams while this one plays, and download
+  /// them (one at a time) unless saving data.
   Future<void> _prefetch() async {
-    final next = _index + 1 < _queue.length ? _queue[_index + 1] : null;
-    if (next == null) return;
-    final known = _streams[_streamKey(next)];
-    if (known != null && known.fresh) return;
-    try {
-      _streams[_streamKey(next)] = await streamFor(next).timeout(const Duration(seconds: 12));
-    } catch (error) {
-      // it gets another go when it plays
-      problemLog.warn('prefetch ${_describe(next)}: $error');
+    final generation = _generation;
+    for (final next in _upcoming(2)) {
+      if (generation != _generation) return;
+      try {
+        final stream = await _resolve(next, 0);
+        final songs = cache;
+        if (cacheAhead && songs != null) await songs.fetch(_streamKey(next), stream);
+      } catch (error) {
+        // it gets another go when it plays
+        problemLog.warn('prefetch ${_describe(next)}: ${errorText(error)}');
+      }
     }
   }
 
   Future<void> _skipBroken(Json track) async {
     _failures++;
+    // A song picked on its own that won't play still gets its radio.
+    if (_failures < 5) await _extendRadio();
     final reason = _firstReason ?? "it wouldn't load";
-    final stopping = _failures >= 5 || _queue.length <= 1 ||
-        (_index + 1 >= _queue.length && _repeat != AudioServiceRepeatMode.all);
+    final next = _index + 1 < _queue.length ? _index + 1 : (_repeat == AudioServiceRepeatMode.all ? 0 : null);
+    final stopping = _failures >= 5 || _queue.length <= 1 || next == null;
     if (_failures >= 5) {
       messages.add("Stopped: $_failures songs in a row wouldn't play (the last because $reason). "
           'Settings > Problem log has the details');
@@ -348,20 +641,34 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       _broadcast(_player.playbackEvent);
       return;
     }
-    await _playAt(_index + 1 < _queue.length ? _index + 1 : 0);
+    await _playAt(next);
+  }
+
+  void _deckFailed(_Deck deck, Object error) {
+    if (deck == _deck) return _failed(error);
+    final ready = _ready;
+    if (ready != null && ready.deck == deck) {
+      problemLog.warn('getting ${_describe(ready.track)} ready: ${errorText(error)}');
+      _dropCached(deck);
+      _dropReady();
+      _triedReady = ready.track;
+    }
+    // (A song fading out that breaks just stops sooner.)
   }
 
   /// A stream that stopped working part way: try the next way from where it
-  /// got to.
+  /// got to (or, for a download, stream the same way).
   void _failed(Object error) {
     if (_loading || _index < 0 || _index >= _queue.length) return;
     final track = _queue[_index];
     final at = _player.position;
     final way = _way < _ways.length ? _ways[_way] : _Way(track, 0);
-    _streams.remove(_streamKey(way.track));
     problemLog.error('${_describe(track)}, ${way.describe}, stopped at ${at.inSeconds}s', error);
-    _firstReason ??= playReason(error);
-    _way++;
+    if (!_dropCached(_deck)) {
+      _streams.remove(_streamKey(way.track));
+      _firstReason ??= playReason(error);
+      _way++;
+    }
     unawaited(_playAt(_index, from: at));
   }
 
@@ -370,17 +677,84 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> _completed() async {
     if (_loading) return;
     if (_repeat == AudioServiceRepeatMode.one) {
+      _listened();
+      _showSong(_queue[_index], quality.value);
       await _player.seek(Duration.zero);
       await _player.play();
       return;
     }
-    if (_index + 1 < _queue.length) {
-      await _playAt(_index + 1);
-    } else if (_repeat == AudioServiceRepeatMode.all && _queue.isNotEmpty) {
-      await _playAt(0);
+    final next = _nextIndex();
+    if (next != null) {
+      await _playAt(next);
     } else {
+      _listened();
       await _player.pause();
       await _player.seek(Duration.zero);
+    }
+  }
+
+  // ---------------------------------------------------------------- radio
+
+  /// Play songs like [track] after it, without end: from now if it's the
+  /// song playing, else starting with it.
+  Future<void> startRadio(Json track) async {
+    final playingIt = _index >= 0 && _index < _queue.length && trackId(_queue[_index]) == trackId(track);
+    if (!playingIt) {
+      await playTracks([track]);
+    } else {
+      _queue.removeRange(_index + 1, _queue.length);
+      _unshuffled = null;
+      _shuffle = false;
+      _publishQueue();
+    }
+    if (_index < 0) return; // it couldn't play
+    _radioStopped = false;
+    radio.add(_queue[_index]);
+    messages.add('Radio: songs like ${trackTitle(track)}');
+    await _extendRadio();
+  }
+
+  /// Turn the radio off: the songs it queued that haven't played go.
+  void stopRadio() {
+    radio.add(null);
+    _radioStopped = true;
+    if (_index < 0) return;
+    final upcoming = _queue.sublist(_index + 1);
+    final kept = upcoming.where((t) => t['_radio'] != true).toList();
+    if (kept.length == upcoming.length) return;
+    _queue
+      ..removeRange(_index + 1, _queue.length)
+      ..addAll(kept);
+    _unshuffled?.removeWhere((t) => t['_radio'] == true && !_queue.contains(t));
+    _publishQueue();
+  }
+
+  /// More songs from the radio when two or fewer are left: the radio's own,
+  /// or (with auto radio) one of the song playing.
+  Future<void> _extendRadio() async {
+    final source = radioSongs;
+    if (source == null || _index < 0 || _repeat != AudioServiceRepeatMode.none) return;
+    if (_queue.length - _index - 1 > 2) return;
+    var station = radio.value;
+    if (station == null) {
+      if (!autoRadio || _radioStopped) return;
+      station = _queue[_index];
+      radio.add(station);
+    }
+    if (identical(_extendingFor, station)) return;
+    _extendingFor = station;
+    try {
+      final songs = await source(station, List.of(_queue));
+      if (!identical(radio.value, station) || songs.isEmpty) return;
+      final added = [for (final song in songs) <String, dynamic>{...song, '_radio': true}];
+      _queue.addAll(added);
+      _unshuffled?.addAll(added);
+      _publishQueue();
+      problemLog.info('radio of ${_describe(station)}: ${added.length} songs');
+    } catch (error) {
+      problemLog.warn('radio of ${_describe(station)}: ${errorText(error)}');
+    } finally {
+      if (identical(_extendingFor, station)) _extendingFor = null;
     }
   }
 
@@ -396,13 +770,19 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    _endFade();
+    await _player.pause();
+  }
 
   Future<void> togglePlay() => _player.playing ? pause() : play();
 
   @override
   Future<void> stop() async {
     _generation++;
+    _endFade();
+    _dropReady();
+    _listened();
     await _player.stop();
     _loading = false;
     loading.add(false);
@@ -410,7 +790,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    _endFade();
+    await _player.seek(position);
+  }
 
   @override
   Future<void> skipToNext() async {
@@ -424,7 +807,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> skipToPrevious() async {
     if (_player.position > const Duration(seconds: 4) || _index <= 0) {
-      await _player.seek(Duration.zero);
+      await seek(Duration.zero);
       return;
     }
     await _playAt(_index - 1);
@@ -436,7 +819,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
     _repeat = repeatMode == AudioServiceRepeatMode.group ? AudioServiceRepeatMode.all : repeatMode;
+    _checkReady();
     _broadcast(_player.playbackEvent);
+    unawaited(_extendRadio());
   }
 
   /// none → all → one → none.
@@ -475,7 +860,12 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> toggleShuffle() =>
       setShuffleMode(_shuffle ? AudioServiceShuffleMode.none : AudioServiceShuffleMode.all);
 
-  Future<void> setVolume(double volume) => _player.setVolume(volume.clamp(0.0, 1.0));
+  Future<void> setVolume(double volume) async {
+    _volume = volume.clamp(0.0, 1.0);
+    _volumes.add(_volume);
+    // A fade in progress takes the new volume at its next step.
+    if (_fadingOut == null) await _player.setVolume(_volume);
+  }
 
   // ---------------------------------------------------------------- sound
 
@@ -486,8 +876,16 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> setSound(Sound next, {bool live = false}) async {
     final before = _sound;
     _sound = next;
-    if (next.speed != _player.speed) await _player.setSpeed(next.speed);
-    if (_equalizer != null) return _phoneSound();
+    for (final deck in _decks) {
+      if (next.speed != deck.player.speed) await deck.player.setSpeed(next.speed);
+    }
+    if (_decks.first.equalizer != null) {
+      // Each deck's equaliser is there once it has played a song (_loaded).
+      for (final deck in _decks.where((d) => d.loaded)) {
+        await _phoneSound(deck);
+      }
+      return;
+    }
     if (live && before.on && next.on) {
       for (final command in next.movesFrom(before)) {
         await JustAudioMediaKit.command(command);
@@ -497,10 +895,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  /// The sound on the phone's equaliser, once the player has one (it is
-  /// made with the first song). Always the latest settings.
-  Future<void> _phoneSound() async {
-    final equalizer = _equalizer!, loudness = _loudness!;
+  /// The sound on [deck]'s phone equaliser. Always the latest settings.
+  Future<void> _phoneSound(_Deck deck) async {
+    final equalizer = deck.equalizer!, loudness = deck.loudness!;
     final parameters = await equalizer.parameters;
     final s = _sound;
     final (gains, boost) =
@@ -578,4 +975,39 @@ class _Way {
   final int attempt;
 
   String get describe => '${trackSite(track)} way ${attempt + 1}';
+}
+
+/// One of the two players, with the phone's equaliser and loudness enhancer
+/// that carry the sound settings on Android (the desktop's libmpv gets them
+/// as audio filters instead).
+class _Deck {
+  _Deck() {
+    final equalizer = this.equalizer, loudness = this.loudness;
+    player = AudioPlayer(
+      useProxyForRequestHeaders: false,
+      audioPipeline: equalizer == null || loudness == null
+          ? null
+          : AudioPipeline(androidAudioEffects: [equalizer, loudness]),
+    );
+  }
+
+  final AndroidEqualizer? equalizer = Platform.isAndroid ? AndroidEqualizer() : null;
+  final AndroidLoudnessEnhancer? loudness = Platform.isAndroid ? AndroidLoudnessEnhancer() : null;
+  late final AudioPlayer player;
+
+  /// Whether it has played a song (the phone's equaliser is there after the first).
+  bool loaded = false;
+
+  /// The download it plays (its cache key), if it plays one.
+  String? cached;
+}
+
+/// The song at [index] in the queue, loading (then [loaded]) on [deck].
+class _Ready {
+  _Ready(this.index, this.track, this.deck);
+  final int index;
+  final Json track;
+  final _Deck deck;
+  bool loaded = false;
+  String label = '';
 }
