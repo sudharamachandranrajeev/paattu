@@ -22,6 +22,7 @@ import json
 import os
 import re
 import tempfile
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -293,6 +294,64 @@ def search(query, sites=SEARCH_SITES, limit=12):
                 errors[site] = _reason(error)
                 found[site] = []
     return found, errors
+
+
+# ---------------------------------------------------------------- the same song elsewhere
+
+QUALITY_ORDER = ("jiosaavn", "youtube", "soundcloud")
+
+
+def _words(text):
+    """Words of letters, marks and digits (the app's [\\p{L}\\p{M}\\p{N}]+:
+    Malayalam and Tamil vowel signs are marks, which \\w leaves out)."""
+    chars = [c if unicodedata.category(c)[0] in "LMN" else " " for c in (text or "").lower()]
+    return "".join(chars).split()
+
+
+def track_site(track):
+    return track.get("site") or site_of(track_url(track))
+
+
+def same_song(a, b):
+    """Whether a and b are one song on two sites: the same title (or one the
+    start of the other, "Malare" and "Malare Reprise" aside), not from two
+    different films, and about as long (or, length unknown, from the same
+    film). Keep in step with sameSong in the app."""
+    ta, tb = _words(a.get("title")), _words(b.get("title"))
+    if not ta or not tb:
+        return False
+    short, long = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    if long[:len(short)] != short:
+        return False
+    same_title = len(short) == len(long)
+    ma, mb = " ".join(_words(a.get("movie"))), " ".join(_words(b.get("movie")))
+    both_movies = bool(ma and mb)
+    same_movie = both_movies and (mb in ma or ma in mb)
+    if both_movies and not same_movie:
+        return False
+    da, db = _int(a.get("duration")), _int(b.get("duration"))
+    if da and db and da > 0 and db > 0:
+        return abs(da - db) <= 20
+    return same_title and same_movie
+
+
+def alternates_for(track):
+    """track on the other sites, best sound first, for when its own stream
+    won't play. One copy a site at most; a site that fails is left out."""
+    title = track.get("title") or ""
+    if not title or track.get("kind") == "jukebox":
+        return []
+    credits = track.get("credits") or []
+    query = " ".join(x for x in (title, track.get("movie") or (credits[0] if credits else "")) if x)
+    own = track_site(track)
+    sites = [site for site in QUALITY_ORDER if site != own]
+    found, _ = search(query, sites, 6)
+    out = []
+    for site in sites:
+        match = next((t for t in found.get(site) or [] if same_song(track, t)), None)
+        if match:
+            out.append(match)
+    return out
 
 
 # ---------------------------------------------------------------- links

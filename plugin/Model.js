@@ -43,6 +43,8 @@ var GLYPH_SAVED = "\u{F00C2}"       // md-bookmark_music
 var GLYPH_SAVE = "\u{F1379}"        // md-bookmark_music_outline
 var GLYPH_PLAY_NEXT = "\u{F0411}"   // md-playlist_play
 var GLYPH_WEB = "\u{F059F}"         // md-web
+var GLYPH_RADIO = "\u{F0439}"       // md-radio
+var GLYPH_MADE = "\u{F0674}"        // md-creation
 
 var LANGUAGES = ["Malayalam", "Tamil"]
 var STYLES = ["vinyl", "card", "minimal"]
@@ -326,6 +328,20 @@ function searchArgs(query, sites) {
 // One song: from the library, a search (by id) or a link.
 function playSongArgs(id) { return ["play", "--", id] }
 function queueSongArgs(id, next) { return ["add"].concat(next ? ["--next"] : []).concat(["--", id]) }
+
+// ---------- the radio and playlists made for you (`paattu radio`, `made`,
+// `describe`; keep in step with paattu/made.py)
+var MADE = [
+  { kind: "daily", title: "Daily mix", blurb: "Songs you love and a few like them", glyph: "\u{F00F6}" },  // md-calendar_today
+  { kind: "weekly", title: "Weekly discovery", blurb: "Songs new to you, like what you played lately", glyph: "\u{F0A33}" },  // md-calendar_week
+  { kind: "monthly", title: "Monthly top", blurb: "What you played most in the last 30 days", glyph: "\u{F0E17}" }  // md-calendar_month
+]
+// Start a radio of the song at path (a link the engine plays), or stop it.
+function radioArgs(on, path) { return on ? ["radio", "start", "--", path] : ["radio", "stop"] }
+function madeArgs(kind, refresh) { return ["made", kind, "--play"].concat(refresh ? ["--refresh"] : []) }
+function describeArgs(text, saveAs) {
+  return ["describe", "--play"].concat(saveAs ? ["--save", saveAs] : []).concat(["--", text])
+}
 
 // ---------- browse: songs, albums, singers and playlists, a page at a time
 // (`paattu browse`; keep in step with paattu/browse.py)

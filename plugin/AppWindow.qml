@@ -207,7 +207,7 @@ FloatingWindow {
   }
 
   // ---------- favourites & your playlists ----------
-  readonly property var nowTrack: Model.nowPlaying(store.lib.tracks, player.path, player.mediaTitle)
+  readonly property var nowTrack: Model.nowPlaying(store.tracks, player.path, player.mediaTitle)
   property var pickTrack: ({ id: "", title: "" })
   property var pickSource: ({ type: "", id: "", title: "" })
   // Which picker the layer shows: "song" (add to playlist) or "mix" (add to mix).
@@ -302,6 +302,35 @@ FloatingWindow {
 
   function playUser(id) {
     quick.run(["play", "--user", id, "--shuffle"], "Loading…", function(ok) { if (ok) cacheCurrentArt() })
+  }
+
+  // ---------- the radio and playlists made for you ----------
+  // Songs like the one playing, without end; or the radio off again.
+  function toggleRadio() {
+    var on = !player.radioOn
+    if (on && !player.path) return
+    var runner = on ? jobs : quick
+    runner.run(Model.radioArgs(on, player.path), on ? "Starting the radio…" : "", function(ok, e) {
+      if (ok && on) cacheCurrentArt()
+      showToast(e.message)
+    })
+  }
+  // The day's, week's or month's playlist (refresh: a new one).
+  function playMade(kind, title, refresh) {
+    jobs.run(Model.madeArgs(kind, refresh), "Making your " + title + "…", function(ok, e) {
+      if (ok) cacheCurrentArt()
+      else showToast(e.message)
+    })
+  }
+  // A playlist from a description, played (and saved as a playlist named saveAs).
+  function describePlaylist(text, saveAs) {
+    text = String(text || "").trim()
+    if (!text) return
+    jobs.run(Model.describeArgs(text, saveAs), "Finding songs for " + text + "…", function(ok, e) {
+      if (ok) cacheCurrentArt()
+      if (!ok) showToast(e.message)
+      else if (saveAs) showToast("Saved as " + saveAs)
+    })
   }
 
   function cacheCurrentArt() { artTimer.restart() }

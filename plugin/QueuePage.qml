@@ -8,7 +8,7 @@ ListView {
 
   required property var app
   readonly property var pal: app.pal
-  readonly property var rows: Model.queueRows(app.player.playlist, app.store.lib.tracks)
+  readonly property var rows: Model.queueRows(app.player.playlist, app.store.tracks)
 
   clip: true
   model: rows
@@ -52,7 +52,7 @@ ListView {
       anchors.fill: parent
       anchors.rightMargin: 40
       app: root.app
-      track: root.app.store.lib.tracks[row.modelData.id] || { id: row.modelData.id, title: row.modelData.title, movie: row.modelData.movie }
+      track: root.app.store.tracks[row.modelData.id] || { id: row.modelData.id, title: row.modelData.title, movie: row.modelData.movie }
       number: row.modelData.index + 1
       current: row.modelData.current
       playing: row.modelData.current && root.app.player.playing

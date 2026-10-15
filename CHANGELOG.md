@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.6.0 — Radio, playlists made for you, and fades between songs
+
+Which file: the same as before (`Paattu-0.6.0-windows-x64-setup.exe`,
+`Paattu-0.6.0-android.apk`, the AppImage or the tarball). On Omarchy, pull
+and run `./install.sh` (or `git pull` for a `--dev` install), then
+`paattu engine restart` (it loads the engine's new script) and
+`omarchy restart shell`.
+
+What's new:
+- **Radio**: *Start radio* on Now Playing plays songs like the one playing,
+  without end, from YouTube Music's own radio for it. It leaves out songs
+  you heard in the last six hours and songs you skipped twice, and when one
+  song's radio runs dry it carries on from a song it played.
+- **Auto radio** (on by default): when a song or a queue you picked runs
+  out, the music carries on with songs like the last one (not with repeat
+  on, or after you turned the radio off). Settings in the app, *Look &
+  settings → Between songs* on Omarchy.
+- **Made for you** on Home, from what you play (how long, how often, how
+  lately, your Favourites and Saved songs, what you skip): a **Daily mix**
+  of songs you love with a few like them, a **Weekly discovery** of songs
+  new to you, and the **Monthly top**.
+- **Describe a playlist**: "Ilaiyaraaja melodies, rain songs, Premam" makes
+  one from each part's songs and their radios. Play it, or save it as a
+  playlist.
+- **Fades between songs**: 3 seconds by default, 0 to 12 in Settings. In
+  the app the songs overlap (the next one is ready 25 seconds early); on
+  Omarchy, where mpv plays one song at a time, one fades out and then the
+  next fades in.
+- **Songs downloaded ahead** in the app: the next two download in pieces
+  while one plays (not with *Save data* on), so a slow stream doesn't stop
+  the music.
+- **Omarchy finds a dead stream elsewhere**, like the apps: a song that
+  won't load is looked for on the other sites and the copy found plays in
+  its place.
+- Omarchy's queue shows the titles of songs found online (radio, search,
+  made for you), not their links.
+- New commands: `paattu radio`, `paattu made`, `paattu describe`; plays
+  are kept in `~/.local/share/paattu/history.json`.
+
 ## 0.5.1 — Songs play on Android again, and a problem log
 
 Which file: the same as before (`Paattu-0.5.1-windows-x64-setup.exe`,

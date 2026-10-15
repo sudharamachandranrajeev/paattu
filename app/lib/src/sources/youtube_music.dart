@@ -46,15 +46,13 @@ Future<RadioPage> musicRadio(String videoId, {String? more}) async {
 
 /// The songs in a search response.
 List<Json> musicSearchSongs(Object? response) => [
-      for (final item in _all(response, 'musicResponsiveListItemRenderer'))
-        if (_searchSong(item) case final song?) song,
+      for (final item in _all(response, 'musicResponsiveListItemRenderer')) ?_searchSong(item),
     ];
 
 /// The songs and the next token in a radio response.
 RadioPage radioPage(Object? response) {
   final songs = [
-    for (final item in _all(response, 'playlistPanelVideoRenderer'))
-      if (_radioSong(item) case final song?) song,
+    for (final item in _all(response, 'playlistPanelVideoRenderer')) ?_radioSong(item),
   ];
   final more = [..._all(response, 'nextRadioContinuationData'), ..._all(response, 'nextContinuationData')]
       .map((c) => asString(c['continuation']))

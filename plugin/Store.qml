@@ -7,6 +7,8 @@ import "Model.js" as Model
 // Paattu's files, watched so every surface updates the moment they change:
 //   ~/.local/share/paattu/shelf.json    saved playlists per language, your own, mixes (small)
 //   ~/.local/share/paattu/library.json  everything (loaded only when `full`)
+//   ~/.cache/paattu/search.json         songs found online lately: the radio's and
+//                                       made-for-you songs (also only when `full`)
 //   ~/.config/paattu/config.json        looks and behaviour
 //   ~/.config/paattu/themes/<name>.json colour schemes (Spicetify-style)
 Item {
@@ -23,6 +25,9 @@ Item {
   property var shelf: ({ languages: {}, users: [], counts: { users: 0, tracks: 0, saved: 0 } })
   property var lib: ({ users: {}, playlists: {}, tracks: {} })
   property int libRevision: 0
+  property var found: ({})
+  // Every song there is a title for: the library's, then ones found online.
+  readonly property var tracks: Object.assign({}, found, lib.tracks)
   property var config: defaults
   property var themeData: null
 
@@ -31,7 +36,9 @@ Item {
     desktop: { enabled: true, workspace: 1, monitor: "", style: "vinyl", position: "bottom-left",
       marginX: 56, marginY: 56, scale: 1.0, opacity: 0.92, showQuickPicks: true, showUpNext: true },
     languages: ["Malayalam", "Tamil"],
-    videoBackground: true
+    videoBackground: true,
+    fade: 3,
+    autoRadio: true
   })
   readonly property var desktop: config.desktop || defaults.desktop
   readonly property var languages: config.languages && config.languages.length ? config.languages : Model.LANGUAGES
@@ -130,8 +137,20 @@ Item {
     }
   }
 
+  FileView {
+    id: foundFile
+    path: root.full ? root.cacheDir + "/search.json" : ""
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.found = root.parse(text(), root.found) || ({})
+  }
+
   // Drop the big library when the app closes.
-  onFullChanged: if (!full) lib = ({ users: {}, playlists: {}, tracks: {} })
+  onFullChanged: if (!full) {
+    lib = ({ users: {}, playlists: {}, tracks: {} })
+    found = ({})
+  }
 
   FileView {
     id: configFile

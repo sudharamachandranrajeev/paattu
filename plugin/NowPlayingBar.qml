@@ -10,7 +10,7 @@ Glass {
   required property var app
   pal: app.pal
   readonly property var player: app.player
-  readonly property var track: Model.nowPlaying(app.store.lib.tracks, player.path, player.mediaTitle)
+  readonly property var track: Model.nowPlaying(app.store.tracks, player.path, player.mediaTitle)
 
   height: 84
   radius: 28

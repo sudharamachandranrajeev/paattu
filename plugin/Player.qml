@@ -32,6 +32,9 @@ Item {
   property bool loopFile: false
   property bool loopPlaylist: false
   property var source: ({})
+  // The song the radio plays songs like ({} when it's off).
+  property var radio: ({})
+  readonly property bool radioOn: !!(radio && radio.id)
 
   // The stream's audio, for the quality badge.
   property string audioCodec: ""
@@ -107,7 +110,7 @@ Item {
   readonly property var observed: [
     "idle-active", "pause", "path", "media-title", "duration", "volume", "mute", "playlist-pos",
     "playlist-count", "playlist", "loop-file", "loop-playlist", "paused-for-cache",
-    "user-data/paattu/shuffle", "user-data/paattu/source"
+    "user-data/paattu/shuffle", "user-data/paattu/source", "user-data/paattu/radio"
   ]
 
   function subscribe() {
@@ -140,6 +143,7 @@ Item {
     case "paused-for-cache": buffering = value === true; break
     case "user-data/paattu/shuffle": shuffle = value === true; break
     case "user-data/paattu/source": source = value || ({}); break
+    case "user-data/paattu/radio": radio = value || ({}); break
     }
   }
 
@@ -195,6 +199,7 @@ Item {
     playlist = []
     count = 0
     index = -1
+    radio = ({})
     resetQuality()
   }
 

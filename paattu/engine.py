@@ -217,6 +217,9 @@ def load(engine, tracks, start=0, shuffle=False, source=None):
                          "options": {"force-media-title": display_title(track)}})
     commands.append(["set_property", "user-data/paattu/source", source or {}])
     commands.append(["set_property", "user-data/paattu/shuffle", bool(shuffle)])
+    # A new queue: the radio starts again when it runs low (auto radio).
+    commands.append(["set_property", "user-data/paattu/radio", {}])
+    commands.append(["set_property", "user-data/paattu/radio-stopped", False])
     commands.append(["playlist-play-index", start])
     commands.append(["set_property", "pause", False])
     failed = [r for r in engine.batch(commands) if r.get("error") != "success"]
@@ -284,4 +287,5 @@ def status(engine):
         "shuffle": bool(engine.get("user-data/paattu/shuffle", False)),
         "repeat": repeat_mode(engine),
         "source": engine.get("user-data/paattu/source") or {},
+        "radio": engine.get("user-data/paattu/radio") or {},
     }

@@ -134,6 +134,162 @@ Flickable {
       font.pixelSize: 13
     }
 
+    // Made for you (home only): the day's, week's and month's playlists from
+    // what you play, and a playlist from a description.
+    Column {
+      width: parent.width
+      spacing: 14
+      visible: !root.language
+
+      Text {
+        textFormat: Text.PlainText
+        text: "Made for you"
+        color: root.pal.foreground
+        font.family: root.app.fontFamily
+        font.pixelSize: 19
+        font.bold: true
+      }
+
+      Flow {
+        width: parent.width
+        spacing: 24
+        Repeater {
+          model: Model.MADE
+          Item {
+            id: madeTile
+            required property var modelData
+            readonly property bool hovered: madeMouse.containsMouse || madePlay.hovered || madeNew.hovered
+            width: root.cardSize * 0.8
+            height: width + 52
+
+            Rectangle {
+              anchors.fill: parent
+              anchors.margins: -8
+              radius: 26
+              color: madeTile.hovered ? Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.06) : "transparent"
+              Behavior on color { ColorAnimation { duration: 120 } }
+            }
+            Rectangle {
+              id: madeArt
+              width: parent.width
+              height: width
+              radius: 20
+              gradient: Gradient {
+                GradientStop { position: 0; color: root.pal.accent }
+                GradientStop { position: 1; color: Qt.darker(root.pal.accent, 1.8) }
+              }
+              Text {
+                anchors.centerIn: parent
+                textFormat: Text.PlainText
+                text: madeTile.modelData.glyph
+                color: root.pal.accentText
+                font.family: root.app.fontFamily
+                font.pixelSize: madeArt.width * 0.3
+              }
+              GlyphButton {
+                id: madeNew
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.margins: 8
+                size: 32
+                glyph: Model.GLYPH_REFRESH
+                color: root.pal.accentText
+                fontFamily: root.app.fontFamily
+                tooltip: "Make a new one"
+                opacity: madeTile.hovered ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 140 } }
+                onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, true)
+              }
+              GlyphButton {
+                id: madePlay
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 8
+                size: 40
+                glyph: Model.GLYPH_PLAY
+                color: root.pal.accent
+                fill: root.pal.accentText
+                fontFamily: root.app.fontFamily
+                opacity: madeTile.hovered ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity { NumberAnimation { duration: 140 } }
+                onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, false)
+              }
+            }
+            Column {
+              anchors.top: madeArt.bottom
+              anchors.topMargin: 8
+              width: parent.width
+              spacing: 2
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: madeTile.modelData.title
+                color: root.pal.foreground
+                font.family: root.app.fontFamily
+                font.pixelSize: 13
+                font.bold: true
+                elide: Text.ElideRight
+              }
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: madeTile.modelData.blurb
+                color: root.pal.muted
+                font.family: root.app.fontFamily
+                font.pixelSize: 11
+                elide: Text.ElideRight
+              }
+            }
+            MouseArea {
+              id: madeMouse
+              anchors.fill: parent
+              z: -1
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, false)
+            }
+          }
+        }
+      }
+
+      // A playlist from a description: Enter (or Play) plays it.
+      Flow {
+        width: parent.width
+        spacing: 8
+        InputBox {
+          id: describeBox
+          width: Math.min(460, parent.width)
+          app: root.app
+          glyph: Model.GLYPH_MADE
+          placeholder: "Describe a playlist: Ilaiyaraaja melodies, rain songs, Premam…"
+          onAccepted: root.app.describePlaylist(text, "")
+        }
+        Chip {
+          text: "Play"
+          glyph: Model.GLYPH_PLAY
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          selected: true
+          enabled: describeBox.text.trim() !== ""
+          fontSize: 13
+          fontFamily: root.app.fontFamily
+          onClicked: root.app.describePlaylist(describeBox.text, "")
+        }
+        Chip {
+          text: "Play and save"
+          glyph: Model.GLYPH_PLAYLIST_ADD
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          enabled: describeBox.text.trim() !== ""
+          fontSize: 13
+          fontFamily: root.app.fontFamily
+          onClicked: root.app.describePlaylist(describeBox.text, describeBox.text.trim())
+        }
+      }
+    }
+
     // Your playlists: Favourites and the ones you made (home only).
     Column {
       width: parent.width

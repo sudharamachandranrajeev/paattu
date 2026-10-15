@@ -9,7 +9,8 @@ import shutil
 import subprocess
 import sys
 
-from . import __version__, art, browse, cliamp, config, engine, library, paths, seeds, sound, sources, youtube
+from . import (__version__, art, browse, cliamp, config, engine, history, library, made, paths, radio, seeds, sound,
+               sources, youtube)
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1055,6 +1056,197 @@ def cmd_jump(args, out):
     out.done()
 
 
+
+# ---------------------------------------------------------------- radio, history, made for you
+
+def _station(e):
+    """The song the radio plays songs like, or None when it's off."""
+    station = e.get("user-data/paattu/radio") or {}
+    return station if isinstance(station, dict) and station.get("id") else None
+
+
+def _entry_track(data, entry):
+    tid = sources.track_id(entry.get("filename", "")) or ""
+    return _known(data, tid) or {"id": tid, "title": entry.get("title", "")}
+
+
+def _songs_left(e):
+    return e.get("playlist-count", 0) - e.get("playlist-pos", -1) - 1
+
+
+def _extend_radio(e, data, station, out, count=10):
+    """Queue up to count more songs like station when two or fewer are left
+    (the engine's script and a click can both ask). Returns how many songs
+    are left after the one playing."""
+    with radio.session() as state:
+        if _songs_left(e) > 2:
+            return _songs_left(e)
+        queue = [_entry_track(data, entry) for entry in e.get("playlist") or []]
+        with history.editing() as h:  # only read, but not while it's half written
+            songs = radio.SongRadio(h, state).next(station, queue, count)
+        if songs:
+            sources.remember(songs)
+            engine.enqueue(e, songs)
+            state["added"] = (state.get("added") or []) + [sources.track_url(s) for s in songs]
+    if songs:
+        _spawn_art([s["id"] for s in songs[:8]])
+    return _songs_left(e)
+
+
+def cmd_radio(args, out):
+    data = library.load()
+    if args.action == "start":
+        track = _songs(data, [args.target] if args.target else [], out)[0]
+        _check_firewall()
+        with engine.Engine() as e:
+            playing = sources.track_id(e.get("path") or "") == track["id"] and not e.get("idle-active", True)
+            if playing:
+                e.send(["playlist-clear"])  # everything but the song playing
+            else:
+                engine.load(e, [track], source={"type": "radio", "id": track["id"], "title": "Radio"})
+            e.set("user-data/paattu/radio", history.stored_track(track))
+            e.set("user-data/paattu/radio-stopped", False)
+            out.progress("Finding songs like %s…" % (track.get("title") or track["id"]))
+            left = _extend_radio(e, data, track, out)
+        if not left:
+            raise SourceError("couldn't find songs like %s. Check the internet connection" % (track.get("title") or track["id"]))
+        out.done("Radio: songs like %s" % (track.get("title") or track["id"]), count=left)
+    elif args.action == "stop":
+        with engine.Engine(autostart=False) as e:
+            e.set("user-data/paattu/radio", {})
+            e.set("user-data/paattu/radio-stopped", True)
+            with radio.session() as state:
+                added = set(state.pop("added", None) or [])
+            entries = e.get("playlist") or []
+            pos = e.get("playlist-pos", -1)
+            # The radio's songs still to come go; ones it played stay.
+            drop = [i for i, entry in enumerate(entries) if i > pos and entry.get("filename") in added]
+            for index in reversed(drop):
+                e.send(["playlist-remove", index])
+        out.done("Radio off", removed=len(drop))
+    elif args.action == "more":
+        # Asked by the engine's script as the queue runs low.
+        if not engine.running():
+            out.done()
+            return
+        with engine.Engine(autostart=False) as e:
+            if engine.repeat_mode(e) != "off" or _songs_left(e) > 2:
+                out.done()
+                return
+            station = _station(e)
+            if not station:
+                if not config.load().get("autoRadio", True) or e.get("user-data/paattu/radio-stopped", False):
+                    out.done()
+                    return
+                station = _playing_track(data, out)
+                if not station:
+                    out.done()
+                    return
+                e.set("user-data/paattu/radio", history.stored_track(station))
+            left = _extend_radio(e, data, station, out)
+        out.done("Radio: %s to come" % _plural(left, "song"), count=left)
+    else:
+        with engine.Engine(autostart=False) as e:
+            station = _station(e) if engine.running() else None
+        out.data({"radio": station}, "Radio: songs like %s" % station.get("title") if station else "Radio off")
+
+
+def cmd_played(args, out):
+    """Note a play in the history (the engine's script calls this as each song ends)."""
+    data = library.load()
+    tid = sources.track_id(args.url) or ""
+    if not tid:
+        out.done()
+        return
+    track = _known(data, tid)
+    if not track:
+        song, _, movie = (args.title or "").partition(" · ")
+        track = {"id": tid, "title": song or tid, "movie": movie, "credits": [], "kind": "song"}
+        if not sources.is_youtube(args.url):
+            track.update(url=args.url, site=sources.site_of(args.url))
+    with history.editing() as h:
+        h.played(track, args.heard, length=args.length or None)
+    out.done()
+
+
+def _made_summary(h, kind, today):
+    key = made.period_key(kind, today)
+    stored = h.made(kind)
+    songs = stored[1] if stored and stored[0] == key else []
+    return {"kind": kind, "title": made.TITLES[kind], "blurb": made.BLURBS[kind], "key": key,
+            "count": len(songs), "art": next((s.get("art") for s in songs if s.get("art")), "")}
+
+
+def _play_made(songs, source, out):
+    _check_firewall()
+    with engine.Engine() as e:
+        engine.load(e, songs, source=source)
+    _spawn_art([t["id"] for t in songs[:8]])
+
+
+def cmd_made(args, out):
+    import datetime
+    if not args.kind:
+        h = history.History.load()
+        rows = [_made_summary(h, kind, datetime.date.today()) for kind in made.KINDS]
+        out.data(rows, "\n".join("%-17s %s" % (r["title"], _plural(r["count"], "song") if r["count"] else "made when you open it")
+                                 for r in rows))
+        return
+    data = library.load()
+    out.progress("Making your %s…" % made.TITLES[args.kind])
+    with history.editing() as h:
+        songs = made.MadeForYou(h, data).playlist(args.kind, refresh=args.refresh)
+        key = h.made(args.kind)[0]
+    sources.remember(songs)
+    title = "%s %s" % (made.TITLES[args.kind], key)
+    if args.play:
+        _play_made(songs, {"type": "made", "id": args.kind, "title": made.TITLES[args.kind]}, out)
+    if out.as_json:
+        out.data({"event": "done", "ok": True, "kind": args.kind, "key": key, "title": made.TITLES[args.kind],
+                  "name": title, "blurb": made.BLURBS[args.kind], "tracks": songs})
+        return
+    print("%s: %s" % (title, made.BLURBS[args.kind]))
+    for n, t in enumerate(songs, 1):
+        print(_result_line(n, t))
+
+
+def cmd_describe(args, out):
+    text = " ".join(args.text)
+    out.progress("Finding songs for %s…" % text)
+    songs = made.describe_playlist(text)
+    sources.remember(songs)
+    if args.save:
+        with library.edit() as data:
+            playlist = library.create_playlist(data, args.save)
+            library.add_tracks(data, playlist["id"], songs)
+    if args.play:
+        _play_made(songs, {"type": "describe", "id": "", "title": text}, out)
+    if out.as_json:
+        out.data({"event": "done", "ok": True, "title": text, "tracks": songs})
+        return
+    for n, t in enumerate(songs, 1):
+        print(_result_line(n, t))
+
+
+def cmd_failover(args, out):
+    """The same song on another site, for a stream that won't play (the
+    engine's script asks; it plays what this prints)."""
+    data = library.load()
+    tid = sources.track_id(args.url) or ""
+    track = _known(data, tid)
+    if not track:
+        song, _, movie = (args.title or "").partition(" · ")
+        track = {"id": tid, "title": song, "movie": movie, "url": args.url, "site": sources.site_of(args.url)}
+    found = sources.alternates_for(track)
+    if not found:
+        raise SourceError("no other site has %s" % (track.get("title") or "that song"))
+    sources.remember(found)
+    best = found[0]
+    out.data({"event": "done", "ok": True, "url": sources.track_url(best), "title": engine.display_title(best),
+              "site": sources.track_site(best)},
+             sources.track_url(best))
+
+
 def cmd_engine(args, out):
     if args.action == "start":
         engine.start()
@@ -1666,6 +1858,31 @@ def build_parser():
     a = sub.add_parser("jump", help="play queue entry N")
     a.add_argument("index", type=int)
     a.set_defaults(func=cmd_jump)
+
+    a = sub.add_parser("radio", help="songs like a song, without end: start [song] | stop | more | status")
+    a.add_argument("action", nargs="?", default="status", choices=("start", "stop", "more", "status"))
+    a.add_argument("target", nargs="?", help="the song (a link or id); the one playing when left out")
+    a.set_defaults(func=cmd_radio)
+    a = sub.add_parser("played", help="note a play in the history (the engine does this)")
+    a.add_argument("url")
+    a.add_argument("heard", type=int, help="seconds listened")
+    a.add_argument("--length", type=int, help="the song's length in seconds")
+    a.add_argument("--title", help="what the engine called it")
+    a.set_defaults(func=cmd_played)
+    a = sub.add_parser("made", help="playlists made for you: daily, weekly or monthly (none: what's there)")
+    a.add_argument("kind", nargs="?", choices=made.KINDS)
+    a.add_argument("--refresh", action="store_true", help="make a new one now")
+    a.add_argument("--play", action="store_true")
+    a.set_defaults(func=cmd_made)
+    a = sub.add_parser("describe", help='a playlist from a description: "Ilaiyaraaja melodies, rain songs, Premam"')
+    a.add_argument("text", nargs="+")
+    a.add_argument("--play", action="store_true")
+    a.add_argument("--save", metavar="NAME", help="keep it as a playlist of yours")
+    a.set_defaults(func=cmd_describe)
+    a = sub.add_parser("failover", help="the same song on another site, for a link that won't play")
+    a.add_argument("url")
+    a.add_argument("--title", help="what the engine called it")
+    a.set_defaults(func=cmd_failover)
 
     a = sub.add_parser("video", help="where to stream a song's video, small and silent (for a background)")
     a.add_argument("target", help="the song: a link or id")

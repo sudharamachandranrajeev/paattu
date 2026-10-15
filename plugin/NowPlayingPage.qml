@@ -11,7 +11,7 @@ Item {
   readonly property var pal: app.pal
   readonly property var player: app.player
   readonly property var track: app.nowTrack
-  readonly property var upNext: Model.queueRows(player.playlist, app.store.lib.tracks)
+  readonly property var upNext: Model.queueRows(player.playlist, app.store.tracks)
     .filter(function(row) { return row.index > player.index }).slice(0, 6)
   readonly property bool videoOn: app.store.config.videoBackground !== false
   readonly property real artSize: Math.max(160, Math.min(420, height - 64, (width - 84) * 0.45))
@@ -141,6 +141,19 @@ Item {
         fontFamily: root.app.fontFamily
         onClicked: root.app.setConfig("videoBackground", !root.videoOn)
       }
+      // Songs like this one, without end (on by itself when a queue runs
+      // out, unless auto radio is off in Settings).
+      Chip {
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.player.radioOn ? "Radio on" : "Start radio"
+        glyph: Model.GLYPH_RADIO
+        textColor: root.pal.foreground
+        accent: root.pal.accent
+        selected: root.player.radioOn
+        fontSize: 12
+        fontFamily: root.app.fontFamily
+        onClicked: root.app.toggleRadio()
+      }
     }
 
     Item { width: 1; height: 10 }
@@ -176,7 +189,7 @@ Item {
             width: nextColumn.width
             app: root.app
             compact: true
-            track: root.app.store.lib.tracks[modelData.id] || { id: modelData.id, title: modelData.title, movie: modelData.movie }
+            track: root.app.store.tracks[modelData.id] || { id: modelData.id, title: modelData.title, movie: modelData.movie }
             number: modelData.index + 1
             onActivated: root.player.playIndex(modelData.index)
           }

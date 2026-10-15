@@ -26,7 +26,7 @@
 # Your user, no sudo:
 #   ~/.local/lib/paattu/                              the program (a link to this checkout with --dev)
 #   ~/.local/bin/paattu                               the command
-#   ~/.config/paattu/{config.json,themes/,mpv/}       settings, colour schemes, engine config
+#   ~/.config/paattu/{config.json,themes/,mpv/}       settings, colour schemes, engine config and script
 #   ~/.config/systemd/user/paattu-engine.service      headless mpv, started on demand (with systemd)
 #   ~/.local/share/paattu/, ~/.cache/paattu/          library and cover art
 # On Omarchy, also:
@@ -338,6 +338,11 @@ install_engine() {
   mv -f "$CONFIG/mpv/mpv.conf.new" "$CONFIG/mpv/mpv.conf"
   note "$CONFIG/mpv/mpv.conf${mpris:+ (media keys: $mpris)}"
   [[ -n $mpris ]] || warn "no mpv-mpris: media keys won't control Paattu"
+  # The engine's script: play history, radio, failover and fades.
+  mkdir -p "$CONFIG/mpv/scripts"
+  sed "s|@PAATTU@|$BIN/paattu|" "$SRC/engine/paattu.lua" >"$CONFIG/mpv/scripts/paattu.lua.new"
+  mv -f "$CONFIG/mpv/scripts/paattu.lua.new" "$CONFIG/mpv/scripts/paattu.lua"
+  note "$CONFIG/mpv/scripts/paattu.lua"
 
   if ! have systemctl || ! systemctl --user show-environment >/dev/null 2>&1; then
     note "no systemd user session: paattu starts mpv itself when you press play"

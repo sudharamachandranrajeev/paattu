@@ -23,6 +23,7 @@ Rectangle {
   border.width: 1
   border.color: selected ? Qt.rgba(accent.r, accent.g, accent.b, 0.7) : Qt.rgba(textColor.r, textColor.g, textColor.b, 0.12)
   scale: mouse.pressed ? 0.96 : 1
+  opacity: enabled ? 1 : 0.45
   Behavior on color { ColorAnimation { duration: 120 } }
   Behavior on scale { NumberAnimation { duration: 90 } }
 

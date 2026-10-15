@@ -75,6 +75,8 @@ tried and what failed to a text file: attach it to an
 | `~/.config/omarchy/plugins/rajeevrama.paattu` | Omarchy shell plugin: bar widget + desktop widget + app window |
 | `~/.local/share/paattu/library.json` | users, playlists, tracks (`shelf.json` is the small summary the bar reads) |
 | `~/.cache/paattu/art/` | cover art, fetched by `paattu art` so the shell never touches the network |
+| `~/.local/share/paattu/history.json` | what you played and for how long, behind the radio and the playlists made for you |
+| `~/.config/paattu/mpv/scripts/paattu.lua` | the engine's script: notes each play, asks for more radio songs, fades, finds a dead stream elsewhere |
 
 Choices, and why:
 
@@ -327,6 +329,48 @@ settings*.
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
+## Radio and playlists made for you
+
+```
+paattu radio start [SONG]               # songs like SONG (or the one playing), without end
+paattu radio stop                       # the radio's songs still to come go
+paattu made                             # Daily mix, Weekly discovery, Monthly top
+paattu made daily --play [--refresh]    # play today's (--refresh: a new one)
+paattu describe "Ilaiyaraaja melodies, rain songs, Premam" --play [--save NAME]
+paattu config set fade 3                # seconds a song fades out and the next in (0: off)
+paattu config set autoRadio false       # don't carry on when the queue runs out
+```
+
+**Radio** (the *Start radio* button on Now Playing, in the app and on
+Omarchy) plays songs like a song, from YouTube Music's own radio for it, a
+helping at a time as the queue runs low. Like Spotify's and YouTube's, it
+leaves out what you played in the last six hours and songs you skipped more
+than once, and when one song's radio runs dry it carries on from a song it
+played. With **auto radio** on (the default), any queue that runs out
+carries on as a radio of its last song, unless repeat is on or you turned
+the radio off.
+
+**Made for you** (on Home) comes from what you play: how long you listened
+(a play counts after half a song or 30 seconds), how often, how lately
+(a play is worth half as much a week later), your Favourites and Saved
+songs, and what you skip.
+- **Daily mix**: songs you love, two at a time, then one like them that's
+  new to you. A new one every day.
+- **Weekly discovery**: only songs you haven't played, from the radios of
+  the songs you like most. A new one every Monday.
+- **Monthly top**: what you played most in the last 30 days.
+- **Describe a playlist**: "songs from Premam, rain songs and Ilaiyaraaja"
+  looks up each part and takes their songs in turn, topped up from each
+  part's radio.
+
+**Fades**: each song fades out over its last seconds and the next fades in
+(3 seconds by default; *Look & settings → Between songs* on Omarchy,
+*Settings → Playback* in the app). In the app the next song is ready 25
+seconds early and the two overlap (a true crossfade), and the next two songs
+download in pieces while one plays, so a slow stream doesn't stop the music.
+On Omarchy mpv plays one song at a time, so the fade out and the fade in
+come one after the other rather than overlapping.
+
 ## Sound: equaliser, tone, balance and speed
 
 A ten-band equaliser (31 Hz to 16 kHz, ±12 dB) with presets (Melody, Kuthu,
@@ -431,10 +475,11 @@ added the rule before search existed, run it again to add the new sites.
 6. ✅ Sound: a ten-band equaliser with presets, preamp, bass, treble,
    balance and speed, on Omarchy, Windows, Linux and Android
 7. ✅ A new look, and the song's video softly blurred behind Now playing
-8. A real spectrum visualizer on the widgets
-9. Malayalam / Tamil radio (Radio Browser)
-10. Synced lyrics in the app and on the desktop widget
-11. "Song radio" from a track
+8. ✅ Song radio, auto radio, Daily / Weekly / Monthly playlists, playlists
+   from a description, fades between songs and songs downloaded ahead
+9. A real spectrum visualizer on the widgets
+10. Malayalam / Tamil radio stations (Radio Browser)
+11. Synced lyrics in the app and on the desktop widget
 12. Album-art accent colours (Spotify-style adaptive theme)
 
 ## Development

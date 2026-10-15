@@ -206,6 +206,41 @@ Flickable {
       }
     }
 
+    // ---------- Playback ----------
+    Item { width: 1; height: 8 }
+    SectionTitle { app: root.app; text: "Between songs" }
+    Hint { app: root.app; width: column.width; text: "A song fades out over its last seconds and the next one fades in (0 s: no fade). Auto radio carries on with songs like the last one when the queue runs out, unless repeat is on or you turned the radio off." }
+
+    Stepper {
+      app: root.app
+      readonly property int fade: root.app.store.config.fade === undefined ? 3 : root.app.store.config.fade
+      label: "Fade"
+      valueText: fade ? fade + " s" : "Off"
+      onDown: root.set("fade", Math.max(0, fade - 1))
+      onUp: root.set("fade", Math.min(12, fade + 1))
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Auto radio"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.autoRadio !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("autoRadio", !on)
+      }
+    }
+
     // ---------- Desktop widget ----------
     Item { width: 1; height: 8 }
     SectionTitle { app: root.app; text: "Desktop widget" }

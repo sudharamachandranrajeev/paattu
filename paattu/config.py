@@ -37,6 +37,10 @@ DEFAULTS = {
     "sound": sound.DEFAULTS,
     # Now Playing shows the song's video, blurred and silent, behind it (paattu video).
     "videoBackground": True,
+    # Seconds a song fades out at its end and the next fades in (0 for none).
+    "fade": 3,
+    # When the queue runs out, carry on with songs like the last one (paattu radio).
+    "autoRadio": True,
 }
 
 STYLES = ("vinyl", "card", "minimal")
@@ -97,6 +101,10 @@ def validate(key, value):
         raise ValueError(key + " is a number")
     if key == "videoBackground" and not isinstance(value, bool):
         raise ValueError("videoBackground is true or false")
+    if key == "fade" and not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 12):
+        raise ValueError("fade is 0 to 12 seconds")
+    if key == "autoRadio" and not isinstance(value, bool):
+        raise ValueError("autoRadio is true or false")
     if key == "search.sites" and not (isinstance(value, list) and value and all(s in SITES for s in value)):
         raise ValueError("search.sites is a list of: " + ", ".join(SITES))
 

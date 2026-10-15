@@ -79,6 +79,8 @@ jobs:
             mpv --version | head -1
             (command -v yt-dlp >/dev/null && yt-dlp --version) || ~/.local/bin/yt-dlp --version
             test -f ~/.config/paattu/mpv/mpv.conf
+            test -f ~/.config/paattu/mpv/scripts/paattu.lua
+            ! grep -q @PAATTU@ ~/.config/paattu/mpv/scripts/paattu.lua
             ./install.sh --uninstall
             test ! -e ~/.local/bin/paattu
           '
