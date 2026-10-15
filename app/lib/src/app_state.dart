@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'library.dart';
+import 'log.dart';
 import 'links.dart';
 import 'player/paattu_audio_handler.dart';
 import 'settings.dart';
@@ -196,8 +197,10 @@ class Paattu extends InheritedWidget {
 Future<T?> attempt<T>(AppState app, Future<T> Function() action, {String? failure}) async {
   try {
     return await action();
-  } catch (error) {
+  } catch (error, stack) {
     final reason = error is LibraryException ? error.message : errorText(error);
+    final expected = error is LibraryException || error is SourceException;
+    problemLog.error(failure ?? 'failed', error, expected ? null : stack);
     app.toast(failure == null ? _capitalise(reason) : '$failure: $reason');
     return null;
   }
@@ -220,5 +223,7 @@ class LibraryBuilder extends StatelessWidget {
   }
 }
 
-/// Unawaited futures that may fail (fire and forget from a button).
-void fire(Future<void> future) => unawaited(future.catchError((Object _) {}));
+/// Unawaited futures that may fail (fire and forget from a button); a failure
+/// goes to the problem log.
+void fire(Future<void> future) =>
+    unawaited(future.catchError((Object error, StackTrace stack) => problemLog.error('unexpected', error, stack)));

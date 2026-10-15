@@ -12,6 +12,7 @@ import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:video_player/video_player.dart' as exo;
 
 import '../app_state.dart';
+import '../log.dart';
 import '../player/paattu_audio_handler.dart';
 import '../sources/http.dart';
 import '../sources/sources.dart' as sources;
@@ -67,7 +68,8 @@ class _SongVideoState extends State<SongVideo> {
     final ResolvedStream? video;
     try {
       video = await sources.videoFor(widget.track);
-    } catch (_) {
+    } catch (error) {
+      problemLog.warn('no video for ${trackTitle(widget.track)}: $error');
       return; // no video then: the picture stays
     }
     if (video == null || !mounted || generation != _generation) return;
@@ -78,7 +80,8 @@ class _SongVideoState extends State<SongVideo> {
       await playback
           .open(_player.playing ? music + const Duration(milliseconds: 1500) : music, play: _player.playing)
           .timeout(const Duration(seconds: 20));
-    } catch (_) {
+    } catch (error) {
+      problemLog.warn('video for ${trackTitle(widget.track)} would not open: $error');
       await playback.dispose();
       return;
     }

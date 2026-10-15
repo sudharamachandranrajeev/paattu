@@ -1,6 +1,7 @@
-// Search JioSaavn, YouTube and SoundCloud at once for songs, albums, singers
-// and playlists, with suggestions while typing; or paste a link to a song,
-// album or playlist. Each tab grows as it's scrolled.
+// Search for songs, albums, singers and playlists where the music comes
+// from (YouTube unless Settings says otherwise), with suggestions while
+// typing; or paste a link to a song, album or playlist. Each tab grows as
+// it's scrolled.
 
 import 'dart:async';
 
@@ -34,7 +35,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   final _query = TextEditingController();
   late final FocusNode _focus = widget.focus ?? FocusNode();
   late final TabController _tabController = TabController(length: _tabs.length, vsync: this);
-  Set<String>? _sites;
   Map<String, SearchFeed> _feeds = {};
   String _searched = '';
 
@@ -127,10 +127,9 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       return;
     }
     app.settings.rememberSearch(q);
-    final chosen = _sites ?? app.settings.searchSites.toSet();
-    final sites = searchSites.where(chosen.contains).toList();
+    final sites = app.settings.musicSites;
     setState(() {
-      _feeds = {for (final (kind, _, _) in _tabs) kind: SearchFeed(q, kind, sites.isEmpty ? searchSites : sites)};
+      _feeds = {for (final (kind, _, _) in _tabs) kind: SearchFeed(q, kind, sites)};
     });
     fire(_feeds[_tabs[_tabController.index].$1]!.more());
   }
@@ -158,7 +157,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   Widget build(BuildContext context) {
     super.build(context);
     final app = Paattu.of(context);
-    final chosen = _sites ?? app.settings.searchSites.toSet();
     final showTabs = _feeds.isNotEmpty && !_suggesting;
     final scheme = Theme.of(context).colorScheme;
     OutlineInputBorder pill(BorderSide side) => OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: side);
@@ -194,7 +192,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         ),
         bottom: showTabs
             ? PreferredSize(
-                preferredSize: const Size.fromHeight(98),
+                preferredSize: const Size.fromHeight(46),
                 child: Column(
                   children: [
                     TabBar(
@@ -209,13 +207,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                             child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 18), const SizedBox(width: 6), Text(label)]),
                           ),
                       ],
-                    ),
-                    _SiteChips(
-                      chosen: chosen,
-                      onChanged: (next) {
-                        setState(() => _sites = next);
-                        if (_searched.isNotEmpty && !isLink(_searched)) _search(_searched);
-                      },
                     ),
                   ],
                 ),
@@ -239,8 +230,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               ? const EmptyState(
                   icon: Icons.travel_explore,
                   title: 'Find any song',
-                  body: 'JioSaavn streams film songs at 320 kbps, YouTube has nearly everything, and SoundCloud has '
-                      'covers and remixes. Search songs, albums, singers and playlists, or paste a link.',
+                  body: 'Search songs, films, singers and playlists, or paste a link. '
+                      'Settings picks where the music comes from.',
                 )
               : isLink(_searched)
                   ? _LinkResults(songs: _linkSongs, error: _linkError, busy: _linkBusy)
@@ -253,36 +244,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     ),
     );
   }
-}
-
-class _SiteChips extends StatelessWidget {
-  const _SiteChips({required this.chosen, required this.onChanged});
-  final Set<String> chosen;
-  final ValueChanged<Set<String>> onChanged;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 52,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-          children: [
-            for (final site in searchSites)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(siteName(site)),
-                  selected: chosen.contains(site),
-                  onSelected: (on) {
-                    final next = Set.of(chosen);
-                    on ? next.add(site) : next.remove(site);
-                    if (next.isNotEmpty) onChanged(next);
-                  },
-                ),
-              ),
-          ],
-        ),
-      );
 }
 
 /// Recent searches (box empty) or suggestions (something typed).
@@ -391,8 +352,8 @@ class _FeedView extends StatelessWidget {
           if (items.isEmpty && feed.done) {
             return EmptyState(
               icon: Icons.search_off,
-              title: feed.pagers.isEmpty ? 'None of the chosen sites has ${_tabName(feed.kind).toLowerCase()}' : 'Nothing found',
-              body: errors.isEmpty ? null : errors.entries.map((e) => "${siteName(e.key)}: ${e.value}").join('\n'),
+              title: 'Nothing found',
+              body: errors.isEmpty ? null : _errorText(feed, errors, "Couldn't search"),
             );
           }
           final footer = _Footer(feed: feed);
@@ -401,7 +362,7 @@ class _FeedView extends StatelessWidget {
               : Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
-                    errors.entries.map((e) => "Couldn't search ${siteName(e.key)}: ${e.value}").join('\n'),
+                    _errorText(feed, errors, "Couldn't search"),
                     style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 );
@@ -417,7 +378,6 @@ class _FeedView extends StatelessWidget {
                   return TrackTile(
                     track: items[i - 1],
                     playingId: playingId,
-                    showSite: true,
                     onTap: () => fire(app.player.playTracks(List.of(items), start: i - 1)),
                   );
                 },
@@ -459,7 +419,10 @@ class _FeedView extends StatelessWidget {
       );
 }
 
-String _tabName(String kind) => _tabs.firstWhere((t) => t.$1 == kind).$2;
+/// Why a search failed: naming the site only when several were asked.
+String _errorText(SearchFeed feed, Map<String, String> errors, String lead) => feed.pagers.length == 1
+    ? '$lead: ${errors.values.first}'
+    : errors.entries.map((e) => '$lead ${siteName(e.key)}: ${e.value}').join('\n');
 
 class _SongsHeader extends StatelessWidget {
   const _SongsHeader({required this.feed, this.note});
@@ -580,7 +543,6 @@ class _LinkResults extends StatelessWidget {
             TrackTile(
               track: tracks[i],
               playingId: playingId,
-              showSite: true,
               trailing: Text(qualityLabel(tracks[i]), style: theme.textTheme.bodySmall),
               onTap: () => fire(app.player.playTracks(tracks, start: i)),
             ),

@@ -86,7 +86,6 @@ class TrackTile extends StatelessWidget {
     this.index,
     this.playlistId,
     this.trailing,
-    this.showSite = false,
   });
 
   final Json track;
@@ -95,17 +94,12 @@ class TrackTile extends StatelessWidget {
   final int? index;
   final String? playlistId;
   final Widget? trailing;
-  final bool showSite;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final playing = playingId != null && playingId == trackId(track);
-    final subtitle = [
-      trackSubtitle(track),
-      if (showSite) siteName(trackSite(track)),
-      if (showSite && qualityLabel(track).isNotEmpty) qualityLabel(track),
-    ].where((s) => s.isNotEmpty).join(' · ');
+    final subtitle = trackSubtitle(track);
     final duration = trackDuration(track);
     final scheme = theme.colorScheme;
     return PillTile(

@@ -1,6 +1,8 @@
 // Paattu for Android, Windows and Linux.
 
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -10,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'src/app_state.dart';
 import 'src/library.dart';
+import 'src/log.dart';
 import 'src/player/paattu_audio_handler.dart';
 import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
@@ -17,6 +20,16 @@ import 'src/ui/shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Anything that goes wrong uncaught goes to the problem log.
+  final shown = FlutterError.onError;
+  FlutterError.onError = (details) {
+    problemLog.error('flutter: ${details.context ?? 'error'}', details.exception, details.stack);
+    shown?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    problemLog.error('uncaught', error, stack);
+    return true;
+  };
   final desktop = Platform.isLinux || Platform.isWindows;
   if (desktop) {
     // ExoPlayer plays on Android; libmpv (media_kit) on the desktop.
@@ -27,7 +40,7 @@ Future<void> main() async {
       // control on, media_kit puts scaletempo in `af`, over the equaliser.
       JustAudioMediaKit.pitch = false;
     } catch (error) {
-      debugPrint('libmpv: $error');
+      problemLog.error('libmpv', error);
       playbackUnavailable = Platform.isLinux
           ? "Paattu needs mpv's library to play. Install it (Arch: mpv, Debian/Ubuntu: libmpv2, "
               'Fedora: mpv-libs) and open Paattu again'
@@ -36,6 +49,8 @@ Future<void> main() async {
   }
 
   final dir = await getApplicationSupportDirectory();
+  unawaited(problemLog.start(File('${dir.path}${Platform.pathSeparator}paattu.log'),
+      header: 'Paattu $appVersion on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}'));
   final library = Library(File('${dir.path}${Platform.pathSeparator}library.json'));
   final settings = Settings(File('${dir.path}${Platform.pathSeparator}settings.json'));
   await Future.wait([library.load(), settings.load()]);
@@ -74,8 +89,8 @@ Future<PaattuAudioHandler> _player() async {
         notificationColor: Color(0xFF0F766E),
       ),
     );
-  } catch (error) {
-    debugPrint('audio service: $error');
+  } catch (error, stack) {
+    problemLog.error('audio service', error, stack);
     return PaattuAudioHandler();
   }
 }

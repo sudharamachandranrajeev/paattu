@@ -286,7 +286,12 @@ Future<List<Json>> resolveJioSaavn(String url) async {
 /// Stream 128 kbps rather than 320 (the "save data" setting).
 bool jiosaavnSaveData = false;
 
-/// The signed AAC link for a song, best quality first.
+/// JioSaavn's CDN refuses a song without a jiosaavn.com Referer.
+const _streamHeaders = {'User-Agent': browserAgent, 'Referer': 'https://www.jiosaavn.com/'};
+
+/// The signed AAC link for a song, best quality first. Asked without the web
+/// player's `ctx` (as yt-dlp asks): since October 2026 the web player's links
+/// are for its DRM player and refuse a plain request (403); these don't.
 Future<ResolvedStream> streamJioSaavn(Json track, {bool lower = false}) async {
   final id = asString(track['id']);
   var media = _media[id] ?? asString(track['_media']);
@@ -305,14 +310,13 @@ Future<ResolvedStream> streamJioSaavn(Json track, {bool lower = false}) async {
         '_format': 'json',
         '_marker': '0',
         'api_version': '4',
-        'ctx': 'web6dot0',
         'bitrate': bitrate,
         'url': media,
       }));
       final link = asString(data['auth_url']);
       if (link.isNotEmpty) {
         return ResolvedStream(Uri.parse(link), codec: 'aac', kbps: int.parse(bitrate),
-            lifetime: const Duration(minutes: 30));
+            headers: _streamHeaders, lifetime: const Duration(minutes: 30));
       }
       lastError = SourceException(asString(data['message']).isNotEmpty ? asString(data['message']) : 'no link');
     } catch (error) {

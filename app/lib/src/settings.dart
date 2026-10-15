@@ -222,13 +222,17 @@ class Settings extends ChangeNotifier {
   PaattuTheme get theme => themeById(asString(_data['theme']));
   set themeId(String id) => _set('theme', id);
 
-  /// The sites a search asks, in order.
-  List<String> get searchSites {
-    final chosen = asStrings(_data['searchSites']).where(searchSitesAll.contains).toList();
-    return chosen.isEmpty ? List.of(searchSitesAll) : chosen;
+  /// Where songs come from: one site (YouTube unless chosen otherwise) or
+  /// 'all' of them. A song that won't play is still looked for on the others.
+  String get musicFrom {
+    final chosen = asString(_data['musicFrom']);
+    return chosen == 'all' || searchSites.contains(chosen) ? chosen : 'youtube';
   }
 
-  set searchSites(List<String> sites) => _set('searchSites', sites);
+  set musicFrom(String source) => _set('musicFrom', source);
+
+  /// The sites a search asks, in order.
+  List<String> get musicSites => musicFrom == 'all' ? List.of(searchSites) : [musicFrom];
 
   /// JioSaavn at 320 kbps, or 128 to save data.
   bool get saveData => _data['saveData'] == true;
@@ -257,5 +261,3 @@ class Settings extends ChangeNotifier {
   Sound get sound => Sound.fromJson(_data['sound']);
   set sound(Sound s) => _set('sound', s.toJson());
 }
-
-const searchSitesAll = searchSites;

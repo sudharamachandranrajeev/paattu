@@ -1,5 +1,5 @@
-// Settings: theme, sound, search sites, data saver, library import / export,
-// about.
+// Settings: theme, sound, where the music comes from, data saver, library
+// import / export, the problem log, about.
 
 import 'dart:convert';
 import 'dart:io';
@@ -7,10 +7,12 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../links.dart';
+import '../log.dart';
 import '../settings.dart';
 import '../sources/jiosaavn.dart';
 import '../util.dart';
@@ -43,6 +45,19 @@ class SettingsPage extends StatelessWidget {
       );
       if (saved != null) app.toast('Exported the library');
     }, failure: "Couldn't export");
+  }
+
+  Future<void> _saveLog(AppState app) async {
+    await attempt(app, () async {
+      final stamp = nowStamp().replaceAll(':', '').replaceAll('-', '');
+      final saved = await FilePicker.saveFile(
+        dialogTitle: 'Save the problem log',
+        fileName: 'paattu-log-$stamp.txt',
+        bytes: Uint8List.fromList(utf8.encode(await problemLog.text())),
+        mimeType: 'text/plain',
+      );
+      if (saved != null) app.toast('Saved the problem log');
+    }, failure: "Couldn't save it");
   }
 
   Future<void> _importBytes(BuildContext context, AppState app, Uint8List bytes, String from) async {
@@ -114,27 +129,28 @@ class SettingsPage extends StatelessWidget {
                   onChanged: (on) => settings.videoBackground = on,
                 ),
               ]),
-              const SectionHeader('Search'),
+              const SectionHeader('Music from'),
               GlassGroup(children: [
-                for (final site in searchSites)
-                  CheckboxListTile(
-                    title: Text(siteName(site)),
-                    subtitle: Text(switch (site) {
-                      'jiosaavn' => 'Film albums from the labels, mostly 320 kbps AAC',
+                for (final source in [...searchSites, 'all'])
+                  ListTile(
+                    leading: Icon(
+                      settings.musicFrom == source ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: settings.musicFrom == source ? theme.colorScheme.primary : null,
+                    ),
+                    title: Text(source == 'all' ? 'Every site' : siteName(source)),
+                    subtitle: Text(switch (source) {
                       'youtube' => 'Nearly everything, Opus around 130–160 kbps',
-                      _ => 'Covers, remixes and independent artists',
+                      'jiosaavn' => 'Film albums from the labels, mostly 320 kbps AAC',
+                      'soundcloud' => 'Covers, remixes and independent artists',
+                      _ => 'All three at once, each song once',
                     }),
-                    value: settings.searchSites.contains(site),
-                    onChanged: (on) {
-                      final next = List.of(settings.searchSites);
-                      if (on == true) {
-                        next.add(site);
-                      } else if (next.length > 1) {
-                        next.remove(site);
-                      }
-                      settings.searchSites = [for (final s in searchSites) if (next.contains(s)) s];
-                    },
+                    onTap: () => settings.musicFrom = source,
                   ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Text("A song that won't play is looked for on the other sites.",
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ),
                 SwitchListTile(
                   title: const Text('Save data'),
                   subtitle: const Text('Stream JioSaavn songs at 128 kbps instead of 320'),
@@ -170,6 +186,38 @@ class SettingsPage extends StatelessWidget {
                       await _importBytes(context, app, bytes, 'The desktop library');
                     }, failure: "Couldn't import"),
                   ),
+              ]),
+              const SectionHeader('Problem log'),
+              GlassGroup(children: [
+                ListTile(
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: const Text('Save the problem log'),
+                  subtitle: const Text('What Paattu tried and what went wrong: attach it to a bug report'),
+                  onTap: () => _saveLog(app),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.copy),
+                  title: const Text('Copy it'),
+                  onTap: () => attempt(app, () async {
+                    await Clipboard.setData(ClipboardData(text: await problemLog.text()));
+                    app.toast('Copied the problem log');
+                  }, failure: "Couldn't copy it"),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.article_outlined),
+                  title: const Text('Read it'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const _LogPage())),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: const Text('Clear it'),
+                  onTap: () async {
+                    final ok = await confirm(context,
+                        title: 'Clear the problem log?', body: 'It starts again empty.', action: 'Clear');
+                    if (ok) await attempt(app, problemLog.clear, failure: "Couldn't clear it");
+                  },
+                ),
               ]),
               const SectionHeader('About'),
               GlassGroup(children: [
@@ -233,6 +281,33 @@ class _ThemeSwatch extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The problem log to read, newest at the bottom.
+class _LogPage extends StatelessWidget {
+  const _LogPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Problem log')),
+      body: FutureBuilder<String>(
+        future: problemLog.text(),
+        builder: (context, snapshot) {
+          final text = snapshot.data;
+          if (text == null) return const Center(child: CircularProgressIndicator());
+          if (text.trim().isEmpty) return const Center(child: Text('Nothing logged yet'));
+          return SingleChildScrollView(
+            reverse: true,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: SelectableText(text,
+                style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace', height: 1.4)),
+          );
+        },
       ),
     );
   }

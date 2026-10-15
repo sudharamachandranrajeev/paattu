@@ -2,7 +2,9 @@
 // once, take a link, and find what to stream for any song.
 
 import '../links.dart';
+import '../log.dart';
 import '../titles.dart';
+import '../track.dart';
 import '../util.dart';
 import 'http.dart';
 import 'jiosaavn.dart';
@@ -79,6 +81,7 @@ class SitePager {
       if (found == null || found.isEmpty) done = true;
       return found ?? const [];
     } catch (e) {
+      problemLog.warn('search $site ${kind}s "$query" page $_page: $e');
       // The first page's error is worth showing; a later one just ends the list.
       if (_page == 1) error = errorText(e);
       done = true;
@@ -231,7 +234,7 @@ Future<List<Json>> resolveLink(String url) async {
 /// YouTube client, JioSaavn's lower bitrate) after a stream failed.
 Future<ResolvedStream> streamFor(Json track, {int attempt = 0}) async {
   final url = asString(track['url']);
-  final site = asString(track['site']).isNotEmpty ? asString(track['site']) : (url.isEmpty ? 'youtube' : siteOf(url));
+  final site = trackSite(track);
   if (site == 'jiosaavn') return streamJioSaavn(track, lower: attempt >= 2);
   if (site == 'soundcloud') return streamSoundCloud(track);
   final id = _youTubeId(track);
@@ -288,3 +291,55 @@ int streamAttempts(Json track) => switch (asString(track['site'])) {
       '' || 'youtube' => 3,
       _ => 1,
     };
+
+// ---------------------------------------------------------------- the same song elsewhere
+
+/// Sites best sound first: JioSaavn's 320 kbps AAC, YouTube's Opus, then
+/// SoundCloud's 128 kbps MP3.
+const qualityOrder = ['jiosaavn', 'youtube', 'soundcloud'];
+
+final _wordRe = RegExp(r'[\p{L}\p{M}\p{N}]+', unicode: true);
+
+List<String> _words(Object? text) => [for (final m in _wordRe.allMatches(asString(text).toLowerCase())) m[0]!];
+
+/// Whether [a] and [b] are one song on two sites: the same title (or one
+/// the start of the other, "Malare" and "Malare Reprise" aside), not from
+/// two different films, and about as long (or, length unknown, from the same
+/// film).
+bool sameSong(Json a, Json b) {
+  final ta = _words(a['title']), tb = _words(b['title']);
+  if (ta.isEmpty || tb.isEmpty) return false;
+  final (short, long) = ta.length <= tb.length ? (ta, tb) : (tb, ta);
+  final sameTitle = short.length == long.length;
+  for (var i = 0; i < short.length; i++) {
+    if (short[i] != long[i]) return false;
+  }
+  final ma = _words(a['movie']).join(' '), mb = _words(b['movie']).join(' ');
+  final bothMovies = ma.isNotEmpty && mb.isNotEmpty;
+  final sameMovie = bothMovies && (ma.contains(mb) || mb.contains(ma));
+  if (bothMovies && !sameMovie) return false;
+  final da = toInt(a['duration']), db = toInt(b['duration']);
+  if (da != null && db != null && da > 0 && db > 0) return (da - db).abs() <= 20;
+  return sameTitle && sameMovie;
+}
+
+/// [track] on the other sites, best sound first, for when its own stream
+/// won't play. One copy a site at most; a site that fails is left out.
+Future<List<Json>> alternatesFor(Json track) async {
+  final title = asString(track['title']);
+  if (title.isEmpty || asString(track['kind']) == 'jukebox') return const [];
+  final movie = asString(track['movie']);
+  final credits = asStrings(track['credits']);
+  final query = [title, movie.isNotEmpty ? movie : (credits.isNotEmpty ? credits.first : '')]
+      .where((s) => s.isNotEmpty)
+      .join(' ');
+  final own = trackSite(track);
+  final found = await Future.wait([
+    for (final site in qualityOrder.where((s) => s != own))
+      _searchSite(site, query, 6)
+          .timeout(const Duration(seconds: 8))
+          .then((tracks) => tracks.where((t) => sameSong(track, t)).firstOrNull)
+          .catchError((Object _) => null),
+  ]);
+  return found.whereType<Json>().toList();
+}

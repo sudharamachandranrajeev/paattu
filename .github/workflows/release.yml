@@ -186,9 +186,20 @@ jobs:
           mkdir -p ../dist "paattu-$version-linux-x64"
           cp -r build/linux/x64/release/bundle/. "paattu-$version-linux-x64/"
           cp linux/paattu.png "paattu-$version-linux-x64/"
+          # Built on Ubuntu 22.04, whose libmpv is libmpv.so.1; the distros
+          # people run now have libmpv.so.2 (the same render API), so the
+          # tarball asks for that. The AppImage carries its own libmpv.
+          for f in "paattu-$version-linux-x64/paattu" "paattu-$version-linux-x64"/lib/*.so; do
+            if readelf -d "$f" | grep -q 'NEEDED.*\[libmpv\.so\.1\]'; then
+              patchelf --replace-needed libmpv.so.1 libmpv.so.2 "$f"
+              echo "$f: libmpv.so.1 -> libmpv.so.2"
+            fi
+          done
+          ! readelf -d "paattu-$version-linux-x64/paattu" "paattu-$version-linux-x64"/lib/*.so | grep 'libmpv\.so\.1'
           cat > "paattu-$version-linux-x64/README.txt" <<'EOF'
-          Paattu for Linux. Needs mpv's library (libmpv) and GTK 3:
-            Arch: pacman -S mpv   Debian/Ubuntu: apt install libmpv2 (or libmpv1)   Fedora: dnf install mpv-libs
+          Paattu for Linux. Needs mpv's library (libmpv.so.2) and GTK 3:
+            Arch: pacman -S mpv   Debian 12+ / Ubuntu 24.04+: apt install libmpv2   Fedora: dnf install mpv-libs
+          On an older system, use the AppImage, which carries its own.
           Run ./paattu from this folder.
           EOF
           tar czf "../dist/Paattu-$version-linux-x64.tar.gz" "paattu-$version-linux-x64"

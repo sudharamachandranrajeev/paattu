@@ -1,5 +1,6 @@
 // One kind of result (songs, albums, artists or playlists) for one search,
-// from every chosen site at once, growing a page at a time as it's scrolled.
+// from every chosen site at once (or, when none of them has that kind, every
+// site that does), growing a page at a time as it's scrolled.
 
 import 'package:flutter/foundation.dart';
 
@@ -7,11 +8,13 @@ import 'sources/sources.dart';
 import 'util.dart';
 
 class SearchFeed extends ChangeNotifier {
-  SearchFeed(this.query, this.kind, List<String> sites)
-      : pagers = [
-          for (final site in kindSites[kind] ?? const <String>[])
-            if (sites.contains(site)) SitePager(site, kind, query),
-        ];
+  SearchFeed(this.query, this.kind, List<String> sites) : pagers = _pagers(query, kind, sites);
+
+  static List<SitePager> _pagers(String query, String kind, List<String> sites) {
+    final having = kindSites[kind] ?? const <String>[];
+    final chosen = having.where(sites.contains).toList();
+    return [for (final site in chosen.isEmpty ? having : chosen) SitePager(site, kind, query)];
+  }
 
   final String query;
   final String kind;

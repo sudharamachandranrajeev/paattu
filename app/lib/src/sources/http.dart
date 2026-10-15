@@ -1,5 +1,6 @@
 // One HTTP client for the sites Paattu reads, with a browser-like identity.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -81,4 +82,14 @@ class ResolvedStream {
     final rate = kbps != null && kbps! > 0 && !['flac', 'wav', 'alac'].contains(codec) ? '$kbps kbps' : '';
     return [name, rate].where((s) => s.isNotEmpty).join(' · ');
   }
+}
+
+/// The HTTP status a stream's server answers with, asked for its first two
+/// bytes (to say why the player couldn't open it).
+Future<int> streamStatus(ResolvedStream stream) async {
+  final request = http.Request('GET', stream.uri)
+    ..headers.addAll({'User-Agent': browserAgent, ...?stream.headers, 'Range': 'bytes=0-1'});
+  final response = await httpClient.send(request).timeout(const Duration(seconds: 6));
+  unawaited(response.stream.listen(null).cancel());
+  return response.statusCode;
 }

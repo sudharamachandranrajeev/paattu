@@ -10,7 +10,6 @@ import '../sources/jiosaavn.dart';
 import '../sources/sources.dart' as sources;
 import '../sources/youtube.dart';
 import '../util.dart';
-import 'glass.dart';
 import 'widgets.dart';
 
 /// Open a search result: an album or playlist's songs, or an artist's page.
@@ -57,13 +56,7 @@ class ResultCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 1,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Cover(url: asString(item['art']), size: null, radius: 22, icon: resultIcon(item)),
-                  Positioned(left: 8, top: 8, child: GlassChip(label: siteName(asString(item['site'])))),
-                ],
-              ),
+              child: Cover(url: asString(item['art']), size: null, radius: 22, icon: resultIcon(item)),
             ),
             const SizedBox(height: 6),
             Text(asString(item['title']),
@@ -94,7 +87,7 @@ class ResultTile extends StatelessWidget {
       onTap: () => openResult(context, item),
       leading: Cover(url: asString(item['art']), size: 50, radius: round ? 25 : 14, icon: resultIcon(item)),
       title: asString(item['title']),
-      subtitle: [asString(item['subtitle']), siteName(asString(item['site']))].where((s) => s.isNotEmpty).join(' · '),
+      subtitle: asString(item['subtitle']),
       trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
     );
   }
