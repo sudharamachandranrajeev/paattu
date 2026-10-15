@@ -126,7 +126,7 @@ void main() {
       final text = await log.text();
       expect(text, contains('=== Paattu test'));
       expect(text.indexOf('early'), greaterThan(text.indexOf('=== Paattu test')));
-      expect(text, contains('! a warning'));
+      expect(text, contains('!  a warning'));
       expect(text, contains('!! it broke: Bad state: bad state'));
       expect(text, contains('playback_test.dart'));
       await log.clear();
