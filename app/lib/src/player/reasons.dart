@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:just_audio/just_audio.dart';
 
 import '../util.dart';
@@ -21,6 +22,7 @@ String playReason(Object error, {int? status}) {
     };
   }
   if (error is TimeoutException) return 'it took too long to start';
+  if (error is PlatformException) return "the phone's player didn't start";
   if (error is PlayerException) {
     final message = (error.message ?? '').toLowerCase();
     if (message.contains('failed host lookup') || message.contains('unable to connect')) {

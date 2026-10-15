@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.2 — Songs play again on phones whose equaliser starts late
+
+Which file: the same as before (`Paattu-0.6.2-android.apk` is the one that
+matters; the Windows and Linux builds and Omarchy only change their version
+number). On Omarchy, `git pull` (a `--dev` install).
+
+What's fixed:
+- On some Android phones no song would play: every site and every try
+  failed at once with `NullPointerException … Equalizer.getNumberOfBands()`,
+  and after five songs the player stopped. The player asks the phone's
+  equaliser for its bands as it starts, and on these phones the equaliser
+  wasn't there yet; the player then kept that failure, so every later try
+  failed the same way, whatever the song. Now a player that doesn't start
+  is started again afresh, and if it fails a second time it carries on
+  without the phone's equaliser (the sound settings then don't apply, and
+  the app says so).
+- The problem log says "the phone's player didn't start" for this, not the
+  raw error.
+
 ## 0.6.1 — Made-for-you playlists that came out short are made again
 
 Which file: the same as before (`Paattu-0.6.1-windows-x64-setup.exe`,

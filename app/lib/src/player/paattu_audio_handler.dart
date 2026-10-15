@@ -16,6 +16,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:rxdart/rxdart.dart';
@@ -36,27 +37,71 @@ String? playbackUnavailable;
 
 class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   PaattuAudioHandler() {
-    for (final deck in _decks) {
-      final p = deck.player;
+    _decks.forEach(_watch);
+    Timer.periodic(_tickEvery, (_) => _tick());
+  }
+
+  /// Follow [deck]'s player: its state while it is the one playing, its
+  /// errors, and the end of its song.
+  void _watch(_Deck deck) {
+    final p = deck.player;
+    deck.watching = [
       // Errors are handled from errorStream; this one only reports state.
       p.playbackEventStream.listen((event) {
         if (deck == _deck) _broadcast(event);
-      }, onError: (Object _, StackTrace _) {});
+      }, onError: (Object _, StackTrace _) {}),
       p.playingStream.listen((_) {
         if (deck == _deck) _broadcast(p.playbackEvent);
-      });
+      }),
       p.processingStateStream.listen((state) {
         if (state == ProcessingState.completed && deck == _deck) unawaited(_completed());
-      });
-      p.errorStream.listen((error) => _deckFailed(deck, error));
+      }),
+      p.errorStream.listen((error) => _deckFailed(deck, error)),
       p.durationStream.listen((duration) {
         final item = mediaItem.value;
         if (deck == _deck && item != null && duration != null && item.duration != duration) {
           mediaItem.add(item.copyWith(duration: duration));
         }
-      });
+      }),
+    ];
+  }
+
+  /// Starting [deck]'s player failed. just_audio asks the phone's equaliser
+  /// for its bands as the player starts, and some phones haven't one ready
+  /// then; it keeps such a failure until the player is stopped, so every
+  /// later song would fail the same way. Stop it, so the next try starts
+  /// afresh; after a second failure in a row the deck goes on without the
+  /// phone's equaliser and loudness enhancer. (A stream that won't load is a
+  /// PlayerException, not a PlatformException.) Whether to try the same way
+  /// again: twice at most.
+  Future<bool> _restart(_Deck deck, Object error) async {
+    if (error is! PlatformException) return false;
+    final again = deck.failedStarts < 2;
+    deck.failedStarts++;
+    final plain = deck.failedStarts == 2 && deck.equalizer != null;
+    if (again) {
+      problemLog.error(
+          'the player did not start; ${plain ? 'going on without the phone equaliser' : 'starting it again'}', error);
     }
-    Timer.periodic(_tickEvery, (_) => _tick());
+    if (!plain) {
+      await deck.player.stop();
+      return again;
+    }
+    for (final subscription in deck.watching) {
+      await subscription.cancel();
+    }
+    final old = deck.player;
+    deck.build(effects: false);
+    _watch(deck);
+    if (deck == _deck) _liveDeck.add(deck);
+    await deck.player.setSpeed(_sound.speed);
+    try {
+      await old.dispose();
+    } catch (_) {
+      // It never started.
+    }
+    messages.add("This phone's equaliser didn't start, so songs play without the sound settings.");
+    return true;
   }
 
   final _decks = [_Deck(), _Deck()];
@@ -348,6 +393,11 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         return; // another song was picked meanwhile
       } catch (error, stack) {
         if (generation != _generation) return;
+        // The player itself didn't start: the same way again, afresh.
+        if (await _restart(deck, error)) {
+          if (generation != _generation) return;
+          continue;
+        }
         // A downloaded file that won't play: stream the song instead.
         if (_dropCached(deck)) continue;
         _streams.remove(_streamKey(way.track));
@@ -390,6 +440,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   /// A deck that has played a song has the phone's equaliser: give it the sound.
   void _loaded(_Deck deck) {
+    deck.failedStarts = 0;
     if (deck.loaded) return;
     deck.loaded = true;
     if (deck.equalizer != null) unawaited(_phoneSound(deck).catchError((Object e) => problemLog.warn('equaliser: $e')));
@@ -528,6 +579,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       _dropCached(deck);
       _dropReady();
       _triedReady = track;
+      await _restart(deck, error);
     }
   }
 
@@ -879,9 +931,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     for (final deck in _decks) {
       if (next.speed != deck.player.speed) await deck.player.setSpeed(next.speed);
     }
-    if (_decks.first.equalizer != null) {
-      // Each deck's equaliser is there once it has played a song (_loaded).
-      for (final deck in _decks.where((d) => d.loaded)) {
+    if (Platform.isAndroid) {
+      // Each deck's equaliser is there once it has played a song (_loaded),
+      // unless the phone's wouldn't start (_restart).
+      for (final deck in _decks.where((d) => d.loaded && d.equalizer != null)) {
         await _phoneSound(deck);
       }
       return;
@@ -982,21 +1035,34 @@ class _Way {
 /// as audio filters instead).
 class _Deck {
   _Deck() {
-    final equalizer = this.equalizer, loudness = this.loudness;
+    build(effects: Platform.isAndroid);
+  }
+
+  AndroidEqualizer? equalizer;
+  AndroidLoudnessEnhancer? loudness;
+  late AudioPlayer player;
+
+  /// The handler following the player (PaattuAudioHandler._watch).
+  List<StreamSubscription<Object?>> watching = const [];
+
+  /// Whether it has played a song (the phone's equaliser is there after the first).
+  bool loaded = false;
+
+  /// Starts of the player that failed in a row (PaattuAudioHandler._restart).
+  int failedStarts = 0;
+
+  /// A new player, with the phone's equaliser and loudness enhancer or without.
+  void build({required bool effects}) {
+    final equalizer = this.equalizer = effects ? AndroidEqualizer() : null;
+    final loudness = this.loudness = effects ? AndroidLoudnessEnhancer() : null;
     player = AudioPlayer(
       useProxyForRequestHeaders: false,
       audioPipeline: equalizer == null || loudness == null
           ? null
           : AudioPipeline(androidAudioEffects: [equalizer, loudness]),
     );
+    loaded = false;
   }
-
-  final AndroidEqualizer? equalizer = Platform.isAndroid ? AndroidEqualizer() : null;
-  final AndroidLoudnessEnhancer? loudness = Platform.isAndroid ? AndroidLoudnessEnhancer() : null;
-  late final AudioPlayer player;
-
-  /// Whether it has played a song (the phone's equaliser is there after the first).
-  bool loaded = false;
 
   /// The download it plays (its cache key), if it plays one.
   String? cached;

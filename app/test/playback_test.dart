@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/services.dart' show PlatformException;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:just_audio/just_audio.dart';
@@ -70,6 +71,9 @@ void main() {
       expect(playReason(PlayerException(1, 'MediaCodecAudioRenderer error, index=0', 0)),
           "this device can't play that kind of stream");
       expect(playReason(TimeoutException('setAudioSource')), 'it took too long to start');
+      expect(
+          playReason(PlatformException(code: 'Error: java.lang.NullPointerException', message: 'Equalizer')),
+          "the phone's player didn't start");
     });
 
     test('from the site', () {
