@@ -158,12 +158,63 @@ class SettingsPage extends StatelessWidget {
               ]),
               const SectionHeader('Now Playing'),
               GlassGroup(children: [
+                for (final style in NowPlayingStyle.values)
+                  ListTile(
+                    leading: Icon(
+                      settings.nowPlayingStyle == style ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: settings.nowPlayingStyle == style ? theme.colorScheme.primary : null,
+                    ),
+                    title: Text(style == NowPlayingStyle.cover ? '${style.label} (the usual)' : style.label),
+                    subtitle: Text(style.description),
+                    trailing: Icon(switch (style) {
+                      NowPlayingStyle.cover => Icons.crop_original,
+                      NowPlayingStyle.video => Icons.movie_outlined,
+                      NowPlayingStyle.full => Icons.panorama_outlined,
+                      NowPlayingStyle.record => Icons.album_outlined,
+                    }),
+                    onTap: () => settings.nowPlayingStyle = style,
+                  ),
                 SwitchListTile(
+                  secondary: const Icon(Icons.view_in_ar_outlined),
+                  title: const Text('Cover in 3D'),
+                  subtitle: Text("Lifts what's in the picture out of it, tilting as you "
+                      '${Platform.isAndroid ? 'move the phone' : 'move the pointer over it'} '
+                      '(the Cover and Video first looks)'),
+                  value: settings.coverDepth,
+                  onChanged: (on) => settings.coverDepth = on,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.palette_outlined),
+                  title: const Text('Colours from the cover'),
+                  subtitle: const Text("Now Playing and the bar at the bottom take their colours from the song's cover"),
+                  value: settings.coverColors,
+                  onChanged: (on) => settings.coverColors = on,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.movie_filter_outlined),
                   title: const Text('Video in the background'),
-                  subtitle: const Text("A blurred, silent bit of the song's video, kept in time with it "
+                  subtitle: const Text("A silent bit of the song's video, kept in time with it "
                       '(about 1 MB a minute)'),
                   value: settings.videoBackground,
                   onChanged: (on) => settings.videoBackground = on,
+                ),
+                ListTile(
+                  enabled: settings.videoBackground,
+                  leading: const Icon(Icons.blur_on),
+                  title: const Text('Video blur'),
+                  subtitle: Text(switch (settings.videoBlur) {
+                    0 => 'None: the video is sharp',
+                    < 25 => 'A little (${settings.videoBlur})',
+                    < 60 => 'Soft (${settings.videoBlur})',
+                    _ => 'Heavy (${settings.videoBlur})',
+                  }),
+                ),
+                Slider(
+                  value: settings.videoBlur.toDouble(),
+                  max: 100,
+                  divisions: 20,
+                  label: '${settings.videoBlur}',
+                  onChanged: settings.videoBackground ? (v) => settings.videoBlur = v.round() : null,
                 ),
               ]),
               const SectionHeader('Music from'),

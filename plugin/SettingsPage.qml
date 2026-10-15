@@ -182,7 +182,40 @@ Flickable {
     // ---------- Now Playing ----------
     Item { width: 1; height: 8 }
     SectionTitle { app: root.app; text: "Now Playing" }
-    Hint { app: root.app; width: column.width; text: "Behind Now Playing: a bit of the song's video, blurred, silent and kept in time with the music (about 1 MB a minute). Songs from JioSaavn or SoundCloud use a YouTube video of the same length when there is one." }
+    Hint { app: root.app; width: column.width; text: "How Now Playing looks. Behind it: the song's video, blurred as much as you like, silent and kept in time with the music (about 1 MB a minute). Songs from JioSaavn or SoundCloud use a YouTube video of the same length when there is one." }
+
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Look"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Repeater {
+        model: [{ v: "cover", l: "Cover" }, { v: "video", l: "Video first" }, { v: "full", l: "Full picture" },
+          { v: "record", l: "Record" }]
+        Chip {
+          required property var modelData
+          text: modelData.l
+          textColor: root.pal.foreground; accent: root.pal.accent
+          selected: root.app.nowPlayingStyle === modelData.v
+          fontSize: 12; fontFamily: root.app.fontFamily
+          onClicked: root.set("nowPlayingStyle", modelData.v)
+        }
+      }
+    }
+    Hint {
+      app: root.app
+      width: column.width
+      text: ({ cover: "The cover, with the song's video behind it.",
+        video: "The cover makes way for the song's video when there is one.",
+        full: "The picture fills the window, sharp, with the video over it.",
+        record: "The cover on a record that turns while the song plays." })[root.app.nowPlayingStyle] || ""
+    }
 
     Row {
       spacing: 8
@@ -205,6 +238,57 @@ Flickable {
         onClicked: root.set("videoBackground", !on)
       }
     }
+    Stepper {
+      app: root.app
+      readonly property int blur: root.app.store.config.videoBlur === undefined ? 30 : root.app.store.config.videoBlur
+      label: "Video blur"
+      valueText: blur ? String(blur) : "None"
+      onDown: root.set("videoBlur", Math.max(0, Math.ceil(blur / 10) * 10 - 10))
+      onUp: root.set("videoBlur", Math.min(100, Math.floor(blur / 10) * 10 + 10))
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Cover in 3D"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.coverDepth !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("coverDepth", !on)
+      }
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Cover colours"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.coverColors === true
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("coverColors", !on)
+      }
+    }
+    Hint { app: root.app; width: column.width; text: "Cover in 3D lifts the people out of the cover and tilts it as the pointer moves over it (it runs U²-Net through uv, on this computer; the first time, uv fetches ONNX Runtime). Cover colours gives Now Playing and the player bar the colours of the song's cover." }
 
     // ---------- Playback ----------
     Item { width: 1; height: 8 }

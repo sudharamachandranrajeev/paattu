@@ -501,6 +501,18 @@ class ConfigTest(TempDirs):
         self.assertEqual(config.parse_value("true"), True)
         self.assertEqual(config.parse_value("vinyl"), "vinyl")
 
+    def test_now_playing_settings(self):
+        cfg = config.load()
+        self.assertEqual((cfg["nowPlayingStyle"], cfg["videoBlur"], cfg["coverColors"], cfg["coverDepth"]),
+                         ("cover", 30, False, True))
+        self.assertEqual(config.set_key("nowPlayingStyle", "record")["nowPlayingStyle"], "record")
+        self.assertEqual(config.set_key("videoBlur", 0)["videoBlur"], 0)
+        self.assertTrue(config.set_key("coverColors", True)["coverColors"])
+        for key, value in (("nowPlayingStyle", "spinning"), ("videoBlur", 101), ("videoBlur", -1), ("videoBlur", 2.5),
+                           ("videoBlur", True), ("coverColors", "yes"), ("coverDepth", 1)):
+            with self.assertRaises(ValueError, msg="%s = %r" % (key, value)):
+                config.set_key(key, value)
+
 
 if __name__ == "__main__":
     unittest.main()

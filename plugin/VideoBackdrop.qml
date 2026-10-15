@@ -14,6 +14,8 @@ Item {
   // The song: mpv's link for it.
   readonly property string target: player.hasTrack ? player.path : ""
   readonly property real speed: (app.store.config.sound || {}).speed || 1
+  // Settings › Video blur: 0 (sharp) to 100.
+  readonly property real blurLevel: Math.max(0, Math.min(100, Number(app.store.config.videoBlur === undefined ? 30 : app.store.config.videoBlur)))
   // The video's length: one found by search can be shorter than the song.
   property real length: 0
   // Past the end of a shorter video: it fades out.
@@ -140,13 +142,13 @@ Item {
   VideoOutput {
     id: picture
     anchors.fill: parent
-    anchors.margins: -60
+    anchors.margins: -(8 + root.blurLevel * 1.3)
     fillMode: VideoOutput.PreserveAspectCrop
     layer.enabled: true
     layer.effect: MultiEffect {
-      blurEnabled: true
-      blurMax: 64
-      blur: 1
+      blurEnabled: root.blurLevel > 0
+      blurMax: 128
+      blur: root.blurLevel / 100
       saturation: -0.1
       brightness: -0.12
     }

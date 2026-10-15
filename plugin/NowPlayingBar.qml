@@ -8,7 +8,7 @@ Glass {
   id: root
 
   required property var app
-  pal: app.pal
+  pal: app.playerPal
   readonly property var player: app.player
   readonly property var track: Model.nowPlaying(app.store.tracks, player.path, player.mediaTitle)
 

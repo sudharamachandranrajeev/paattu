@@ -37,6 +37,15 @@ DEFAULTS = {
     "sound": sound.DEFAULTS,
     # Now Playing shows the song's video, blurred and silent, behind it (paattu video).
     "videoBackground": True,
+    # How Now Playing looks: the cover with the video behind it, the video in
+    # place of the cover, the full picture, or the cover on a turning record.
+    "nowPlayingStyle": "cover",
+    # How blurred the video is, 0 (sharp) to 100.
+    "videoBlur": 30,
+    # Now Playing takes its colours from the song's cover.
+    "coverColors": False,
+    # The cover in 3D, its subject lifted out of the picture (paattu depth).
+    "coverDepth": True,
     # Seconds a song fades out at its end and the next fades in (0 for none).
     "fade": 3,
     # When the queue runs out, carry on with songs like the last one (paattu radio).
@@ -44,6 +53,7 @@ DEFAULTS = {
 }
 
 STYLES = ("vinyl", "card", "minimal")
+NOW_PLAYING_STYLES = ("cover", "video", "full", "record")
 SITES = ("jiosaavn", "youtube", "soundcloud")
 POSITIONS = ("top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right")
 
@@ -99,8 +109,12 @@ def validate(key, value):
         raise ValueError("desktop.workspace is a workspace number")
     if key in ("desktop.scale", "desktop.opacity") and not isinstance(value, (int, float)):
         raise ValueError(key + " is a number")
-    if key == "videoBackground" and not isinstance(value, bool):
-        raise ValueError("videoBackground is true or false")
+    if key in ("videoBackground", "coverColors", "coverDepth") and not isinstance(value, bool):
+        raise ValueError(key + " is true or false")
+    if key == "nowPlayingStyle" and value not in NOW_PLAYING_STYLES:
+        raise ValueError("nowPlayingStyle is one of: " + ", ".join(NOW_PLAYING_STYLES))
+    if key == "videoBlur" and not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 100):
+        raise ValueError("videoBlur is 0 to 100")
     if key == "fade" and not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 12):
         raise ValueError("fade is 0 to 12 seconds")
     if key == "autoRadio" and not isinstance(value, bool):

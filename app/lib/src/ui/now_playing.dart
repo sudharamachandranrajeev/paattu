@@ -1,6 +1,7 @@
 // The song playing: the mini player under every page, the full screen (the
-// song's cover on a blurred copy of itself, the next songs on an arc, the
-// controls in a glass dome) and the queue.
+// song's cover on a blurred copy of itself with its video behind, or the
+// look chosen in Settings; the next songs on an arc; the controls in a glass
+// dome) and the queue.
 
 import 'dart:io';
 import 'dart:math';
@@ -13,8 +14,11 @@ import 'package:rxdart/rxdart.dart';
 import '../app_state.dart';
 import '../links.dart';
 import '../player/paattu_audio_handler.dart';
+import '../settings.dart';
 import '../track.dart';
 import '../util.dart';
+import 'cover_theme.dart';
+import 'depth_cover.dart';
 import 'glass.dart';
 import 'sound_page.dart';
 import 'video_background.dart';
@@ -55,53 +59,57 @@ class MiniPlayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final player = Paattu.of(context).player;
-    final theme = Theme.of(context);
     return PlayerBuilder(builder: (context, track, playing, loading) {
       if (track == null) return const SizedBox.shrink();
-      return SafeArea(
-        top: false,
-        bottom: false,
-        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        child: Glass(
-          blur: true,
-          radius: 28,
-          color: Color.alphaBlend(theme.colorScheme.primary.withValues(alpha: 0.12), theme.colorScheme.surface.withValues(alpha: 0.7)),
-          onTap: () => openNowPlaying(context),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 6, 4, 2),
-                child: Row(
-                  children: [
-                    TrackCover(track, size: 46, radius: 23),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(trackTitle(track), maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                          Text(trackSubtitle(track), maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                        ],
-                      ),
-                    ),
-                    FavouriteButton(track),
-                    _PlayButton(playing: playing, loading: loading, onPressed: player.togglePlay),
-                    IconButton(tooltip: 'Next', icon: const Icon(Icons.skip_next), onPressed: player.skipToNext),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 0, 22, 6),
-                child: ClipRRect(borderRadius: BorderRadius.circular(2), child: _ThinProgress(player: player)),
-              ),
-            ],
-          ),
-        ),
-      );
+      return CoverTheme(track: track, child: Builder(builder: (context) => _pill(context, player, track, playing, loading)));
     });
+  }
+
+  Widget _pill(BuildContext context, PaattuAudioHandler player, Json track, bool playing, bool loading) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      bottom: false,
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Glass(
+        blur: true,
+        radius: 28,
+        color: Color.alphaBlend(theme.colorScheme.primary.withValues(alpha: 0.12), theme.colorScheme.surface.withValues(alpha: 0.7)),
+        onTap: () => openNowPlaying(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 4, 2),
+              child: Row(
+                children: [
+                  TrackCover(track, size: 46, radius: 23),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(trackTitle(track), maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(trackSubtitle(track), maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  FavouriteButton(track),
+                  _PlayButton(playing: playing, loading: loading, onPressed: player.togglePlay),
+                  IconButton(tooltip: 'Next', icon: const Icon(Icons.skip_next), onPressed: player.skipToNext),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 6),
+              child: ClipRRect(borderRadius: BorderRadius.circular(2), child: _ThinProgress(player: player)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -166,118 +174,146 @@ class NowPlayingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = Paattu.of(context);
-    final theme = Theme.of(context);
     return PlayerBuilder(builder: (context, track, playing, loading) {
       if (track == null) {
         return Backdrop(
           child: Scaffold(appBar: AppBar(), body: const EmptyState(icon: Icons.music_note, title: 'Nothing playing')),
         );
       }
-      final wide = MediaQuery.sizeOf(context).width > 760;
-      final bar = SizedBox(
-        height: _barHeight,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              GlassIconButton(
-                icon: Icons.keyboard_arrow_down,
-                tooltip: 'Close',
-                blur: true,
-                onPressed: () => Navigator.pop(context),
-              ),
-              Expanded(
-                child: Text('Now Playing',
-                    textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              ),
-              GlassIconButton(
-                icon: Icons.more_vert,
-                tooltip: 'More',
-                blur: true,
-                onPressed: () => showTrackMenu(context, track),
-              ),
-            ],
-          ),
-        ),
-      );
-      final dome = _Dome(app: app, track: track, playing: playing, loading: loading);
-      Widget artCard(double? size) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Material(
-                  elevation: 12,
-                  borderRadius: BorderRadius.circular(24),
-                  clipBehavior: Clip.antiAlias,
-                  child: TrackCover(track, size: size, large: true, radius: 24),
-                ),
-              ),
-            ),
-          );
-      // On a phone the cover sits on a blurred copy of itself, and fades out
-      // when the song's video comes on behind it.
-      final phoneCard = ValueListenableBuilder<bool>(
-        valueListenable: songVideoShown,
-        builder: (context, shown, card) =>
-            AnimatedOpacity(opacity: shown ? 0 : 1, duration: const Duration(milliseconds: 900), child: card),
-        child: artCard(null),
-      );
-      return Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        body: Stack(
-          children: [
-            Positioned.fill(child: _Background(app: app, track: track, wide: wide)),
-            SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
-                  child: LayoutBuilder(builder: (context, box) {
-                    final room = box.maxHeight - _barHeight - _domeHeight;
-                    if (room < 40) {
-                      // A short window (a phone on its side): scroll instead.
-                      return SingleChildScrollView(
-                        child: Column(children: [bar, SizedBox(height: 260, child: artCard(null)), dome]),
-                      );
-                    }
-                    return Column(
-                      children: [
-                        bar,
-                        Expanded(child: wide ? artCard(null) : phoneCard),
-                        if (room - _arcHeight > 120) _UpcomingArc(player: app.player),
-                        dome,
-                      ],
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ],
+      return CoverTheme(
+        track: track,
+        child: ListenableBuilder(
+          listenable: app.settings,
+          builder: (context, _) => _page(context, app, track, playing, loading),
         ),
       );
     });
   }
+
+  Widget _page(BuildContext context, AppState app, Json track, bool playing, bool loading) {
+    final theme = Theme.of(context);
+    final settings = app.settings;
+    final style = settings.nowPlayingStyle;
+    final wide = MediaQuery.sizeOf(context).width > 760;
+    final bar = SizedBox(
+      height: _barHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            GlassIconButton(
+              icon: Icons.keyboard_arrow_down,
+              tooltip: 'Close',
+              blur: true,
+              onPressed: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: Text('Now Playing',
+                  textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            ),
+            GlassIconButton(
+              icon: Icons.more_vert,
+              tooltip: 'More',
+              blur: true,
+              onPressed: () => showTrackMenu(context, track),
+            ),
+          ],
+        ),
+      ),
+    );
+    final dome = _Dome(app: app, track: track, playing: playing, loading: loading);
+    Widget square(Widget child) =>
+        Center(child: Padding(padding: const EdgeInsets.all(24), child: AspectRatio(aspectRatio: 1, child: child)));
+    final cover = square(settings.coverDepth
+        ? DepthCover(track: track)
+        : Material(
+            elevation: 12,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: TrackCover(track, size: null, large: true, radius: 24),
+          ));
+    final card = switch (style) {
+      // The cover stays, with the video playing behind it.
+      NowPlayingStyle.cover => cover,
+      // The cover makes way for the video while it plays.
+      NowPlayingStyle.video => ValueListenableBuilder<bool>(
+          valueListenable: songVideoShown,
+          builder: (context, shown, cover) =>
+              AnimatedOpacity(opacity: shown ? 0 : 1, duration: const Duration(milliseconds: 900), child: cover),
+          child: cover,
+        ),
+      // The picture behind is the cover.
+      NowPlayingStyle.full => const SizedBox.expand(),
+      NowPlayingStyle.record => square(_Record(track: track, playing: playing)),
+    };
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _Background(
+              app: app,
+              track: track,
+              wide: wide,
+              sharp: style == NowPlayingStyle.full,
+              video: settings.videoBackground,
+              blur: settings.videoBlur * (wide ? 1.2 : 0.4),
+            ),
+          ),
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
+                child: LayoutBuilder(builder: (context, box) {
+                  final room = box.maxHeight - _barHeight - _domeHeight;
+                  if (room < 40) {
+                    // A short window (a phone on its side): scroll instead.
+                    return SingleChildScrollView(
+                      child: Column(children: [bar, SizedBox(height: 260, child: card), dome]),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      bar,
+                      Expanded(child: card),
+                      if (room - _arcHeight > 120) _UpcomingArc(player: app.player),
+                      dome,
+                    ],
+                  );
+                }),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// The song's picture, blurred, filling the top of the screen (on wide
-/// screens, all of it), fading into the page. Its video, blurred, fades in
-/// over the picture once it plays.
+/// The song's picture filling the top of the screen (on wide screens, all
+/// of it), blurred unless [sharp], fading into the page. Its video, blurred
+/// by [blur], fades in over the picture once it plays.
 class _Background extends StatelessWidget {
-  const _Background({required this.app, required this.track, required this.wide});
+  const _Background({
+    required this.app,
+    required this.track,
+    required this.wide,
+    required this.sharp,
+    required this.video,
+    required this.blur,
+  });
   final AppState app;
   final Json track;
   final bool wide;
+  final bool sharp;
+  final bool video;
+  final double blur;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final art = TrackCover(track, size: null, large: true, radius: 0);
-    final video = ListenableBuilder(
-      listenable: app.settings,
-      builder: (context, _) => app.settings.videoBackground
-          ? SongVideo(app: app, track: track, blur: wide ? 36 : 12)
-          : const SizedBox.expand(),
-    );
+    final moving = video ? SongVideo(app: app, track: track, blur: blur) : const SizedBox.expand();
     return LayoutBuilder(builder: (context, box) {
       // How much of the height the square picture covers.
       final cover = wide ? 1.0 : (box.maxWidth / max(1, box.maxHeight)).clamp(0.3, 1.0);
@@ -285,11 +321,14 @@ class _Background extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (wide) ...[
-            ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40, tileMode: TileMode.decal),
-              child: Opacity(opacity: 0.6, child: art),
-            ),
-            Opacity(opacity: 0.6, child: video),
+            if (sharp)
+              Opacity(opacity: 0.7, child: art)
+            else
+              ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40, tileMode: TileMode.decal),
+                child: Opacity(opacity: 0.6, child: art),
+              ),
+            Opacity(opacity: sharp ? 0.7 : 0.6, child: moving),
           ] else
             Align(
               alignment: Alignment.topCenter,
@@ -298,13 +337,16 @@ class _Background extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ClipRect(
-                      child: ImageFiltered(
-                        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28, tileMode: TileMode.clamp),
-                        child: art,
+                    if (sharp)
+                      art
+                    else
+                      ClipRect(
+                        child: ImageFiltered(
+                          imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28, tileMode: TileMode.clamp),
+                          child: art,
+                        ),
                       ),
-                    ),
-                    video,
+                    moving,
                   ],
                 ),
               ),
@@ -316,7 +358,7 @@ class _Background extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.black.withValues(alpha: 0.35),
-                  scheme.primary.withValues(alpha: 0.12),
+                  scheme.primary.withValues(alpha: sharp ? 0 : 0.12),
                   scheme.surface.withValues(alpha: wide ? 0.55 : 0),
                   scheme.surface,
                 ],
@@ -328,6 +370,129 @@ class _Background extends StatelessWidget {
       );
     });
   }
+}
+
+/// The cover on a record, turning while the song plays.
+class _Record extends StatefulWidget {
+  const _Record({required this.track, required this.playing});
+  final Json track;
+  final bool playing;
+
+  @override
+  State<_Record> createState() => _RecordState();
+}
+
+class _RecordState extends State<_Record> with SingleTickerProviderStateMixin {
+  late final _turn = AnimationController(vsync: this, duration: const Duration(seconds: 6));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _spin();
+  }
+
+  @override
+  void didUpdateWidget(_Record old) {
+    super.didUpdateWidget(old);
+    _spin();
+  }
+
+  void _spin() {
+    final on = widget.playing && !MediaQuery.disableAnimationsOf(context);
+    if (on && !_turn.isAnimating) {
+      _turn.repeat();
+    } else if (!on && _turn.isAnimating) {
+      _turn.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(builder: (context, box) {
+      final side = box.biggest.shortestSide;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          RotationTransition(
+            turns: _turn,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF111114),
+                boxShadow: [BoxShadow(color: Color(0x80000000), blurRadius: 30, offset: Offset(0, 14))],
+              ),
+              child: CustomPaint(
+                painter: _GroovesPainter(),
+                child: Center(
+                  child: SizedBox.square(
+                    dimension: side * 0.5,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipOval(child: TrackCover(widget.track, size: null, large: true, radius: 0)),
+                        Center(
+                          child: Container(
+                            width: side * 0.035,
+                            height: side * 0.035,
+                            decoration: BoxDecoration(color: scheme.surface, shape: BoxShape.circle),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // The light on the record stays put while it turns.
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: SweepGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0.09),
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0),
+                    Colors.white.withValues(alpha: 0.09),
+                    Colors.white.withValues(alpha: 0),
+                  ],
+                  stops: const [0.04, 0.12, 0.2, 0.54, 0.62, 0.7],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+}
+
+/// The record's grooves, between its edge and the label.
+class _GroovesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final outer = size.shortestSide / 2;
+    final groove = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = max(0.6, outer * 0.004);
+    for (var i = 0; outer * (0.96 - i * 0.022) > outer * 0.53; i++) {
+      groove.color = Colors.white.withValues(alpha: i % 3 == 0 ? 0.07 : 0.035);
+      canvas.drawCircle(centre, outer * (0.96 - i * 0.022), groove);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GroovesPainter old) => false;
 }
 
 /// The next songs, fanned out on an arc above the dome. Tap one to play it.

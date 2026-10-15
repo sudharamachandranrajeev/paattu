@@ -15,6 +15,13 @@ FloatingWindow {
   required property var quick
 
   readonly property var pal: store.palette
+  // The player's colours (Now Playing, the bar at the bottom): the song's
+  // cover's when Settings › Colours from the cover is on, else the theme's.
+  readonly property var playerPal: coverPalette.palette
+  // Now Playing's look (Settings › Now Playing): cover | video | full | record.
+  readonly property string nowPlayingStyle: store.config.nowPlayingStyle || "cover"
+  // The song's video is showing behind Now Playing.
+  readonly property bool videoShown: videoLoader.item ? videoLoader.item.shown && !videoLoader.item.over : false
   readonly property string fontFamily: Style.font.family
   property int artRevision: 0
 
@@ -421,17 +428,60 @@ FloatingWindow {
       }
     }
 
-    Backdrop {
-      anchors.fill: parent
-      pal: win.pal
+    CoverPalette {
+      id: coverPalette
+      base: win.store.rawPalette
+      source: win.store.config.coverColors === true && win.nowTrack.id ? win.store.artFor("v", win.nowTrack.id) : ""
     }
 
-    // Now Playing: the song's video behind everything, blurred and silent.
-    // Loaded by name, so without Qt Multimedia only the video is missing.
+    Backdrop {
+      anchors.fill: parent
+      pal: win.view === "playing" ? win.playerPal : win.pal
+    }
+
+    // Now Playing's full picture: the cover, sharp, across the window, and
+    // darker towards the words on the left.
+    Item {
+      anchors.fill: parent
+      visible: win.view === "playing" && win.nowPlayingStyle === "full" && fullPicture.status === Image.Ready
+
+      Image {
+        id: fullPicture
+        anchors.fill: parent
+        asynchronous: true
+        smooth: true
+        mipmap: true
+        fillMode: Image.PreserveAspectCrop
+        opacity: 0.7
+        property size natural: Qt.size(0, 0)
+        readonly property var frame: Model.frameClip(natural.width, natural.height)
+        source: win.view === "playing" && win.nowPlayingStyle === "full" && win.nowTrack.id
+          ? win.store.artFor("v", win.nowTrack.id) : ""
+        sourceClipRect: frame ? Qt.rect(frame.x, frame.y, frame.width, frame.height) : undefined
+        onStatusChanged: if (status === Image.Ready && natural.width === 0 && !frame) natural = Qt.size(implicitWidth, implicitHeight)
+        onSourceChanged: natural = Qt.size(0, 0)
+      }
+      Rectangle {
+        anchors.fill: parent
+        gradient: Gradient {
+          orientation: Gradient.Horizontal
+          GradientStop { position: 0.0; color: Qt.rgba(win.playerPal.background.r, win.playerPal.background.g, win.playerPal.background.b, 0.85) }
+          GradientStop { position: 0.75; color: Qt.rgba(win.playerPal.background.r, win.playerPal.background.g, win.playerPal.background.b, 0.2) }
+          GradientStop { position: 1.0; color: Qt.rgba(win.playerPal.background.r, win.playerPal.background.g, win.playerPal.background.b, 0.1) }
+        }
+      }
+    }
+
+    // Now Playing: the song's video behind everything, blurred (as much as
+    // Settings says) and silent. Loaded by name, so without Qt Multimedia only
+    // the video is missing.
     Loader {
+      id: videoLoader
       anchors.fill: parent
       active: win.view === "playing" && win.store.config.videoBackground !== false && GraphicsInfo.api !== GraphicsInfo.Software
-      opacity: 0.55
+      // Brighter when the video is the picture.
+      opacity: win.nowPlayingStyle === "video" ? 0.85 : win.nowPlayingStyle === "full" ? 0.7 : 0.55
+      Behavior on opacity { NumberAnimation { duration: 400 } }
       Component.onCompleted: setSource(Qt.resolvedUrl("VideoBackdrop.qml"), { app: win })
     }
 

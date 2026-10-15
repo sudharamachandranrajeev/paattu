@@ -325,3 +325,47 @@ test("sound: live moves, labels and presets", () => {
   assert.ok(M.soundSame({ on: false }, {}))
   assert.ok(!M.soundSame({ on: true }, {}))
 })
+
+test("coverPalette takes the cover's colours, keeping the theme dark or light", () => {
+  // A cover: mostly red, some blue, black bars.
+  const pixels = []
+  const add = (n, rgba) => { for (let i = 0; i < n; i++) pixels.push(...rgba) }
+  add(600, [200, 30, 40, 255])
+  add(200, [30, 60, 210, 255])
+  add(224, [0, 0, 0, 255])
+  const dark = M.coverPalette(pixels, true)
+  const [r, g, b] = M.parseHex(dark.accent)
+  assert.ok(r > 150 && g < 120 && b < 120, dark.accent)
+  const [hr, , hb] = M.parseHex(dark.highlight)
+  assert.ok(hb > hr, "the highlight is the blue " + dark.highlight)
+  assert.ok(M.luminance(dark.background) < 0.03)
+  assert.ok(M.luminance(dark.foreground) > 0.7)
+  for (const key of ["background", "surface", "foreground", "muted", "accent", "highlight"]) {
+    assert.ok(M.parseHex(dark[key]), key)
+  }
+  const light = M.coverPalette(pixels, false)
+  assert.ok(M.luminance(light.background) > 0.8)
+  assert.ok(M.luminance(light.foreground) < 0.05)
+})
+
+test("coverPalette: reds either side of 0° stay red; no colour gives null", () => {
+  const pixels = []
+  for (let i = 0; i < 300; i++) pixels.push(220, 20, 60, 255, 220, 60, 20, 255)
+  const [r, g, b] = M.parseHex(M.coverPalette(pixels, true).accent)
+  assert.ok(r > 150 && g < 100 && b < 100, "red, not cyan")
+  const grey = []
+  for (let i = 0; i < 1024; i++) grey.push(i % 256, i % 256, i % 256, 255)
+  assert.equal(M.coverPalette(grey, true), null)
+  assert.equal(M.coverPalette([], true), null)
+  // See-through pixels don't count.
+  assert.equal(M.coverPalette([200, 30, 40, 0, 200, 30, 40, 0], true), null)
+  assert.equal(M.fromHsl(0, 1, 0.5), "#ff0000")
+  eq(M.toHsl([0, 0, 255]), [2 / 3, 1, 0.5])
+})
+
+test("frameClip drops a thumbnail's letterbox bars, nothing else", () => {
+  eq(M.frameClip(480, 360), { x: 0, y: 45, width: 480, height: 270 })
+  eq(M.frameClip(500, 500), { x: 0, y: 0, width: 500, height: 500 })
+  eq(M.frameClip(1280, 720), { x: 0, y: 0, width: 1280, height: 720 })
+  assert.equal(M.frameClip(0, 360), null)
+})

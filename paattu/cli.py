@@ -5,12 +5,14 @@ import concurrent.futures
 import contextlib
 import json
 import random
+import re
 import shutil
 import subprocess
 import sys
 
-from . import (__version__, art, browse, cliamp, config, engine, history, library, made, paths, radio, seeds, sound,
-               sources, youtube)
+from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, made, paths, radio, seeds,
+               sound, sources, youtube)
+from .depth import DepthError
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1449,6 +1451,35 @@ def cmd_video(args, out):
         print(video["url"] if video else "No video for that song")
 
 
+def _song_id(target):
+    """A song id as given (the app passes the ids it knows), or a link's."""
+    if re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9._-]{0,199}", target or ""):
+        return target
+    tid = sources.track_id(target)
+    if not tid:
+        raise ValueError("not a song: %s" % target)
+    return tid
+
+
+def cmd_depth(args, out):
+    tid = _song_id(args.target)
+    cover = paths.art_path("v", tid)
+    if not cover.exists():
+        cache_art_for(library.load(), track_ids=[tid])
+    if not cover.exists():
+        out.done("No cover for that song", subject=None)
+        return
+    out.progress("Finding the subject of the cover…")
+    found = depth.lift(cover, paths.CACHE / "depth", tid)
+    fields = {key: found.get(key) for key in ("subject", "back", "centre", "area")}
+    if args.json:
+        out.done("", **fields)
+    elif found.get("subject"):
+        print("Subject: %s\nRest of the cover: %s" % (found["subject"], found["back"]))
+    else:
+        print("Nothing in that cover stands out to lift")
+
+
 def cmd_theme(args, out):
     if args.action == "list" or not args.name:
         current = config.load()["theme"]
@@ -1887,6 +1918,10 @@ def build_parser():
     a.add_argument("target", help="the song: a link or id")
     a.set_defaults(func=cmd_video)
 
+    a = sub.add_parser("depth", help="lift a song's cover's subject out of it (the cover in 3D in Now Playing)")
+    a.add_argument("target", help="the song: an id or a link")
+    a.set_defaults(func=cmd_depth)
+
     a = sub.add_parser("engine", help="the mpv playback engine")
     a.add_argument("action", choices=("start", "stop", "restart", "status"))
     a.set_defaults(func=cmd_engine)
@@ -1945,7 +1980,7 @@ def main(argv=None):
         return 2
     try:
         args.func(args, out)
-    except (YouTubeError, EngineError, SourceError, ValueError, KeyError) as e:
+    except (YouTubeError, EngineError, SourceError, DepthError, ValueError, KeyError) as e:
         out.error(str(e).strip("'"))
         return 1
     except KeyboardInterrupt:

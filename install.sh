@@ -307,7 +307,7 @@ install_program() {
   else
     local stage part
     stage=$(mktemp -d "$(dirname "$LIB")/.paattu.XXXXXX")
-    for part in bin paattu engine themes share plugin install.sh README.md LICENSE pyproject.toml; do
+    for part in bin paattu engine themes share plugin models install.sh README.md LICENSE pyproject.toml; do
       if [[ -e $SRC/$part ]]; then cp -R "$SRC/$part" "$stage/"; fi
     done
     rm -rf "$stage"/*/__pycache__ "$stage"/*/*/__pycache__

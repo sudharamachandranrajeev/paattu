@@ -204,6 +204,15 @@ function coverClip(width, height) {
   return { x: Math.round((width - side) / 2), y: top, width: side, height: side }
 }
 
+// The whole picture of a cover, without a YouTube thumbnail's letterbox
+// bars (Now Playing's full picture).
+function frameClip(width, height) {
+  if (!width || !height) return null
+  var frameH = Math.round(width * 9 / 16)
+  if (Math.abs(width - height) <= 2 || height <= frameH) return { x: 0, y: 0, width: width, height: height }
+  return { x: 0, y: Math.round((height - frameH) / 2), width: width, height: frameH }
+}
+
 // ---------------------------------------------------------------- library
 
 // A language's saved playlists; `distinct` takes at most one per owner.
@@ -658,6 +667,92 @@ function palette(themeName, themeData, omarchy) {
 // Text that stays readable on top of the accent (the big play button).
 function onAccent(pal) {
   return luminance(pal.accent) > 0.45 ? mix(pal.background, "#000000", 0.6) : "#ffffff"
+}
+
+// ---------------------------------------------------------------- colours from the cover
+
+function toHsl(rgb) {
+  var r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255
+  var hi = Math.max(r, g, b), lo = Math.min(r, g, b), l = (hi + lo) / 2
+  if (hi === lo) return [0, 0, l]
+  var d = hi - lo
+  var s = l > 0.5 ? d / (2 - hi - lo) : d / (hi + lo)
+  var h = hi === r ? (g - b) / d + (g < b ? 6 : 0) : hi === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return [h / 6, s, l]
+}
+
+function fromHsl(h, s, l) {
+  var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q
+  var f = function(t) {
+    t = (t % 1 + 1) % 1
+    return 255 * (t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p)
+  }
+  return toHex([f(h + 1 / 3), f(h), f(h - 1 / 3)])
+}
+
+// The player's colours from a song's cover (Settings › Colours from the
+// cover). `pixels`: RGBA bytes of a small copy of the cover (the app takes
+// 32×32); `dark`: whether the theme is dark, which the colours keep. The
+// accent is the cover's strongest colour, the highlight its next one. Null for
+// a cover without a colour to take (black and white, say).
+function coverPalette(pixels, dark) {
+  var BINS = 24
+  var bins = []
+  for (var k = 0; k < BINS; k++) bins.push({ w: 0, x: 0, y: 0, s: 0 })
+  var counted = 0
+  for (var i = 0; i + 3 < (pixels ? pixels.length : 0); i += 4) {
+    if (pixels[i + 3] < 128) continue
+    counted++
+    var c = toHsl([pixels[i], pixels[i + 1], pixels[i + 2]])
+    if (c[1] < 0.2 || c[2] < 0.12 || c[2] > 0.9) continue
+    // Vivid colours of middling lightness count most (over skin, say).
+    var w = c[1] * c[1] * (1 - Math.abs(c[2] - 0.5))
+    var bin = bins[Math.floor(c[0] * BINS) % BINS]
+    bin.w += w
+    bin.x += w * Math.cos(c[0] * 2 * Math.PI)
+    bin.y += w * Math.sin(c[0] * 2 * Math.PI)
+    bin.s += w * c[1]
+  }
+  // Each hue with its neighbours, so a colour split between two bins counts whole.
+  var around = function(k) {
+    var out = { k: k, w: 0, x: 0, y: 0, s: 0 }
+    for (var d = -1; d <= 1; d++) {
+      var b = bins[(k + d + BINS) % BINS]
+      out.w += b.w; out.x += b.x; out.y += b.y; out.s += b.s
+    }
+    return out
+  }
+  var best = around(0)
+  for (k = 1; k < BINS; k++) if (around(k).w > best.w) best = around(k)
+  if (!counted || best.w < counted * 0.012) return null
+  var hueOf = function(b) { return (Math.atan2(b.y, b.x) / (2 * Math.PI) + 1) % 1 }
+  var next = null
+  for (k = 0; k < BINS; k++) {
+    var apart = Math.abs(k - best.k)
+    if (Math.min(apart, BINS - apart) < 4) continue
+    var other = around(k)
+    if (other.w >= best.w * 0.2 && (!next || other.w > next.w)) next = other
+  }
+  var h = hueOf(best)
+  var sat = Math.max(0.35, Math.min(0.85, best.s / best.w))
+  // Without a second colour, a softer shade of the first.
+  var h2 = next ? hueOf(next) : h
+  var sat2 = next ? Math.max(0.35, Math.min(0.85, next.s / next.w)) : sat * 0.6
+  return dark ? {
+    background: fromHsl(h, sat * 0.5, 0.08),
+    surface: fromHsl(h, sat * 0.45, 0.14),
+    foreground: fromHsl(h, 0.25, 0.94),
+    muted: fromHsl(h, 0.15, 0.68),
+    accent: fromHsl(h, sat, 0.64),
+    highlight: fromHsl(h2, sat2, 0.72)
+  } : {
+    background: fromHsl(h, sat * 0.55, 0.95),
+    surface: fromHsl(h, sat * 0.5, 0.9),
+    foreground: fromHsl(h, 0.4, 0.12),
+    muted: fromHsl(h, 0.2, 0.38),
+    accent: fromHsl(h, sat, 0.4),
+    highlight: fromHsl(h2, sat2, 0.34)
+  }
 }
 
 // ---------------------------------------------------------------- desktop

@@ -316,6 +316,7 @@ paattu toggle | next | prev | seek +10 | volume 60 | shuffle | repeat
 paattu status | queue | jump 5
 paattu watch                            # this song's video in Brave, audio pauses
 paattu video SONG                       # where to stream its small, silent video
+paattu depth SONG                       # its cover's subject, cut out for the cover in 3D
 ```
 
 Now Playing (in the app, and on Omarchy from the sidebar or by clicking the
@@ -324,10 +325,31 @@ and kept in time with the music: the smallest H.264 picture, about 1 MB a
 minute. A YouTube Music song whose own video is only its cover held still
 (an "art track"), and JioSaavn and SoundCloud songs, use a YouTube video of
 about the same length found by search (a lyric or video song) when there is
-one. On a phone the cover sits, rounded, on a blurred copy of itself and fades
-out when the video comes on. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`);
-turn it off with `paattu config set videoBackground false` or in *Look &
-settings*.
+one. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`); turn it off
+with `paattu config set videoBackground false` or in *Look & settings*.
+
+Settings › Now Playing chooses how it looks, the same in the app (Android,
+Windows, Linux) and on Omarchy:
+
+- **Cover** (the default): the cover stays, and the video plays blurred
+  behind it.
+- **Video first**: the cover fades away while the video plays.
+- **Full picture**: the cover (or the video) fills the whole page, sharp,
+  with the song's details over it.
+- **Record**: the cover is the label of a turning record.
+
+**Video blur** sets how soft the video is, from none to 100 (30 by default).
+**Cover colours** gives Now Playing and the player bar the colours of the
+song's cover, changing slowly from one song to the next and keeping the
+theme dark or light. **Cover in 3D** (on by default) tilts the cover towards
+the pointer (on a phone, as you tilt it), drifting slowly when nothing moves
+it, and lifts the people in it out of the picture with a soft shadow behind
+them. The subject is found on the device: by ML Kit on Android, and by
+U²-Net's small model (`models/u2netp.onnx`, with ONNX Runtime) on Windows,
+Linux and Omarchy. On Omarchy, `paattu depth` runs it through
+[uv](https://docs.astral.sh/uv/), which fetches ONNX Runtime, NumPy and
+Pillow (and Python 3.12 if needed) the first time: about 35 MB to download,
+about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's cut-out is kept in `~/.cache/paattu/depth/`.
 
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
@@ -421,6 +443,10 @@ paattu config set desktop.workspace 1
 paattu config set desktop.scale 1.2
 paattu config set desktop.opacity 0.8
 paattu config set videoBackground false # no video behind Now Playing
+paattu config set nowPlayingStyle record  # cover | video | full | record
+paattu config set videoBlur 50          # 0 (sharp) to 100
+paattu config set coverColors true      # Now Playing in the cover's colours
+paattu config set coverDepth false      # a flat cover in Now Playing
 ```
 
 - **Themes** are JSON files in `~/.config/paattu/themes/` (`background`,
@@ -483,7 +509,9 @@ added the rule before search existed, run it again to add the new sites.
 9. A real spectrum visualizer on the widgets
 10. Malayalam / Tamil radio stations (Radio Browser)
 11. Synced lyrics in the app and on the desktop widget
-12. Album-art accent colours (Spotify-style adaptive theme)
+12. ✅ Now Playing looks (cover, video first, full picture, record), video
+    blur, the cover's colours and the cover in 3D, with Windows media
+    controls
 
 ## Development
 
@@ -499,8 +527,10 @@ The app is in `app/` (Flutter, Dart): `lib/src/` has the library model
 (just_audio: ExoPlayer on Android, libmpv on Windows / Linux, with
 audio_service for Android's media controls). Now Playing's silent video is
 video_player on Android and media_kit_video on Windows / Linux. `lib/src/ui/`
-holds the glass look (`glass.dart`). `app/test/` runs the same
-title and track-id cases as `tests/`. With Flutter installed:
+holds the glass look (`glass.dart`). `subject.dart` finds the cover's subject
+(ML Kit on Android, U²-Net with ONNX Runtime on Windows / Linux, from
+`packages/flutter_onnxruntime`). `app/test/` runs the same title, track-id
+and subject-mask cases as `tests/`. With Flutter installed:
 
 ```
 cd app && flutter pub get && flutter test && flutter run

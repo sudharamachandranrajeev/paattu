@@ -2,13 +2,18 @@ import QtQuick
 import QtQuick.Effects
 import "Model.js" as Model
 
-// Now Playing: the cover big and glowing, the song, and what's up next.
-// AppWindow shows the song's video behind it, blurred (VideoBackdrop).
+// Now Playing: the cover big and glowing, the song, and what's up next, in
+// one of four looks (Settings › Now Playing): the cover (in 3D when that's
+// on), the cover making way for the song's video, the picture across the
+// window (AppWindow draws it), or the cover on a turning record. AppWindow
+// shows the song's video behind it all, blurred (VideoBackdrop).
 Item {
   id: root
 
   required property var app
-  readonly property var pal: app.pal
+  readonly property var pal: app.playerPal
+  readonly property string style: app.nowPlayingStyle
+  readonly property bool depth: app.store.config.coverDepth !== false
   readonly property var player: app.player
   readonly property var track: app.nowTrack
   readonly property var upNext: Model.queueRows(player.playlist, app.store.tracks)
@@ -21,14 +26,18 @@ Item {
     id: art
     x: 28
     anchors.verticalCenter: parent.verticalCenter
-    width: root.artSize
+    visible: root.style !== "full"
+    width: visible ? root.artSize : 0
     height: root.artSize
+    // The video takes the cover's place once it shows.
+    opacity: root.style === "video" && root.app.videoShown ? 0 : 1
+    Behavior on opacity { NumberAnimation { duration: 900; easing.type: Easing.InOutQuad } }
 
     Rectangle {
       anchors.fill: parent
       anchors.margins: 18
       anchors.topMargin: 36
-      radius: 40
+      radius: root.style === "record" ? width / 2 : 40
       color: root.pal.accent
       opacity: 0.55
       visible: GraphicsInfo.api !== GraphicsInfo.Software
@@ -42,12 +51,37 @@ Item {
     }
     Cover {
       anchors.fill: parent
+      visible: root.style !== "record" && !root.depth
       radius: 32
-      source: root.track.id ? root.app.store.artFor("v", root.track.id) : ""
+      source: visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
       revision: root.app.artRevision
       tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
       glyphColor: root.pal.muted
       glyph: root.player.hasTrack ? Model.GLYPH_NOTE : Model.GLYPH_ALBUM
+      fontFamily: root.app.fontFamily
+    }
+    Loader {
+      anchors.fill: parent
+      active: root.style !== "record" && root.style !== "full" && root.depth
+      sourceComponent: DepthCover {
+        app: root.app
+        trackId: root.track.id || ""
+        radius: 32
+        tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
+        glyphColor: root.pal.muted
+        glyph: root.player.hasTrack ? Model.GLYPH_NOTE : Model.GLYPH_ALBUM
+      }
+    }
+    Record {
+      anchors.fill: parent
+      visible: root.style === "record"
+      source: visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
+      revision: root.app.artRevision
+      spinning: visible && root.player.playing
+      turn: 6000
+      labelTint: root.pal.accent
+      glyphColor: root.pal.accentText
+      holeColor: root.pal.background
       fontFamily: root.app.fontFamily
     }
   }
@@ -55,7 +89,7 @@ Item {
   Column {
     id: info
     anchors.left: art.right
-    anchors.leftMargin: 36
+    anchors.leftMargin: root.style === "full" ? 8 : 36
     anchors.right: parent.right
     anchors.rightMargin: 28
     anchors.verticalCenter: parent.verticalCenter

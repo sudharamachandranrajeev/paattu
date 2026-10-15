@@ -45,80 +45,15 @@ Item {
       x: root.hasTrack ? (root.playing ? 94 * root.s : 46 * root.s) : 4 * root.s
       Behavior on x { NumberAnimation { duration: 650; easing.type: Easing.OutCubic } }
 
-      Item {
-        id: spinner
+      Record {
         anchors.fill: parent
-
-        Rectangle {
-          anchors.fill: parent
-          radius: width / 2
-          gradient: Gradient {
-            GradientStop { position: 0.0; color: "#1c1c1f" }
-            GradientStop { position: 0.5; color: "#0b0b0c" }
-            GradientStop { position: 1.0; color: "#1a1a1d" }
-          }
-        }
-
-        // Grooves
-        Repeater {
-          model: 9
-          Rectangle {
-            required property int index
-            anchors.centerIn: parent
-            width: root.disc * (0.92 - index * 0.055)
-            height: width
-            radius: width / 2
-            color: "transparent"
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, index % 2 ? 0.035 : 0.06)
-          }
-        }
-
-        // Sheen
-        Rectangle {
-          anchors.centerIn: parent
-          width: parent.width * 0.96
-          height: width
-          radius: width / 2
-          rotation: 35
-          gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.0) }
-            GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, 0.07) }
-            GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0.0) }
-          }
-        }
-
-        Cover {
-          anchors.centerIn: parent
-          width: root.disc * 0.4
-          height: width
-          circle: true
-          source: root.track.id ? root.store.artFor("v", root.track.id) : ""
-          revision: root.artRevision
-          tint: root.pal.accent
-          glyphColor: root.pal.accentText
-          glyph: Model.GLYPH_NOTE
-          fontFamily: root.fontFamily
-        }
-
-        Rectangle {
-          anchors.centerIn: parent
-          width: 7 * root.s
-          height: width
-          radius: width / 2
-          color: root.pal.background
-          border.width: 1
-          border.color: Qt.rgba(1, 1, 1, 0.25)
-        }
-
-        RotationAnimator on rotation {
-          from: 0
-          to: 360
-          duration: 1800
-          loops: Animation.Infinite
-          running: root.playing
-          paused: running && !root.playing
-        }
+        source: root.track.id ? root.store.artFor("v", root.track.id) : ""
+        revision: root.artRevision
+        spinning: root.playing
+        labelTint: root.pal.accent
+        glyphColor: root.pal.accentText
+        holeColor: root.pal.background
+        fontFamily: root.fontFamily
       }
     }
 

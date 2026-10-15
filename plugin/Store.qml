@@ -37,6 +37,10 @@ Item {
       marginX: 56, marginY: 56, scale: 1.0, opacity: 0.92, showQuickPicks: true, showUpNext: true },
     languages: ["Malayalam", "Tamil"],
     videoBackground: true,
+    nowPlayingStyle: "cover",
+    videoBlur: 30,
+    coverColors: false,
+    coverDepth: true,
     fade: 3,
     autoRadio: true
   })

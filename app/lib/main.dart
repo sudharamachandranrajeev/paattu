@@ -93,11 +93,13 @@ Future<void> main() async {
 }
 
 /// On Android the player runs in a media service (notification, lock screen,
-/// headset buttons); elsewhere it runs in the app.
+/// headset buttons), and on Windows it shows in the system's media controls
+/// (the volume flyout, the lock screen, media keys; audio_service_win). On
+/// Linux it runs in the app.
 Future<PaattuAudioHandler> _player() async {
-  if (!Platform.isAndroid) return PaattuAudioHandler();
+  if (!Platform.isAndroid && !Platform.isWindows) return PaattuAudioHandler();
   try {
-    return await AudioService.init(
+    final service = AudioService.init(
       builder: PaattuAudioHandler.new,
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'dev.paattu.paattu.audio',
@@ -109,6 +111,8 @@ Future<PaattuAudioHandler> _player() async {
         notificationColor: Color(0xFF0F766E),
       ),
     );
+    // Never kept from starting by the media controls.
+    return await (Platform.isWindows ? service.timeout(const Duration(seconds: 10)) : service);
   } catch (error, stack) {
     problemLog.error('audio service', error, stack);
     return PaattuAudioHandler();

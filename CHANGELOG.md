@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.7.0 — Now Playing your way: four looks, the video behind the cover, its colours, and the cover in 3D
+
+Which file: the same as before (`Paattu-0.7.0-android.apk`,
+`Paattu-0.7.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull` (a `--dev` install), then `omarchy restart shell`.
+
+What's new, in the app (Android, Windows, Linux) and on Omarchy alike:
+- Settings › Now Playing › Look chooses how Now Playing looks. **Cover**, the
+  new default, keeps the cover in front and plays the song's video, blurred,
+  behind it. **Video first**: the cover fades away while the video plays. **Full picture** fills the page with the cover (or the video),
+  sharp, with the song's details over it. **Record** puts the cover on a
+  turning record.
+- **Video blur**: how soft the video behind Now Playing is, from none to 100
+  (30 by default).
+- **Cover colours**: Now Playing and the player bar take their colours from
+  the song's cover, changing slowly from one song to the next and keeping
+  the theme dark or light. A cover with no colour to speak of (black and
+  white, grey) keeps the theme's. Off by default.
+- **Cover in 3D** (on by default): the cover leans towards the pointer (on a
+  phone, as you tilt it) and drifts slowly when nothing moves it, and the
+  people in it stand out of the picture, sharp and a little nearer, over the
+  rest of the cover with their shadow on it. The subject is found on the
+  device, never sent anywhere: by ML Kit on Android (Google Play services
+  fetches its model the first time), by U²-Net's small model with ONNX
+  Runtime on Windows and Linux, and on Omarchy by `paattu depth`, which runs
+  the same model through uv (fetched the first time: about 35 MB). A cover
+  without a clear subject only leans.
+- Windows: the system's media controls (the media flyout by the volume,
+  the keyboard's media keys) now show and control what's playing, as
+  Android's and Linux's already did.
+
+Good to know:
+- The Windows and Linux downloads are bigger: they carry ONNX Runtime and
+  the model.
+- On Omarchy, Cover in 3D needs [uv](https://docs.astral.sh/uv/); without it
+  the cover only leans.
+
 ## 0.6.2 — Songs play again on phones whose equaliser starts late, and the video behind Now Playing moves
 
 Which file: the same as before (`Paattu-0.6.2-android.apk`,

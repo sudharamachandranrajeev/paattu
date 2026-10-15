@@ -189,6 +189,19 @@ const themes = [
 
 PaattuTheme themeById(String id) => themes.firstWhere((t) => t.id == id, orElse: () => themes.first);
 
+/// How Now Playing shows the song. The names are what settings.json and the
+/// desktop Paattu's config keep.
+enum NowPlayingStyle {
+  cover('Cover', "The cover with round corners on a blurred copy of itself; the song's video plays blurred behind it"),
+  video('Video first', "The cover makes way for the song's video when there is one"),
+  full('Full picture', 'The picture fills the top of the screen, sharp, with the video over it'),
+  record('Record', 'The cover on a record that turns while the song plays');
+
+  const NowPlayingStyle(this.label, this.description);
+  final String label;
+  final String description;
+}
+
 class Settings extends ChangeNotifier {
   Settings(this.file);
 
@@ -241,6 +254,23 @@ class Settings extends ChangeNotifier {
   /// The song's video, blurred, behind Now Playing (on unless turned off).
   bool get videoBackground => _data['videoBackground'] != false;
   set videoBackground(bool on) => _set('videoBackground', on);
+
+  /// How Now Playing looks (the cover, the video first, the full picture or a record).
+  NowPlayingStyle get nowPlayingStyle => NowPlayingStyle.values
+      .firstWhere((s) => s.name == _data['nowPlayingStyle'], orElse: () => NowPlayingStyle.cover);
+  set nowPlayingStyle(NowPlayingStyle style) => _set('nowPlayingStyle', style.name);
+
+  /// How blurred the video behind Now Playing is, 0 (sharp) to 100.
+  int get videoBlur => (toInt(_data['videoBlur']) ?? 30).clamp(0, 100);
+  set videoBlur(int level) => _set('videoBlur', level.clamp(0, 100));
+
+  /// Now Playing and the mini player take their colours from the song's cover.
+  bool get coverColors => _data['coverColors'] == true;
+  set coverColors(bool on) => _set('coverColors', on);
+
+  /// The cover's subject lifted out of the picture, tilting in 3D (on unless turned off).
+  bool get coverDepth => _data['coverDepth'] != false;
+  set coverDepth(bool on) => _set('coverDepth', on);
 
   /// Seconds one song fades into the next (0 for none).
   int get crossfade => (toInt(_data['crossfade']) ?? 3).clamp(0, 12);
