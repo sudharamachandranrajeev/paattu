@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.FileProvider
@@ -33,6 +34,24 @@ class MainActivity : AudioServiceActivity() {
                     "askNotifications" -> {
                         if (!notificationsAllowed()) {
                             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+                        }
+                        result.success(null)
+                    }
+                    "filesAllowed" -> result.success(filesAllowed())
+                    "askFiles" -> {
+                        if (!filesAllowed()) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                try {
+                                    startActivity(
+                                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                                            .setData(Uri.parse("package:$packageName"))
+                                    )
+                                } catch (error: Exception) {
+                                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                                }
+                            } else {
+                                requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 2)
+                            }
                         }
                         result.success(null)
                     }
@@ -82,6 +101,14 @@ class MainActivity : AudioServiceActivity() {
     private fun notificationsAllowed(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    // A folder picked for the kept songs: written with plain file paths.
+    private fun filesAllowed(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
 
     private fun batteryExempt(): Boolean =
         (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)

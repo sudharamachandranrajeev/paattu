@@ -410,10 +410,10 @@ class OfflineLibrary extends ChangeNotifier {
 }
 
 /// Where the kept songs go: [chosen] (the folder picked in Settings) where
-/// Paattu can write to one, else a folder of the app's own. Android keeps an
-/// app's folders to itself, so there the choice isn't offered.
+/// Paattu can write to one, else a folder of the app's own. (On Android a
+/// folder of one's own needs "All files access", which Settings asks for.)
 Directory keptSongsDirectory(String chosen, Directory appDir) {
-  if (chosen.trim().isNotEmpty && !Platform.isAndroid) return Directory(chosen.trim());
+  if (chosen.trim().isNotEmpty) return Directory(chosen.trim());
   return Directory('${appDir.path}${Platform.pathSeparator}offline');
 }
 

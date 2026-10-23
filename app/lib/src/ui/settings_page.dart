@@ -69,8 +69,25 @@ class SettingsPage extends StatelessWidget {
   /// Where the kept songs go (not Android: it keeps an app's folder to itself).
   Future<void> _pickFolder(AppState app) async {
     await attempt(app, () async {
+      // Android lets an app write only to its own folders without "All files
+      // access"; the system's page for it opens, and the pick comes after.
+      if (!await androidFilesAllowed()) {
+        await androidAskFiles();
+        app.toast('Allow "All files access" for Paattu, then pick the folder again');
+        return;
+      }
       final picked = await FilePicker.getDirectoryPath(dialogTitle: 'Where to keep songs');
       if (picked == null || picked.isEmpty) return;
+      // A folder that can't be written to would leave nothing kept.
+      try {
+        final probe = File('$picked${Platform.pathSeparator}.paattu-probe');
+        await Directory(picked).create(recursive: true);
+        await probe.writeAsString('');
+        await probe.delete();
+      } on FileSystemException {
+        app.toast("Paattu can't write to $picked; pick another folder");
+        return;
+      }
       app.settings.offlineDir = picked;
       app.toast('Keeping songs in $picked');
     }, failure: "Couldn't use that folder");
@@ -304,16 +321,13 @@ class SettingsPage extends StatelessWidget {
                   onChanged: (on) => settings.offlineAutoSave = on,
                 ),
                 ListTile(
-                  enabled: !Platform.isAndroid,
                   leading: const Icon(Icons.folder_outlined),
                   title: const Text('Folder'),
-                  subtitle: Text(Platform.isAndroid
-                      ? "${app.offline.path}\nAndroid keeps an app's folder to itself"
-                      : app.offline.path),
-                  trailing: Platform.isAndroid ? null : const Icon(Icons.chevron_right),
-                  onTap: Platform.isAndroid ? null : () => _pickFolder(app),
+                  subtitle: Text(app.offline.path),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _pickFolder(app),
                 ),
-                if (settings.offlineDir.isNotEmpty && !Platform.isAndroid)
+                if (settings.offlineDir.isNotEmpty)
                   ListTile(
                     leading: const Icon(Icons.folder_off_outlined),
                     title: const Text("Use the app's own folder"),

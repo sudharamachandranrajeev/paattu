@@ -22,7 +22,7 @@ import 'util.dart';
 
 /// The version in pubspec.yaml. A test keeps this and pubspec together, so
 /// the app never says it's a version it isn't.
-const sourceVersion = '0.8.1';
+const sourceVersion = '0.8.2';
 
 /// What this build says it is, read at start-up (package_info_plus), which is
 /// the truth the updater compares against. It starts as [sourceVersion], so a

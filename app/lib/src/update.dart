@@ -22,7 +22,9 @@ import 'sources/http.dart' show browserAgent, httpClient;
 import 'util.dart';
 
 /// Where the app looks, and where it sends the person when it can't install.
-const releaseApiUrl = 'https://api.github.com/repos/sudharamachandranrajeev/paattu/releases/latest';
+// The list, not /releases/latest: that one passes over pre-releases, and
+// every Paattu release is published as one, so it answered 404.
+const releaseApiUrl = 'https://api.github.com/repos/sudharamachandranrajeev/paattu/releases?per_page=20';
 const releasePageUrl = 'https://github.com/sudharamachandranrajeev/paattu/releases';
 
 /// The file the releases publish their checksums in.
@@ -181,8 +183,7 @@ class UpdateManager extends ChangeNotifier {
       problemLog.warn('update: GitHub said ${response.statusCode} about the releases');
       return null;
     }
-    final release = Release.fromJson(asJson(jsonDecode(utf8.decode(response.bodyBytes))));
-    return release.version.isEmpty ? null : release;
+    return newestRelease(jsonDecode(utf8.decode(response.bodyBytes)));
   }
 
   /// Look for a newer version. [quiet] keeps an "up to date" or a failure to
@@ -386,4 +387,18 @@ Map<String, String> parseChecksums(String text) {
     out[name] = sum.toLowerCase();
   }
   return out;
+}
+
+/// The newest version among GitHub's list of releases (pre-releases count;
+/// drafts don't), or null when there's none.
+Release? newestRelease(Object? list) {
+  Release? best;
+  for (final item in list is List ? list : const []) {
+    final json = asJson(item);
+    if (json['draft'] == true) continue;
+    final release = Release.fromJson(json);
+    if (release.version.isEmpty) continue;
+    if (best == null || isNewerVersion(release.version, best.version)) best = release;
+  }
+  return best;
 }
