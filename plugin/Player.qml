@@ -35,6 +35,9 @@ Item {
   // The song the radio plays songs like ({} when it's off).
   property var radio: ({})
   readonly property bool radioOn: !!(radio && radio.id)
+  // The sleep timer (engine/paattu.lua): {mode: "time", at: epoch seconds},
+  // {mode: "end"}, or {} when it's off.
+  property var sleep: ({})
 
   // The stream's audio, for the quality badge.
   property string audioCodec: ""
@@ -104,13 +107,16 @@ Item {
     setProperty("loop-file", mode === "one" ? "inf" : "no")
     setProperty("loop-playlist", mode === "all" ? "inf" : "no")
   }
+  // 30 (minutes), "+5", "end" (of this song) or "off".
+  function setSleep(value) { return send(["script-message", "paattu-sleep", String(value)]) }
   function cycleRepeat() { setRepeat(Model.nextRepeat(repeat)) }
 
   // ---------- events ----------
   readonly property var observed: [
     "idle-active", "pause", "path", "media-title", "duration", "volume", "mute", "playlist-pos",
     "playlist-count", "playlist", "loop-file", "loop-playlist", "paused-for-cache",
-    "user-data/paattu/shuffle", "user-data/paattu/source", "user-data/paattu/radio"
+    "user-data/paattu/shuffle", "user-data/paattu/source", "user-data/paattu/radio",
+    "user-data/paattu/sleep"
   ]
 
   function subscribe() {
@@ -144,6 +150,7 @@ Item {
     case "user-data/paattu/shuffle": shuffle = value === true; break
     case "user-data/paattu/source": source = value || ({}); break
     case "user-data/paattu/radio": radio = value || ({}); break
+    case "user-data/paattu/sleep": sleep = value || ({}); break
     }
   }
 
@@ -200,6 +207,7 @@ Item {
     count = 0
     index = -1
     radio = ({})
+    sleep = ({})
     resetQuality()
   }
 

@@ -188,6 +188,19 @@ Item {
         fontFamily: root.app.fontFamily
         onClicked: root.app.toggleRadio()
       }
+      // Sleep timer: each press goes 15, 30, 60 min, end of this song, off.
+      // (The position ticks while playing, so the minutes left stay fresh.)
+      Chip {
+        anchors.verticalCenter: parent.verticalCenter
+        text: Model.sleepLabel(root.player.sleep, root.player.position >= 0 ? Date.now() / 1000 : 0)
+        glyph: Model.GLYPH_SLEEP
+        textColor: root.pal.foreground
+        accent: root.pal.accent
+        selected: !!root.player.sleep.mode
+        fontSize: 12
+        fontFamily: root.app.fontFamily
+        onClicked: root.player.setSleep(Model.nextSleep(root.player.sleep, Date.now() / 1000))
+      }
     }
 
     Item { width: 1; height: 10 }

@@ -139,7 +139,7 @@ void main() {
         _song('youtube:mid', 'Mid.webm', 100, used: DateTime.utc(2026, 10, 5)),
         _song('youtube:new', 'New.webm', 100, used: DateTime.utc(2026, 10, 9)),
       ]);
-      final offline = OfflineLibrary(dir, limitBytes: 250);
+      final offline = OfflineLibrary(dir);
       await offline.load();
       expect(offline.totalBytes, 300);
       await offline.applyLimit(250);
@@ -148,6 +148,17 @@ void main() {
       // Its file went with it.
       expect(_exists(dir, 'Old.webm'), isFalse);
       expect(_exists(dir, 'New.webm'), isTrue);
+    });
+
+    test('a folder over the room allowed is made to fit as it loads', () async {
+      _seed(dir, [
+        _song('youtube:old', 'Old.webm', 100, used: DateTime.utc(2026, 10, 1)),
+        _song('youtube:new', 'New.webm', 100, used: DateTime.utc(2026, 10, 9)),
+      ]);
+      final offline = OfflineLibrary(dir, limitBytes: 150);
+      await offline.load();
+      expect(offline.has('youtube:old'), isFalse);
+      expect(offline.has('youtube:new'), isTrue);
     });
 
     test('it keeps going until it fits', () async {
