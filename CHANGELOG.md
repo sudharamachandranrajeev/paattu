@@ -47,6 +47,17 @@ Good to know:
   so until it's public, checking for updates says it couldn't reach the
   releases and *Check for updates* keeps working only from a browser that's
   signed in.
+- Fixed on Android: the music could stop once the screen locked, and the
+  notification, lock-screen controls and launcher widgets (Niagara and the
+  like) went missing. Between songs — loading the next one, or changing over
+  in a crossfade — the player said "paused" for a moment, which took the
+  media service out of the foreground; locked, some phones then froze the
+  app, and Android doesn't let one back into the foreground from the
+  background. Paattu now tells Android it's playing from play until pause.
+  Wi-Fi is also held awake while music plays, the notification permission is
+  asked for (Android 13+), and Paattu asks once to be left out of battery
+  optimisation (Settings › Playback › *Play with the screen locked* asks
+  again).
 - Fixed: a song downloaded ahead of time could leave the app waiting on
   itself for ever, so the *next* song after it wasn't downloaded ahead
   either. Playback was unaffected, which is why it went unnoticed.

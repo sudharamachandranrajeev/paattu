@@ -13,6 +13,7 @@ import '../app_state.dart';
 import '../links.dart';
 import '../log.dart';
 import '../offline.dart';
+import '../player/android_power.dart';
 import '../settings.dart';
 import '../sources/jiosaavn.dart';
 import '../update.dart';
@@ -157,6 +158,19 @@ class SettingsPage extends StatelessWidget {
                   value: settings.autoRadio,
                   onChanged: (on) => settings.autoRadio = on,
                 ),
+                if (Platform.isAndroid)
+                  FutureBuilder<bool>(
+                    future: androidBatteryExempt(),
+                    builder: (context, exempt) => ListTile(
+                      leading: const Icon(Icons.battery_saver_outlined),
+                      title: const Text('Play with the screen locked'),
+                      subtitle: Text(exempt.data == false
+                          ? "This phone's battery saving may stop the music when the screen locks. "
+                              'Tap to let Paattu run in the background'
+                          : 'Paattu is let run in the background'),
+                      onTap: exempt.data == false ? androidAskBatteryExempt : null,
+                    ),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.history),
                   title: const Text('Forget what I played'),
