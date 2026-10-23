@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.1 — 0.8.0 that installs over 0.7.1 on Android
+
+Which file: `Paattu-0.8.1-android.apk` (and the same Windows and Linux files
+as before). Everything new is 0.8.0's, below.
+
+- Fixed: Android said "App not installed as package appears to be invalid"
+  for 0.8.0 over an older Paattu. Its build number (Android's versionCode)
+  was the release run's number, which started again at 1 when the project
+  moved to its new repository, and Android won't install a lower one over
+  0.7.1's 16. It now comes from the version (0.8.1 is 801), so it only goes
+  up.
+
 ## 0.8.0 — A sleep timer, songs kept on the device, and updates from inside the app
 
 Which file: the same as before (`Paattu-0.8.0-android.apk`,
