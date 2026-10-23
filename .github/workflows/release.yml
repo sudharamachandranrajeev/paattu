@@ -30,9 +30,15 @@ jobs:
           else
             version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
           fi
+          # The build number (Android's versionCode) comes from the version,
+          # not the run number: Android won't install a lower versionCode over
+          # a higher one, and run numbers start again in a new repository
+          # (0.8.0 was build 1 after 0.7.1's build 16). 0.8.1 -> 801.
+          IFS=. read -r major minor patch <<< "${version%%-*}"
+          build=$(( major * 10000 + minor * 100 + ${patch:-0} ))
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "build=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "Paattu $version (build $GITHUB_RUN_NUMBER)"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "Paattu $version (build $build)"
 
   android:
     needs: version
