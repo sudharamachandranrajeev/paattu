@@ -1,7 +1,8 @@
 // What Android needs for music to keep playing with the screen locked
 // (MainActivity.kt's "power" channel): Wi-Fi held awake while playing, the
 // notification permission (Android 13+), and being left out of battery
-// optimisation on phones that stop apps in the background.
+// optimisation on phones that stop apps in the background. Also writing to a
+// folder picked for the kept songs.
 
 import 'dart:io';
 
@@ -37,6 +38,14 @@ Future<bool> androidBatteryExempt() => _ask('batteryExempt');
 
 /// Show Android's "let Paattu run in the background?" question.
 Future<void> androidAskBatteryExempt() => _ask('askBatteryExempt');
+
+/// Whether Paattu may write to folders other than its own (Android 11+:
+/// "All files access"; before that, the storage permission).
+Future<bool> androidFilesAllowed() => _ask('filesAllowed');
+
+/// Ask for that: the system's settings page on Android 11+, the permission
+/// question before.
+Future<void> androidAskFiles() => _ask('askFiles');
 
 Future<bool> _ask(String method) async {
   if (!Platform.isAndroid) return true;

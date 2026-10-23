@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.8.2 — Media controls on Android, updates found, and a folder of your own
+
+Which file: `Paattu-0.8.2-android.apk` (and the same Windows and Linux files
+as before).
+
+- Fixed: on Android there was no media notification, and so no lock-screen
+  controls and nothing in launcher widgets (Niagara and the like). The
+  release build's resource shrinking took out audio_service's button icons,
+  which it looks up by name, and every playback update then failed with
+  "You must specify an icon resource id to build a CustomAction". They are
+  kept now, and the release's emulator check fails if that ever comes back.
+- Fixed: *Check for updates* said it couldn't reach the releases. It asked
+  GitHub for the "latest" release, which leaves out pre-releases — and every
+  Paattu release is one. It reads the list now and takes the newest version.
+- **Settings › On this device › Folder** works on Android too: pick any
+  folder (the phone's Music folder, an SD card). Paattu asks for "All files
+  access" first, since Android lets an app write only to its own folders
+  without it, and checks it can write to the folder before using it.
+
 ## 0.8.1 — 0.8.0 that installs over 0.7.1 on Android
 
 Which file: `Paattu-0.8.1-android.apk` (and the same Windows and Linux files

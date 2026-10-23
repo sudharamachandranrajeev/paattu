@@ -196,4 +196,24 @@ e0375d7da54d6023e8a14472a3bf4a98ec6693aab9100f17e3122f73460dc18b  Paattu-0.7.1-w
   test('the app starts out saying the source version', () {
     expect(appVersion, sourceVersion);
   });
+
+  group('newestRelease', () {
+    test('pre-releases count, drafts and untagged ones don\'t', () {
+      final list = [
+        {'tag_name': 'v0.8.1', 'prerelease': true, 'assets': []},
+        {'tag_name': 'v0.9.0', 'draft': true, 'assets': []},
+        {'tag_name': '', 'assets': []},
+        {'tag_name': 'v0.8.0', 'prerelease': true, 'assets': []},
+      ];
+      expect(newestRelease(list)?.version, '0.8.1');
+    });
+    test('newest by version, not by list order', () {
+      expect(newestRelease([{'tag_name': 'v0.7.1'}, {'tag_name': 'v0.10.0'}, {'tag_name': 'v0.9.2'}])?.version, '0.10.0');
+    });
+    test('nothing to read', () {
+      expect(newestRelease([]), isNull);
+      expect(newestRelease({'message': 'Not Found'}), isNull);
+      expect(newestRelease(null), isNull);
+    });
+  });
 }

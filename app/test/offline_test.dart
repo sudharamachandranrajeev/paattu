@@ -295,10 +295,8 @@ void main() {
       final app = Directory('${root.path}${Platform.pathSeparator}support');
       expect(keptSongsDirectory('', app).path, '${app.path}${Platform.pathSeparator}offline');
       expect(keptSongsDirectory('   ', app).path, '${app.path}${Platform.pathSeparator}offline');
-      if (!Platform.isAndroid) {
-        expect(keptSongsDirectory('/music/paattu', app).path, '/music/paattu');
-        expect(keptSongsDirectory('  /music/paattu  ', app).path, '/music/paattu');
-      }
+      expect(keptSongsDirectory('/music/paattu', app).path, '/music/paattu');
+      expect(keptSongsDirectory('  /music/paattu  ', app).path, '/music/paattu');
     });
   });
 

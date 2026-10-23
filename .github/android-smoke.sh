@@ -24,5 +24,13 @@ if grep -qE 'FATAL EXCEPTION|Unhandled Exception' "$out/logcat.txt"; then
   echo "::error::Paattu threw an exception at start"
   exit 1
 fi
+# The media notification (and the lock screen and launcher widgets with it)
+# never appears when resource shrinking drops audio_service's drawables:
+# AudioService then fails on every state change (app/.../res/raw/keep.xml).
+if grep -qE 'must specify an icon resource id|Resources\$NotFoundException' "$out/logcat.txt"; then
+  grep -E -A6 'must specify an icon resource id|Resources\$NotFoundException' "$out/logcat.txt" | head -40
+  echo "::error::the media notification can't be built (a drawable is missing from the APK)"
+  exit 1
+fi
 grep -E ' flutter ' "$out/logcat.txt" | tail -20 || true
 echo "Paattu is up on the emulator"

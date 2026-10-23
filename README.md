@@ -401,9 +401,10 @@ out of what you remember to download.
 The files are named `Singer - Song.m4a` (or `.webm` for Opus, `.flac`,
 `.mp3`), so the folder reads like a music collection to anything else that
 opens it, and it carries its own index (`paattu-offline.json`) so the whole
-folder can be moved or copied to another device. On the desktop you can
-point it at any folder you like; Android keeps an app's folder to itself, so
-there it lives in the app's own and the row says where.
+folder can be moved or copied to another device. You can point it at any
+folder you like (on Android, Paattu first asks for "All files access", which
+writing outside its own folder needs; the phone's Music folder or an SD card
+work).
 
 Two things worth knowing:
 
