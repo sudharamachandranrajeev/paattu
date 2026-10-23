@@ -20,6 +20,7 @@ import '../util.dart';
 import 'cover_theme.dart';
 import 'depth_cover.dart';
 import 'glass.dart';
+import 'sleep_timer.dart';
 import 'sound_page.dart';
 import 'video_background.dart';
 import 'widgets.dart';
@@ -693,6 +694,7 @@ class _Dome extends StatelessWidget {
                       icon: const Icon(Icons.queue_music),
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const QueuePage())),
                     ),
+                    const SleepTimerButton(),
                     ListenableBuilder(
                       listenable: app.settings,
                       builder: (context, _) => IconButton(

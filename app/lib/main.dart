@@ -14,12 +14,15 @@ import 'src/app_state.dart';
 import 'src/history.dart';
 import 'src/library.dart';
 import 'src/log.dart';
+import 'src/offline.dart';
 import 'src/player/paattu_audio_handler.dart';
 import 'src/player/song_cache.dart';
 import 'src/radio.dart';
 import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
 import 'src/ui/shell.dart';
+import 'src/update.dart';
+import 'src/util.dart' show nowStamp;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +55,8 @@ Future<void> main() async {
   }
 
   final dir = await getApplicationSupportDirectory();
+  // Before the log's header, so it says what this build really is.
+  await readAppVersion();
   unawaited(problemLog.start(File('${dir.path}${Platform.pathSeparator}paattu.log'),
       header: 'Paattu $appVersion on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}'));
   final library = Library(File('${dir.path}${Platform.pathSeparator}library.json'));
@@ -59,6 +64,12 @@ Future<void> main() async {
   final history = History(File('${dir.path}${Platform.pathSeparator}history.json'));
   await Future.wait([library.load(), settings.load(), history.load()]);
   jiosaavnSaveData = settings.saveData;
+
+  // The songs kept on this device: the folder picked in Settings where Paattu
+  // can write to one, else a folder of the app's own.
+  final offline =
+      OfflineLibrary(keptSongsDirectory(settings.offlineDir, dir), limitBytes: settings.offlineLimitMb << 20);
+  await offline.load();
 
   final player = await _player();
   try {
@@ -74,6 +85,7 @@ Future<void> main() async {
   fire(songs.start());
   player
     ..cache = songs
+    ..offline = offline
     ..radioSongs = SongRadio(history).next
     ..onPlayed = ((track, heard, length) => history.played(track, heard, length: length));
   void playback() {
@@ -81,15 +93,52 @@ Future<void> main() async {
     player
       ..crossfade = settings.crossfade
       ..autoRadio = settings.autoRadio
-      ..cacheAhead = !settings.saveData;
+      ..cacheAhead = !settings.saveData
+      // Saving data means not pulling whole songs down, so don't keep them.
+      ..keepListened = settings.offlineAutoSave && !settings.saveData;
+    // The folder or the space allowed changed while running.
+    fire(offline.moveTo(keptSongsDirectory(settings.offlineDir, dir), allowed: settings.offlineLimitMb << 20));
   }
 
   playback();
   settings.addListener(playback);
 
-  runApp(PaattuApp(state: AppState(library, settings, player, history)));
+  // A newer Paattu: looked for once a day, quietly, and offered from Settings.
+  final updates = UpdateManager(
+    currentVersion: appVersion,
+    dir: Directory('${dir.path}${Platform.pathSeparator}updates'),
+  );
+  final offered = settings.updateOffered;
+  if (offered != null) {
+    // What the last run found, so Settings can say it at once.
+    updates
+      ..available = Release.fromJsonKept(offered)
+      ..state = isNewerVersion(updates.available!.version, appVersion)
+          ? UpdateState.available
+          : UpdateState.idle;
+  }
+
+  final app = AppState(library, settings, player, history, offline, updates);
+  runApp(PaattuApp(state: app));
+  fire(_lookForUpdates(app));
   final problem = playbackUnavailable;
   if (problem != null) fire(Future.delayed(const Duration(seconds: 1), () => player.messages.add(problem)));
+}
+
+/// Look for a newer Paattu about once a day, quietly, and offer it when there
+/// is one (update.dart). What it finds is kept in settings, so the next start
+/// can say it without asking GitHub again.
+Future<void> _lookForUpdates(AppState app) async {
+  final settings = app.settings;
+  final last = DateTime.tryParse(settings.updateChecked);
+  if (last != null && DateTime.now().difference(last).inHours < 20) return;
+  settings.updateChecked = nowStamp();
+  await app.updates.check(quiet: true);
+  final release = app.updates.available;
+  settings.updateOffered = release?.toJson();
+  if (release != null) {
+    app.toast('Paattu ${release.version} is out — Settings has the update');
+  }
 }
 
 /// On Android the player runs in a media service (notification, lock screen,

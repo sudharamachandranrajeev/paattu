@@ -21,7 +21,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../history.dart' show counted;
 import '../log.dart';
+import '../offline.dart';
 import '../sound.dart';
 import '../sources/http.dart' show streamStatus;
 import '../sources/sources.dart';
@@ -29,6 +31,7 @@ import '../titles.dart';
 import '../track.dart';
 import '../util.dart';
 import 'reasons.dart';
+import 'sleep_timer.dart';
 import 'song_cache.dart';
 
 /// Why this device can't play (libmpv didn't load on the desktop), or null.
@@ -126,8 +129,25 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   bool cacheAhead = true;
   SongCache? cache;
 
+  /// Songs kept on this device (offline.dart): played from here when they are,
+  /// and added to as the songs worth keeping are listened to.
+  OfflineLibrary? offline;
+
+  /// Keep the songs listened to, so they play with no internet next time.
+  bool keepListened = false;
+
   /// Carry on with songs like the last one when the queue runs out.
   bool autoRadio = true;
+
+  /// Stopping by itself, after a while or at the end of the song (sleep_timer.dart).
+  final sleep = SleepTimer();
+
+  /// The fade the sleep timer is doing, and whether one is going.
+  int _sleepFade = 0;
+  bool _sleepFading = false;
+
+  /// Seconds the song is quieted over before the sleep timer stops it.
+  static const _sleepFadeOut = Duration(seconds: 8);
 
   /// Songs like a song, for the radio (radio.dart's SongRadio.next).
   Future<List<Json>> Function(Json station, List<Json> queue)? radioSongs;
@@ -384,7 +404,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         loading.add(false);
         _failures = 0;
         problemLog.info('playing ${_describe(track)}: ${way.describe}, ${stream.label}, '
-            '${deck.cached != null ? 'downloaded' : stream.uri.host}');
+            '${deck.saved != null ? 'kept on this device' : deck.cached != null ? 'downloaded' : stream.uri.host}');
         if (autoplay) unawaited(deck.player.play());
         _broadcast(deck.player.playbackEvent);
         _started();
@@ -416,20 +436,34 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     _firstReason = null;
   }
 
-  /// What [deck] should play for [way]: the song's download, if it has one,
-  /// or its stream.
+  /// What [deck] should play for [way]: the song kept on this device, else
+  /// this run's download of it, else its stream.
   AudioSource _source(_Deck deck, _Way way, ResolvedStream stream) {
     final key = _streamKey(way.track);
+    // A song kept offline arrives as a file: stream (offline.dart).
+    if (stream.uri.scheme == 'file') {
+      deck.cached = null;
+      deck.saved = key;
+      return AudioSource.file(stream.uri.toFilePath(), tag: trackId(way.track));
+    }
     final file = way.attempt == 0 ? cache?.file(key) : null;
     deck.cached = file == null ? null : key;
+    deck.saved = null;
     return file != null
         ? AudioSource.file(file.path, tag: trackId(way.track))
         : AudioSource.uri(stream.uri, headers: stream.headers, tag: trackId(way.track));
   }
 
-  /// Forget the download [deck] was playing (it wouldn't play). Whether it
-  /// was playing one.
+  /// Forget the local file [deck] was playing (it wouldn't play), so the song
+  /// is streamed instead. Whether it was playing one.
   bool _dropCached(_Deck deck) {
+    final saved = deck.saved;
+    if (saved != null) {
+      deck.saved = null;
+      // A kept song that won't play is no use kept: forget it and stream.
+      unawaited(offline?.forget(saved));
+      return true;
+    }
     final key = deck.cached;
     if (key == null) return false;
     deck.cached = null;
@@ -450,6 +484,8 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     current.add(track);
     quality.add(label);
     mediaItem.add(_mediaItem(track, _player.duration).copyWith(extras: {'quality': label}));
+    // Played from the device: it stays when there isn't room for everything.
+    offline?.notePlayed(_streamKey(track));
     if (!identical(_heardTrack, track)) {
       _heardTrack = track;
       _heard = Duration.zero;
@@ -524,9 +560,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   static const _tickEvery = Duration(milliseconds: 250);
 
-  /// Four times a second: count what's heard, get the next song ready 25
-  /// seconds before this one ends, and start the cross-fade.
+  /// Four times a second: run the sleep timer, count what's heard, get the
+  /// next song ready 25 seconds before this one ends, and start the cross-fade.
   void _tick() {
+    // The sleep timer counts down whether or not a song is playing.
+    sleep.tick();
+    if (sleep.due) return unawaited(_sleepNow());
+    if (_sleepFading) return;
     final deck = _deck, player = deck.player;
     if (_loading || _index < 0 || !player.playing) return;
     if (player.processingState == ProcessingState.ready && identical(_heardTrack, current.value)) {
@@ -544,6 +584,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final ready = _ready;
     final fade = Duration(seconds: crossfade);
     if (crossfade > 0 && ready != null && ready.loaded && ready.index == next && left <= fade && duration > fade * 3) {
+      // This song is ending into the next: an end-of-song timer stops here,
+      // without the cross-fade carrying on past it.
+      sleep.songEnded();
+      if (sleep.due) return unawaited(_sleepNow());
       _ready = null;
       _listened();
       _generation++;
@@ -551,6 +595,38 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       _startWays(ready.track);
       unawaited(_swapTo(ready, play: true, fade: true));
     }
+  }
+
+  /// The sleep timer is up: quiet the song over a few seconds, then pause.
+  /// The queue stays where it is, so play carries on from that song.
+  Future<void> _sleepNow() async {
+    final fade = ++_sleepFade;
+    _sleepFading = true;
+    sleep.noticed();
+    _endFade(); // a cross-fade going: let this one song be the last
+    _dropReady(); // and don't start the next one
+    final total = _sleepFadeOut.inMilliseconds;
+    final clock = Stopwatch()..start();
+    while (fade == _sleepFade) {
+      final t = (clock.elapsedMilliseconds / total).clamp(0.0, 1.0);
+      await _player.setVolume(_volume * (1 - t));
+      if (t >= 1) break;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (fade != _sleepFade) return; // play was pressed meanwhile
+    _sleepFading = false;
+    await pause();
+    await _player.setVolume(_volume);
+    messages.add('Sleep timer: Paattu stopped for the night');
+  }
+
+  /// Play pressed while the sleep timer was quieting the song: carry on at
+  /// full volume.
+  void _wake() {
+    if (!_sleepFading) return;
+    _sleepFade++;
+    _sleepFading = false;
+    unawaited(_player.setVolume(_volume));
   }
 
   /// Load the song at [index] on the spare deck, ready to play.
@@ -625,9 +701,34 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   void _listened() {
     final track = _heardTrack;
     final heard = _heard.inSeconds;
+    final length = _heardLength;
     _heardTrack = null;
     _heard = Duration.zero;
-    if (track != null && heard > 0) onPlayed?.call(track, heard, _heardLength);
+    if (track != null && heard > 0) {
+      onPlayed?.call(track, heard, length);
+      _keepOffline(track, heard, length);
+    }
+  }
+
+  /// A song listened to properly is kept on this device, so it plays with no
+  /// internet next time. Quiet about it: one line a song would be noise, and
+  /// the Offline page shows what is kept.
+  void _keepOffline(Json track, int heard, int? length) {
+    final kept = offline;
+    if (kept == null || !keepListened) return;
+    if (!counted({'heard': heard, 'length': length ?? 0})) return;
+    final key = _streamKey(track);
+    if (kept.has(key)) return;
+    // The player's own resolve, so a link already found is used again.
+    unawaited(kept.save(track, () => _resolve(track, 0)));
+  }
+
+  /// Keep [track] on this device now (the song menu's and the Offline page's
+  /// button), whether or not it has been played. Whether it is kept.
+  Future<bool> keepOffline(Json track) async {
+    final kept = offline;
+    if (kept == null) return false;
+    return kept.save(track, () => _resolve(track, 0));
   }
 
   /// Log why [way] failed, and keep the first reason to tell the person.
@@ -644,10 +745,16 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         error is SourceException || error is PlayerException || error is TimeoutException ? null : stack);
   }
 
-  String _streamKey(Json track) => '${trackSite(track)}:${trackId(track)}';
+  String _streamKey(Json track) => trackKey(track);
 
   Future<ResolvedStream> _resolve(Json track, int attempt) async {
     final key = _streamKey(track);
+    // A song kept on this device plays from its file: no link to find, so it
+    // works with no internet at all.
+    if (attempt == 0) {
+      final kept = await offline?.localStream(key);
+      if (kept != null) return kept;
+    }
     final known = _streams[key];
     // A downloaded song doesn't need a fresh link.
     if (attempt == 0 && known != null && (known.fresh || cache?.file(key) != null)) return known;
@@ -662,10 +769,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final generation = _generation;
     for (final next in _upcoming(2)) {
       if (generation != _generation) return;
+      final key = _streamKey(next);
+      // Already kept on this device: it plays from there, nothing to fetch.
+      if (offline?.has(key) ?? false) continue;
       try {
         final stream = await _resolve(next, 0);
         final songs = cache;
-        if (cacheAhead && songs != null) await songs.fetch(_streamKey(next), stream);
+        if (cacheAhead && songs != null) await songs.fetch(key, stream);
       } catch (error) {
         // it gets another go when it plays
         problemLog.warn('prefetch ${_describe(next)}: ${errorText(error)}');
@@ -728,6 +838,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   Future<void> _completed() async {
     if (_loading) return;
+    // The song ran to its end: an end-of-song sleep timer stops here (even
+    // with repeat-one, which would otherwise start it again).
+    sleep.songEnded();
+    if (sleep.due) return _sleepNow();
     if (_repeat == AudioServiceRepeatMode.one) {
       _listened();
       _showSong(_queue[_index], quality.value);
@@ -814,6 +928,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> play() async {
+    _wake();
     if (_index < 0 && _queue.isNotEmpty) return _playAt(0);
     if (_player.processingState == ProcessingState.idle && _index >= 0) {
       return _playAt(_index, from: _player.position);
@@ -1066,6 +1181,9 @@ class _Deck {
 
   /// The download it plays (its cache key), if it plays one.
   String? cached;
+
+  /// The song kept on this device that it plays (its offline key), if it plays one.
+  String? saved;
 }
 
 /// The song at [index] in the queue, loading (then [loaded]) on [deck].

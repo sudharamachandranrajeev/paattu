@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The folders the updater's downloaded APK may be shared from, so the
+     system's installer can be given a content: URI for it (Android 7+ refuses
+     a file: one). Referenced by the FileProvider in AndroidManifest.xml. -->
+<paths>
+    <!-- getApplicationSupportDirectory()/updates, where update.dart downloads to. -->
+    <files-path name="updates" path="updates/"/>
+    <cache-path name="cached_updates" path="updates/"/>
+</paths>

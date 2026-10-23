@@ -6,9 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../library.dart';
+import '../offline.dart';
 import '../util.dart';
 import 'glass.dart';
 import 'home_page.dart';
+import 'offline_page.dart';
 import 'playlist_page.dart';
 import 'widgets.dart';
 
@@ -61,6 +63,7 @@ class LibraryPage extends StatelessWidget {
                           openPlaylist(context, favouritesId);
                         },
                       ),
+                    const _OfflineRow(),
                     const SectionHeader('Saved from YouTube'),
                     if (saved.isEmpty)
                       const Padding(
@@ -129,6 +132,29 @@ class _PlaylistRow extends StatelessWidget {
       subtitle: [owner, count].where((s) => s.isNotEmpty).join(' · '),
       trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
       onTap: () => openPlaylist(context, id),
+    );
+  }
+}
+
+/// The songs kept on this device, and how much room they take.
+class _OfflineRow extends StatelessWidget {
+  const _OfflineRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = Paattu.of(context).offline;
+    return ListenableBuilder(
+      listenable: offline,
+      builder: (context, _) => PillTile(
+        leading: const Cover(icon: Icons.download_for_offline, size: 50, radius: 25),
+        title: 'On this device',
+        subtitle: offline.count == 0
+            ? 'Songs you listen to, kept for no internet'
+            : '${plural(offline.count, 'song')} · ${formatBytes(offline.totalBytes)}',
+        trailing: const [Icon(Icons.chevron_right), SizedBox(width: 10)],
+        onTap: () =>
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const OfflinePage())),
+      ),
     );
   }
 }

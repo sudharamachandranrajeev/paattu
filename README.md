@@ -354,6 +354,77 @@ about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's cut-ou
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
+### Sleep timer (the app)
+
+The moon button on Now Playing stops the music by itself:
+
+- a while from now — 5, 10, 15, 30, 45, 60 or 90 minutes;
+- **End of this song**, which waits for the song playing to finish rather
+  than cutting it off;
+- **+5 min** to add to a countdown that's running, or *Turn off*.
+
+When it's up Paattu quiets the song over 8 seconds and pauses, so nothing
+stops mid-word. The queue stays where it is: press play in the morning and
+it carries on from that song. Pressing play *during* the fade-out cancels it
+and comes back to full volume. A song you skip doesn't end an *End of this
+song* timer — you're still listening.
+
+The sleep timer is in the app (Android, Windows, Linux); the `paattu` command
+and the Omarchy plugin don't have it yet.
+
+## Songs kept on this device
+
+A song you actually listen to — half of it, or 30 seconds of a long one — is
+kept in a folder as you play it, so it plays later with no internet and no
+data. The library builds itself out of what you listen to, rather than
+out of what you remember to download.
+
+- **Library › On this device** shows what's kept and how much room it takes,
+  plays or shuffles the lot, and takes a song off again.
+- A song's menu has **Keep on this device**, for one you want now whether or
+  not you've played it. The same menu takes it off.
+- **Settings › On this device** turns the automatic keeping off, moves the
+  folder, and sets the room allowed: **2 GB by default**, and past it the
+  songs played *least recently* go first, so what you still listen to stays.
+
+The files are named `Singer - Song.m4a` (or `.webm` for Opus, `.flac`,
+`.mp3`), so the folder reads like a music collection to anything else that
+opens it, and it carries its own index (`paattu-offline.json`) so the whole
+folder can be moved or copied to another device. On the desktop you can
+point it at any folder you like; Android keeps an app's folder to itself, so
+there it lives in the app's own and the row says where.
+
+Two things worth knowing:
+
+- Kept songs aren't kept while **Save data** is on — pulling whole songs down
+  is exactly what that setting avoids. Turn Save data off and keeping starts.
+- A kept song plays from its file, so it needs no stream link and works
+  offline. If a kept file turns out to be broken, Paattu forgets it and
+  streams the song instead, rather than failing on it.
+
+## Updates from inside the app
+
+**Settings › About › Check for updates** reads the [Releases](../../releases)
+on GitHub, shows what's new in the version it found, then downloads the right
+file for this device, checks its SHA-256 against the release's
+`SHA256SUMS.txt`, and installs it:
+
+| Where | What installing does |
+|---|---|
+| **Android** | hands the APK to the system's installer (allow "install unknown apps" when asked) |
+| **Windows** | runs the setup program; Paattu closes so it can be replaced, and setup offers to start the new one |
+| **Linux AppImage** | replaces the AppImage where it stands — open Paattu again to use the new one |
+| **Linux tarball** | saves the AppImage to Downloads and says where, since Paattu can't replace an installed folder safely |
+
+It looks for a newer version by itself about once a day and says so when
+there is one. A download that doesn't match its checksum is thrown away, and
+a release that publishes no checksum isn't installed at all — you can always
+get it from the releases page instead.
+
+**The repository has to be public for the app to see its releases.** GitHub
+answers 404 to everybody else about a private one, so while it's private,
+*Check for updates* reports that it couldn't reach the releases.
+
 ## Radio and playlists made for you
 
 ```
@@ -512,6 +583,10 @@ added the rule before search existed, run it again to add the new sites.
 12. ✅ Now Playing looks (cover, video first, full picture, record), video
     blur, the cover's colours and the cover in 3D, with Windows media
     controls
+13. ✅ Sleep timer, songs kept on this device as you listen to them, and
+    updates from inside the app (all three in the app only, for now)
+14. The sleep timer and the kept songs on the `paattu` command and the
+    Omarchy plugin, so the desktop player has them too
 
 ## Development
 
@@ -529,8 +604,14 @@ audio_service for Android's media controls). Now Playing's silent video is
 video_player on Android and media_kit_video on Windows / Linux. `lib/src/ui/`
 holds the glass look (`glass.dart`). `subject.dart` finds the cover's subject
 (ML Kit on Android, U²-Net with ONNX Runtime on Windows / Linux, from
-`packages/flutter_onnxruntime`). `app/test/` runs the same title, track-id
-and subject-mask cases as `tests/`. With Flutter installed:
+`packages/flutter_onnxruntime`). `player/sleep_timer.dart` is the sleep timer,
+`offline.dart` the songs kept on this device, and `update.dart` the in-app
+updater (GitHub's releases, checked by SHA-256 before anything is installed;
+Android's half of it is the `installApk` method channel in `MainActivity.kt`,
+which hands the APK to the system's installer through a FileProvider).
+`app/test/` runs the same title, track-id and subject-mask cases as `tests/`,
+plus the sleep timer, the offline library and the updater's version and
+checksum reading. With Flutter installed:
 
 ```
 cd app && flutter pub get && flutter test && flutter run

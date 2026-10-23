@@ -5,28 +5,56 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'history.dart';
 import 'library.dart';
 import 'log.dart';
 import 'links.dart';
 import 'made.dart';
+import 'offline.dart';
 import 'player/paattu_audio_handler.dart';
 import 'settings.dart';
 import 'sources/youtube.dart';
 import 'track.dart';
+import 'update.dart';
 import 'util.dart';
 
-const appVersion = '0.6.0';
+/// The version in pubspec.yaml. A test keeps this and pubspec together, so
+/// the app never says it's a version it isn't.
+const sourceVersion = '0.8.0';
+
+/// What this build says it is, read at start-up (package_info_plus), which is
+/// the truth the updater compares against. It starts as [sourceVersion], so a
+/// test and the moment before it's read both have something sensible.
+String appVersion = sourceVersion;
+
 const repoUrl = 'https://github.com/sudharamachandranrajeev/paattu';
 
+/// Read the build's own version. A platform that won't say keeps the source's.
+Future<void> readAppVersion() async {
+  try {
+    final info = await PackageInfo.fromPlatform();
+    if (info.version.isNotEmpty) appVersion = info.version;
+  } catch (error) {
+    problemLog.warn("the app couldn't read its own version: ${errorText(error)}");
+  }
+}
+
 class AppState {
-  AppState(this.library, this.settings, this.player, this.history) : made = MadeForYou(history, library);
+  AppState(this.library, this.settings, this.player, this.history, this.offline, this.updates)
+      : made = MadeForYou(history, library);
 
   final Library library;
   final Settings settings;
   final PaattuAudioHandler player;
   final History history;
+
+  /// The songs kept on this device (offline.dart).
+  final OfflineLibrary offline;
+
+  /// Looking for and installing a newer Paattu (update.dart).
+  final UpdateManager updates;
   final MadeForYou made;
   final messenger = GlobalKey<ScaffoldMessengerState>();
   final navigator = GlobalKey<NavigatorState>();
@@ -165,6 +193,23 @@ class AppState {
   void saveSong(Json track) {
     final added = library.saveSong(track);
     toast(added ? 'Saved ${trackTitle(track)}' : '${trackTitle(track)} is already saved');
+  }
+
+  /// Keep [track] on this device, so it plays with no internet next time.
+  void keepOffline(Json track) {
+    if (offline.has(trackKey(track))) {
+      toast('${trackTitle(track)} is already on this device');
+      return;
+    }
+    toast('Keeping ${trackTitle(track)}…');
+    fire(player.keepOffline(track).then((kept) => toast(kept
+        ? '${trackTitle(track)} is on this device'
+        : "Couldn't keep ${trackTitle(track)}: the problem log says why")));
+  }
+
+  /// Take a kept song off this device (its file goes too).
+  void dropOffline(OfflineEntry entry) {
+    fire(offline.remove(entry.key).then((_) => toast('Took ${entry.title} off this device')));
   }
 
   void addToPlaylist(String playlistId, List<Json> tracks) {
