@@ -354,7 +354,7 @@ about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's cut-ou
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
-### Sleep timer (the app)
+### Sleep timer
 
 The moon button on Now Playing stops the music by itself:
 
@@ -369,8 +369,19 @@ it carries on from that song. Pressing play *during* the fade-out cancels it
 and comes back to full volume. A song you skip doesn't end an *End of this
 song* timer — you're still listening.
 
-The sleep timer is in the app (Android, Windows, Linux); the `paattu` command
-and the Omarchy plugin don't have it yet.
+On Omarchy the **Sleep** chip on Now Playing goes 15, 30, 60 minutes, end of
+this song, off with each press, and the command does the same:
+
+```
+paattu sleep 30      # pause in 30 minutes (8 s fade-out first)
+paattu sleep +5      # 5 more minutes
+paattu sleep end     # pause when this song finishes
+paattu sleep off
+paattu sleep         # what's set
+```
+
+The engine script (`engine/paattu.lua`) keeps the timer, so it runs whether
+or not the bar is open. Pausing during the fade-out ends it.
 
 ## Songs kept on this device
 
@@ -584,9 +595,9 @@ added the rule before search existed, run it again to add the new sites.
     blur, the cover's colours and the cover in 3D, with Windows media
     controls
 13. ✅ Sleep timer, songs kept on this device as you listen to them, and
-    updates from inside the app (all three in the app only, for now)
-14. The sleep timer and the kept songs on the `paattu` command and the
-    Omarchy plugin, so the desktop player has them too
+    updates from inside the app (the sleep timer on Omarchy too)
+14. The kept songs on the `paattu` command and the Omarchy plugin, so the
+    desktop player has them too
 
 ## Development
 

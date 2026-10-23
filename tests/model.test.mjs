@@ -369,3 +369,18 @@ test("frameClip drops a thumbnail's letterbox bars, nothing else", () => {
   eq(M.frameClip(1280, 720), { x: 0, y: 0, width: 1280, height: 720 })
   assert.equal(M.frameClip(0, 360), null)
 })
+
+test("the sleep chip goes 15, 30, 60, end of song, off", () => {
+  const now = 1000000
+  assert.equal(M.nextSleep({}, now), "15")
+  assert.equal(M.nextSleep([], now), "15")
+  assert.equal(M.nextSleep({ mode: "time", at: now + 15 * 60 }, now), "30")
+  assert.equal(M.nextSleep({ mode: "time", at: now + 12 * 60 }, now), "30")
+  assert.equal(M.nextSleep({ mode: "time", at: now + 30 * 60 }, now), "60")
+  assert.equal(M.nextSleep({ mode: "time", at: now + 60 * 60 }, now), "end")
+  assert.equal(M.nextSleep({ mode: "end" }, now), "off")
+  assert.equal(M.sleepLabel({}, now), "Sleep")
+  assert.equal(M.sleepLabel({ mode: "time", at: now + 14 * 60 + 5 }, now), "Sleep · 15 min")
+  assert.equal(M.sleepLabel({ mode: "time", at: now - 3 }, now), "Sleep · 1 min")
+  assert.equal(M.sleepLabel({ mode: "end" }, now), "Sleep · end of song")
+})

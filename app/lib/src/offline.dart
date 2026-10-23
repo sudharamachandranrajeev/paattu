@@ -292,6 +292,9 @@ class OfflineLibrary extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Allow [allowed] bytes of room from now on, dropping what doesn't fit.
+  Future<void> applyLimit(int allowed) => moveTo(dir, allowed: allowed);
+
   /// Carry the songs and the index over to [folder].
   Future<void> _relocate(Directory folder) async {
     final from = dir;

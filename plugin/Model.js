@@ -43,6 +43,7 @@ var GLYPH_SAVED = "\u{F00C2}"       // md-bookmark_music
 var GLYPH_SAVE = "\u{F1379}"        // md-bookmark_music_outline
 var GLYPH_PLAY_NEXT = "\u{F0411}"   // md-playlist_play
 var GLYPH_WEB = "\u{F059F}"         // md-web
+var GLYPH_SLEEP = "\u{F04B2}"       // md-sleep
 var GLYPH_RADIO = "\u{F0439}"       // md-radio
 var GLYPH_MADE = "\u{F0674}"        // md-creation
 
@@ -75,6 +76,31 @@ function plural(n, word) {
 // ---------------------------------------------------------------- tracks
 
 // A YouTube video id from a watch / youtu.be / shorts link or a bare id.
+// The sleep timer chip goes round these (minutes), then "end" (of this
+// song), then off.
+var SLEEP_STEPS = [15, 30, 60]
+
+// What pressing the chip asks the engine for, given the timer now
+// (Player.sleep) and the time in epoch seconds.
+function nextSleep(sleep, now) {
+  if (!sleep || !sleep.mode) return String(SLEEP_STEPS[0])
+  if (sleep.mode === "end") return "off"
+  // The step the countdown is in (it may have run down a while), then the
+  // one after it.
+  var left = (Number(sleep.at) - now) / 60
+  for (var i = 0; i < SLEEP_STEPS.length - 1; i++) {
+    if (SLEEP_STEPS[i] >= left - 0.5) return String(SLEEP_STEPS[i + 1])
+  }
+  return "end"
+}
+
+// "Sleep", "Sleep · 14 min", "Sleep · end of song".
+function sleepLabel(sleep, now) {
+  if (!sleep || !sleep.mode) return "Sleep"
+  if (sleep.mode === "end") return "Sleep · end of song"
+  return "Sleep · " + Math.max(1, Math.ceil((Number(sleep.at) - now) / 60)) + " min"
+}
+
 function videoId(path) {
   var text = String(path || "").trim()
   var m = text.match(/^([\w-]{11})$/) || text.match(/[?&]v=([\w-]{11})/) || text.match(/youtu\.be\/([\w-]{11})/)

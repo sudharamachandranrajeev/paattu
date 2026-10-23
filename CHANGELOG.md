@@ -4,10 +4,13 @@
 
 Which file: the same as before (`Paattu-0.8.0-android.apk`,
 `Paattu-0.8.0-windows-x64-setup.exe`, the AppImage or the tarball). On
-Omarchy, `git pull`, then `./install.sh --dev`, then `omarchy restart shell`.
+Omarchy, `git pull`, then `./install.sh --dev`, then `omarchy restart shell`
+and `paattu engine restart` (the engine script has the sleep timer).
 
-All three are in the app (Android, Windows, Linux); the sleep timer and the
-kept songs are not in the `paattu` command or the Omarchy plugin yet.
+All three are in the app (Android, Windows, Linux). On Omarchy the sleep
+timer is in too: a **Sleep** chip on Now Playing (each press goes 15, 30,
+60 minutes, end of this song, off) and `paattu sleep 30|+5|end|off`. The kept
+songs and the updater aren't on Omarchy yet.
 
 What's new:
 - **Sleep timer**: the moon button on Now Playing. Pick a while (5 to 90

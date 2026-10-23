@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, made, paths, radio, seeds,
                sound, sources, youtube)
@@ -1033,6 +1034,26 @@ def cmd_status(args, out):
         st["volume"], "on" if st["shuffle"] else "off", st["repeat"]))
 
 
+def _sleep_text(sleep):
+    if sleep.get("mode") == "end":
+        return "Sleep: at the end of this song"
+    if sleep.get("mode") == "time":
+        left = max(0, int(sleep.get("at", 0) - time.time()))
+        return "Sleep in %s" % _fmt_duration(left) if left else "Sleep: now"
+    return "Sleep timer off"
+
+
+def cmd_sleep(args, out):
+    value = args.value
+    if value is not None and value not in ("end", "off") and not re.fullmatch(r"\+?[0-9]+", value):
+        raise ValueError("sleep takes minutes (30), more minutes (+5), end or off")
+    with engine.Engine(autostart=False) as e:
+        if value is not None:
+            e.send(["script-message", "paattu-sleep", value])
+        sleep = e.get("user-data/paattu/sleep") or {}
+    out.data({"sleep": sleep}, _sleep_text(sleep))
+
+
 def cmd_queue(args, out):
     with engine.Engine(autostart=False) as e:
         entries = e.get("playlist") or []
@@ -1884,6 +1905,9 @@ def build_parser():
     a.add_argument("mode", nargs="?", default="cycle", choices=("off", "all", "one", "cycle"))
     a.set_defaults(func=cmd_repeat)
     sub.add_parser("status", help="what's playing").set_defaults(func=cmd_status)
+    a = sub.add_parser("sleep", help="sleep timer: 30 (minutes), +5 (more), end (of this song), off; status when left out")
+    a.add_argument("value", nargs="?")
+    a.set_defaults(func=cmd_sleep)
     sub.add_parser("queue", help="the play queue").set_defaults(func=cmd_queue)
     a = sub.add_parser("jump", help="play queue entry N")
     a.add_argument("index", type=int)

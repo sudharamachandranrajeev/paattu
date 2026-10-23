@@ -12,6 +12,11 @@
 --  * Fades: a song fades out over its last few seconds and the next fades in
 --    (config.json "fade", 3 s by default; mpv plays one song at a time, so
 --    the two don't overlap).
+--  * Sleep timer: `script-message paattu-sleep MINUTES|+MINUTES|end|off`.
+--    When the time is up the song quiets over 8 s and pauses; "end" pauses
+--    once the song playing has finished. The state is in
+--    user-data/paattu/sleep ({mode = "time", at = epoch seconds} or
+--    {mode = "end"}; {} when off) for the bar and the CLI.
 
 local utils = require "mp.utils"
 
@@ -162,6 +167,63 @@ local function gain_now()
     return gain
 end
 
+-- ---------------------------------------------------------------- sleep timer
+
+local SLEEP_FADE = 8
+local sleep = nil         -- {mode = "time", at = epoch seconds} or {mode = "end"}
+local sleep_fading = nil  -- mp.get_time() the fade-out began
+
+local function publish_sleep()
+    mp.set_property_native("user-data/paattu/sleep", sleep or {})
+end
+
+local function sleep_off()
+    sleep, sleep_fading = nil, nil
+    publish_sleep()
+end
+
+local function sleep_gain()
+    if not sleep_fading then return 1 end
+    local left = 1 - (mp.get_time() - sleep_fading) / SLEEP_FADE
+    return math.sin(math.max(0, math.min(1, left)) * math.pi / 2)
+end
+
+local function fall_asleep()
+    sleep_off()
+    mp.set_property_bool("pause", true)
+end
+
+mp.register_script_message("paattu-sleep", function(arg)
+    arg = arg or "off"
+    local now = os.time()
+    if arg == "end" then
+        sleep, sleep_fading = { mode = "end" }, nil
+    elseif arg:sub(1, 1) == "+" and tonumber(arg:sub(2)) then
+        -- Add to a countdown that's running (or start one).
+        local base = (sleep and sleep.mode == "time") and math.max(sleep.at, now) or now
+        sleep, sleep_fading = { mode = "time", at = base + tonumber(arg:sub(2)) * 60 }, nil
+    elseif tonumber(arg) and tonumber(arg) > 0 then
+        sleep, sleep_fading = { mode = "time", at = now + tonumber(arg) * 60 }, nil
+    else
+        sleep, sleep_fading = nil, nil
+    end
+    publish_sleep()
+end)
+
+-- Pausing during the fade-out is the listener taking over: the timer is done.
+mp.observe_property("pause", "bool", function(_, paused)
+    if paused and sleep_fading then sleep_off() end
+end)
+
+mp.add_periodic_timer(1, function()
+    if not sleep or sleep.mode ~= "time" or sleep_fading or os.time() < sleep.at then return end
+    if mp.get_property_bool("pause") or mp.get_property_bool("idle-active") then
+        sleep_off() -- nothing playing to stop
+    else
+        sleep_fading = mp.get_time()
+    end
+end)
+
 -- ---------------------------------------------------------------- events
 
 mp.register_event("file-loaded", function()
@@ -175,7 +237,7 @@ mp.register_event("file-loaded", function()
     -- Fade in only after a song that played to its end (not a skip or a pick).
     fade_in = last_end == "eof"
     applied = -1
-    set_gain(gain_now())
+    set_gain(gain_now() * sleep_gain())
     maybe_extend()
 end)
 
@@ -186,6 +248,8 @@ mp.register_event("end-file", function(event)
     end
     song = nil
     last_end = event.reason
+    -- "End of this song": a skip doesn't count, the song finishing does.
+    if event.reason == "eof" and sleep and sleep.mode == "end" then fall_asleep() end
     if event.reason == "error" and event.playlist_entry_id then fail_over(event.playlist_entry_id) end
 end)
 
@@ -200,5 +264,10 @@ end)
 mp.add_periodic_timer(TICK, function()
     if not song or mp.get_property_bool("pause") or mp.get_property_bool("core-idle") then return end
     song.heard = song.heard + TICK
-    set_gain(gain_now())
+    if sleep_fading and mp.get_time() - sleep_fading >= SLEEP_FADE then
+        fall_asleep()
+        set_gain(gain_now())
+        return
+    end
+    set_gain(gain_now() * sleep_gain())
 end)
