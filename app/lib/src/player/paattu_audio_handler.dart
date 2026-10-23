@@ -30,6 +30,7 @@ import '../sources/sources.dart';
 import '../titles.dart';
 import '../track.dart';
 import '../util.dart';
+import 'android_power.dart';
 import 'reasons.dart';
 import 'sleep_timer.dart';
 import 'song_cache.dart';
@@ -53,8 +54,12 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       p.playbackEventStream.listen((event) {
         if (deck == _deck) _broadcast(event);
       }, onError: (Object _, StackTrace _) {}),
-      p.playingStream.listen((_) {
-        if (deck == _deck) _broadcast(p.playbackEvent);
+      p.playingStream.listen((playing) {
+        if (deck != _deck) return;
+        // The live player stopping by itself (another app took the sound,
+        // headphones out) is a pause; between songs it's only changing over.
+        if (!playing && !_loading && p.processingState != ProcessingState.idle) _playIntent = false;
+        _broadcast(p.playbackEvent);
       }),
       p.processingStateStream.listen((state) {
         if (state == ProcessingState.completed && deck == _deck) unawaited(_completed());
@@ -174,6 +179,15 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   int _failures = 0;
   int _generation = 0;
   bool _loading = false;
+
+  /// Whether music is meant to be playing: true from play until pause or
+  /// stop, through loading a song and changing decks, when no player is
+  /// playing for a moment. Android is told this, not the player's own state:
+  /// a moment of "paused" takes the media service out of the foreground, and
+  /// with the screen locked some phones then freeze or kill the app, and it
+  /// isn't allowed back into the foreground from the background, so the
+  /// music stops and the notification, lock screen and widget controls go.
+  bool _playIntent = false;
 
   /// The next song, loading or loaded on the spare deck; the last song tried
   /// there (a song that wouldn't get ready isn't tried again).
@@ -297,7 +311,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       if (_queue.isEmpty) {
         await stop();
       } else {
-        await _playAt(min(index, _queue.length - 1), autoplay: _player.playing);
+        await _playAt(min(index, _queue.length - 1), autoplay: _player.playing || _playIntent);
       }
     } else {
       _publishQueue();
@@ -344,6 +358,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     _endFade();
     final generation = ++_generation;
     final track = _queue[index];
+    _playIntent = autoplay;
     // A new song (or the same one picked again) starts with its own stream;
     // resuming one that broke part way carries on with the next way.
     final resuming = from != null && identical(track, _waysFor);
@@ -799,6 +814,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     problemLog.warn('skipped ${_describe(track)}: $reason');
     if (stopping) {
       _failures = 0;
+      _playIntent = false;
       await _player.stop();
       _broadcast(_player.playbackEvent);
       return;
@@ -854,6 +870,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       await _playAt(next);
     } else {
       _listened();
+      _playIntent = false;
       await _player.pause();
       await _player.seek(Duration.zero);
     }
@@ -929,6 +946,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> play() async {
     _wake();
+    _playIntent = true;
     if (_index < 0 && _queue.isNotEmpty) return _playAt(0);
     if (_player.processingState == ProcessingState.idle && _index >= 0) {
       return _playAt(_index, from: _player.position);
@@ -938,14 +956,16 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> pause() async {
+    _playIntent = false;
     _endFade();
     await _player.pause();
   }
 
-  Future<void> togglePlay() => _player.playing ? pause() : play();
+  Future<void> togglePlay() => _player.playing || _playIntent ? pause() : play();
 
   @override
   Future<void> stop() async {
+    _playIntent = false;
     _generation++;
     _endFade();
     _dropReady();
@@ -1084,7 +1104,8 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   // ---------------------------------------------------------------- state
 
   void _broadcast(PlaybackEvent event) {
-    final playing = _player.playing;
+    final playing = _player.playing || _playIntent;
+    unawaited(androidKeepAwake(playing));
     playbackState.add(playbackState.value.copyWith(
       controls: [
         MediaControl.skipToPrevious,

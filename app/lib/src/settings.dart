@@ -290,6 +290,11 @@ class Settings extends ChangeNotifier {
   int get offlineLimitMb => (toInt(_data['offlineLimitMb']) ?? 2048).clamp(0, 1 << 20);
   set offlineLimitMb(int mb) => _set('offlineLimitMb', mb.clamp(0, 1 << 20));
 
+  /// Whether Android has been asked once to leave Paattu out of battery
+  /// optimisation (main.dart); Settings can ask again.
+  bool get batteryAsked => _data['batteryAsked'] == true;
+  set batteryAsked(bool asked) => _set('batteryAsked', asked);
+
   /// When the app last looked for a newer version, and what it found, so it
   /// doesn't ask GitHub on every start and can say "up to date" at once.
   String get updateChecked => asString(_data['updateChecked']);

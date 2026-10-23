@@ -15,6 +15,7 @@ import 'src/history.dart';
 import 'src/library.dart';
 import 'src/log.dart';
 import 'src/offline.dart';
+import 'src/player/android_power.dart';
 import 'src/player/paattu_audio_handler.dart';
 import 'src/player/song_cache.dart';
 import 'src/radio.dart';
@@ -121,8 +122,20 @@ Future<void> main() async {
   final app = AppState(library, settings, player, history, offline, updates);
   runApp(PaattuApp(state: app));
   fire(_lookForUpdates(app));
+  if (Platform.isAndroid) fire(_androidBackground(settings));
   final problem = playbackUnavailable;
   if (problem != null) fire(Future.delayed(const Duration(seconds: 1), () => player.messages.add(problem)));
+}
+
+/// What Android needs for the music to go on with the screen locked: the
+/// notification permission (the media notification is also the lock screen's
+/// and the launcher widgets' controls), and, asked once, being left out of
+/// battery optimisation (Settings › Playback can ask again).
+Future<void> _androidBackground(Settings settings) async {
+  await androidAskNotifications();
+  if (settings.batteryAsked || await androidBatteryExempt()) return;
+  settings.batteryAsked = true;
+  await androidAskBatteryExempt();
 }
 
 /// Look for a newer Paattu about once a day, quietly, and offer it when there
