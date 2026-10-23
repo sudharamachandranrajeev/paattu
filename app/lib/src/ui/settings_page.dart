@@ -12,12 +12,18 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_state.dart';
 import '../links.dart';
 import '../log.dart';
+import '../offline.dart';
 import '../settings.dart';
 import '../sources/jiosaavn.dart';
+import '../update.dart';
 import '../util.dart';
 import 'glass.dart';
+import 'offline_page.dart';
 import 'sound_page.dart';
 import 'widgets.dart';
+
+/// The top of the "space allowed" slider, in MB (32 GB).
+const _limitSliderMax = 32 * 1024.0;
 
 /// The desktop Paattu's library on this machine (Linux only).
 File? desktopLibrary() {
@@ -57,6 +63,16 @@ class SettingsPage extends StatelessWidget {
       );
       if (saved != null) app.toast('Saved the problem log');
     }, failure: "Couldn't save it");
+  }
+
+  /// Where the kept songs go (not Android: it keeps an app's folder to itself).
+  Future<void> _pickFolder(AppState app) async {
+    await attempt(app, () async {
+      final picked = await FilePicker.getDirectoryPath(dialogTitle: 'Where to keep songs');
+      if (picked == null || picked.isEmpty) return;
+      app.settings.offlineDir = picked;
+      app.toast('Keeping songs in $picked');
+    }, failure: "Couldn't use that folder");
   }
 
   Future<void> _importBytes(BuildContext context, AppState app, Uint8List bytes, String from) async {
@@ -249,6 +265,66 @@ class SettingsPage extends StatelessWidget {
                   },
                 ),
               ]),
+              const SectionHeader('On this device'),
+              GlassGroup(children: [
+                ListenableBuilder(
+                  listenable: app.offline,
+                  builder: (context, _) => ListTile(
+                    leading: const Icon(Icons.download_for_offline_outlined),
+                    title: const Text('Songs kept offline'),
+                    subtitle: Text(app.offline.count == 0
+                        ? 'Nothing kept yet'
+                        : '${plural(app.offline.count, 'song')} · '
+                            '${formatBytes(app.offline.totalBytes)}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute<void>(builder: (_) => const OfflinePage())),
+                  ),
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.save_alt),
+                  title: const Text('Keep the songs you listen to'),
+                  subtitle: const Text('A song you play properly is kept, so it plays with no internet '
+                      'and no data next time'),
+                  value: settings.offlineAutoSave,
+                  onChanged: (on) => settings.offlineAutoSave = on,
+                ),
+                ListTile(
+                  enabled: !Platform.isAndroid,
+                  leading: const Icon(Icons.folder_outlined),
+                  title: const Text('Folder'),
+                  subtitle: Text(Platform.isAndroid
+                      ? "${app.offline.path}\nAndroid keeps an app's folder to itself"
+                      : app.offline.path),
+                  trailing: Platform.isAndroid ? null : const Icon(Icons.chevron_right),
+                  onTap: Platform.isAndroid ? null : () => _pickFolder(app),
+                ),
+                if (settings.offlineDir.isNotEmpty && !Platform.isAndroid)
+                  ListTile(
+                    leading: const Icon(Icons.folder_off_outlined),
+                    title: const Text("Use the app's own folder"),
+                    onTap: () {
+                      settings.offlineDir = '';
+                      app.toast('Keeping songs in the app\'s own folder');
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.sd_storage_outlined),
+                  title: const Text('Space allowed'),
+                  subtitle: Text(settings.offlineLimitMb == 0
+                      ? 'No limit: songs are kept until you take them off'
+                      : '${formatBytes(settings.offlineLimitMb << 20)} · the songs played least recently go first'),
+                ),
+                Slider(
+                  value: settings.offlineLimitMb.toDouble().clamp(0, _limitSliderMax),
+                  max: _limitSliderMax,
+                  divisions: _limitSliderMax ~/ 512,
+                  label: settings.offlineLimitMb == 0
+                      ? 'No limit'
+                      : formatBytes(settings.offlineLimitMb << 20),
+                  onChanged: (v) => settings.offlineLimitMb = (v.round() ~/ 512) * 512,
+                ),
+              ]),
               const SectionHeader('Library'),
               GlassGroup(children: [
                 ListTile(
@@ -311,10 +387,11 @@ class SettingsPage extends StatelessWidget {
               GlassGroup(children: [
                 ListTile(
                   leading: const Icon(Icons.info_outline),
-                  title: const Text('Paattu $appVersion'),
+                  title: Text('Paattu $appVersion'),
                   subtitle: Text('Malayalam & Tamil music from YouTube, JioSaavn and SoundCloud. MIT licence.',
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
                 ),
+                _UpdateTile(app: app),
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('Source code and releases'),
@@ -398,5 +475,116 @@ class _LogPage extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// Looking for a newer Paattu, and installing it when there is one.
+class _UpdateTile extends StatelessWidget {
+  const _UpdateTile({required this.app});
+  final AppState app;
+
+  @override
+  Widget build(BuildContext context) {
+    final updates = app.updates;
+    final scheme = Theme.of(context).colorScheme;
+    return ListenableBuilder(
+      listenable: updates,
+      builder: (context, _) {
+        final release = updates.available;
+        final version = release?.version ?? '';
+        final busy = updates.state == UpdateState.downloading ||
+            updates.state == UpdateState.installing ||
+            updates.state == UpdateState.checking;
+        final asset = release?.installerFor(updates.platform);
+        final (title, subtitle) = switch (updates.state) {
+          UpdateState.checking => ('Looking for a newer version…', ''),
+          UpdateState.upToDate => ('Paattu $appVersion is the newest', ''),
+          UpdateState.available => (
+              'Update to $version',
+              [
+                if (asset != null && asset.size > 0) formatBytes(asset.size),
+                'From the releases on GitHub',
+              ].join(' · ')
+            ),
+          UpdateState.downloading => ('Downloading $version…', '${(updates.progress * 100).round()}%'),
+          UpdateState.installing => ('Installing $version…', ''),
+          UpdateState.ready => ('$version is ready', updates.problem),
+          UpdateState.failed => ('Check for updates', updates.problem),
+          UpdateState.idle => ('Check for updates', 'From the releases on GitHub'),
+        };
+        final found = updates.state == UpdateState.available || updates.state == UpdateState.ready;
+        return ListTile(
+          leading: Icon(
+            switch (updates.state) {
+              UpdateState.available || UpdateState.ready => Icons.system_update,
+              UpdateState.failed => Icons.error_outline,
+              _ => Icons.update,
+            },
+            color: found ? scheme.primary : null,
+          ),
+          title: Text(title),
+          subtitle: subtitle.isEmpty ? null : Text(subtitle, style: TextStyle(color: scheme.onSurfaceVariant)),
+          trailing: busy ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+          onTap: busy ? null : () => _tap(context),
+        );
+      },
+    );
+  }
+
+  /// Ask GitHub, and offer what it finds.
+  Future<void> _tap(BuildContext context) async {
+    final updates = app.updates;
+    if (updates.state == UpdateState.available && updates.available != null) {
+      await _offer(context, updates.available!);
+      return;
+    }
+    await updates.check();
+    switch (updates.state) {
+      case UpdateState.upToDate:
+        app.toast('Paattu $appVersion is the newest');
+      case UpdateState.available:
+        if (context.mounted) await _offer(context, updates.available!);
+      default:
+        app.toast(updates.problem.isEmpty ? "Couldn't look for a newer version" : updates.problem);
+    }
+  }
+
+  /// What's new, and whether to download and install it.
+  Future<void> _offer(BuildContext context, Release release) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text('Paattu ${release.version}'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 320),
+          child: SingleChildScrollView(
+            child: SelectableText(
+              release.notes.trim().isEmpty ? 'A newer version of Paattu.' : release.notes.trim(),
+              style: Theme.of(dialog).textTheme.bodyMedium?.copyWith(height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Not now')),
+          FilledButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('Download and install')),
+        ],
+      ),
+    );
+    if (go != true) return;
+    await app.updates.downloadAndInstall();
+    if (!context.mounted) return;
+    // Windows closes the app so the installer can replace it, and a phone hands
+    // the APK to its own installer: neither comes back here. Linux says what
+    // to do next.
+    switch (app.updates.state) {
+      case UpdateState.ready:
+      case UpdateState.failed:
+        final reason = app.updates.problem;
+        app.toast(app.updates.state == UpdateState.ready
+            ? reason
+            : '${reason.isEmpty ? "Couldn't install it" : reason}. Get it from the releases page');
+      default:
+        break;
+    }
   }
 }

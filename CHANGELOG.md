@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.8.0 — A sleep timer, songs kept on the device, and updates from inside the app
+
+Which file: the same as before (`Paattu-0.8.0-android.apk`,
+`Paattu-0.8.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh --dev`, then `omarchy restart shell`.
+
+All three are in the app (Android, Windows, Linux); the sleep timer and the
+kept songs are not in the `paattu` command or the Omarchy plugin yet.
+
+What's new:
+- **Sleep timer**: the moon button on Now Playing. Pick a while (5 to 90
+  minutes) or *End of this song*, and Paattu quiets the song over 8 seconds
+  and pauses. Pressing play during the fade-out carries on at full volume.
+  The queue stays where it is, so play picks up from that song.
+- **Songs kept on this device**: a song you listen to properly (half of it,
+  or 30 seconds of a long one) is kept in a folder as you play it, so it
+  plays later with no internet and no data. **Library › On this device**
+  shows what's kept, how much room it takes, and plays or takes off any of
+  it. A song's menu has **Keep on this device** for one you want now.
+  Settings › On this device turns the automatic keeping off, moves the
+  folder (not on Android, which keeps an app's folder to itself), and sets
+  the room allowed — 2 GB by default, and past it the songs played least
+  recently go first. The files are named `Singer - Song.m4a`, so the folder
+  reads like a music collection to anything else that opens it.
+- **Updates from inside the app**: Settings › About › *Check for updates*
+  reads the releases on GitHub, shows what's new, then downloads the right
+  file for this device, checks its SHA-256 against the release's
+  `SHA256SUMS.txt`, and installs it — the system's installer on a phone, the
+  setup program on Windows (Paattu closes so it can be replaced), and the
+  AppImage replaced where it stands on Linux. It looks once a day by itself
+  and says when something's there. A release that publishes no checksum
+  isn't installed at all.
+
+Good to know:
+- Kept songs aren't kept when **Save data** is on: pulling whole songs down
+  is what that setting is for avoiding.
+- Kept songs are your copies for this device; the folder carries its own
+  index (`paattu-offline.json`), so it can be moved or copied whole.
+- The updates the app finds are the ones published on
+  [Releases](../../releases). **The repository has to be public for the app
+  to see them** — GitHub answers 404 to everyone else about a private one,
+  so until it's public, checking for updates says it couldn't reach the
+  releases and *Check for updates* keeps working only from a browser that's
+  signed in.
+- Fixed: a song downloaded ahead of time could leave the app waiting on
+  itself for ever, so the *next* song after it wasn't downloaded ahead
+  either. Playback was unaffected, which is why it went unnoticed.
+- The app's own version (Settings › About, and the head of the problem log)
+  now comes from the build, and a test keeps it in step with `pubspec.yaml`.
+  It had been saying 0.6.0 while the build was 0.7.1.
+
 ## 0.7.1 — 0.7.0, built for Windows again
 
 Which file: the same as before (`Paattu-0.7.1-android.apk`,

@@ -37,6 +37,10 @@ String trackSite(Json t) {
   return url.isNotEmpty ? siteOf(url) : 'youtube';
 }
 
+/// The song as the player and the offline library key it: "youtube:hvqnG6VjqV0".
+/// The site is part of it because one id means different songs on different sites.
+String trackKey(Json t) => '${trackSite(t)}:${trackId(t)}';
+
 /// The page the song lives on.
 String trackPage(Json t) {
   final url = asString(t['url']);

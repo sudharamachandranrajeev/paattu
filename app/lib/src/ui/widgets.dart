@@ -303,6 +303,27 @@ Future<void> showTrackMenu(BuildContext context, Json track, {String? playlistId
                   app.saveSong(track);
                 },
               ),
+            if (app.offline.has(trackKey(track)))
+              ListTile(
+                leading: const Icon(Icons.download_for_offline),
+                title: const Text('On this device'),
+                subtitle: const Text('Plays with no internet · tap to take it off'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  final entry = app.offline.entry(trackKey(track));
+                  if (entry != null) app.dropOffline(entry);
+                },
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.download_for_offline_outlined),
+                title: const Text('Keep on this device'),
+                subtitle: const Text('Plays with no internet and no data'),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  app.keepOffline(track);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.playlist_add),
               title: const Text('Add to a playlist…'),

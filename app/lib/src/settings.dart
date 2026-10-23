@@ -276,6 +276,33 @@ class Settings extends ChangeNotifier {
   int get crossfade => (toInt(_data['crossfade']) ?? 3).clamp(0, 12);
   set crossfade(int seconds) => _set('crossfade', seconds.clamp(0, 12));
 
+  /// Keep the songs listened to on this device, so they play with no internet.
+  bool get offlineAutoSave => _data['offlineAutoSave'] != false;
+  set offlineAutoSave(bool on) => _set('offlineAutoSave', on);
+
+  /// Where the kept songs go: empty for the app's own folder. Only the desktop
+  /// can write to a folder the person picked (Android keeps its apps' folders
+  /// to themselves).
+  String get offlineDir => asString(_data['offlineDir']);
+  set offlineDir(String path) => _set('offlineDir', path);
+
+  /// Space allowed for kept songs, in MB (0 for no limit).
+  int get offlineLimitMb => (toInt(_data['offlineLimitMb']) ?? 2048).clamp(0, 1 << 20);
+  set offlineLimitMb(int mb) => _set('offlineLimitMb', mb.clamp(0, 1 << 20));
+
+  /// When the app last looked for a newer version, and what it found, so it
+  /// doesn't ask GitHub on every start and can say "up to date" at once.
+  String get updateChecked => asString(_data['updateChecked']);
+  set updateChecked(String stamp) => _set('updateChecked', stamp);
+
+  /// A newer version found and not installed yet (update.dart's Release.json).
+  Json? get updateOffered {
+    final value = _data['updateOffered'];
+    return value is Map ? asJson(value) : null;
+  }
+
+  set updateOffered(Json? release) => _set('updateOffered', release);
+
   /// When the queue runs out, carry on with songs like the last one.
   bool get autoRadio => _data['autoRadio'] != false;
   set autoRadio(bool on) => _set('autoRadio', on);
