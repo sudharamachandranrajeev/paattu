@@ -195,14 +195,17 @@ class ListenBrainz extends ChangeNotifier {
                     ))
               .timeout(const Duration(seconds: 20));
       final text = utf8.decode(response.bodyBytes, allowMalformed: true);
-      if (response.statusCode == 401) throw ListenBrainzException("ListenBrainz didn't accept the token");
-      if (response.statusCode == 429) throw ListenBrainzException('ListenBrainz asked to wait a while');
       if (response.statusCode >= 400) {
-        Object? said;
+        var said = '';
         try {
-          said = asJson(jsonDecode(text))['error'];
+          said = asString(asJson(jsonDecode(text))['error']);
         } catch (_) {}
-        throw ListenBrainzException('ListenBrainz said ${response.statusCode} ${said ?? ''}'.trim());
+        // Its own reason when it gives one (an unverified email, say).
+        if (response.statusCode == 401) {
+          throw ListenBrainzException(said.isNotEmpty ? 'ListenBrainz: $said' : "ListenBrainz didn't accept the token");
+        }
+        if (response.statusCode == 429) throw ListenBrainzException('ListenBrainz asked to wait a while');
+        throw ListenBrainzException('ListenBrainz said ${response.statusCode} $said'.trim());
       }
       return jsonDecode(text);
     } on ListenBrainzException {

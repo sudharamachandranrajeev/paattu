@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.1 — ListenBrainz says why
+
+- When ListenBrainz turns plays away, Paattu shows its reason instead of
+  "didn't accept the token". The usual one: a MetaBrainz account whose email
+  isn't verified yet (verify it at metabrainz.org/profile, then sync again).
+
 ## 0.11.0 — Plays follow you across devices (ListenBrainz)
 
 Which file: the same as before (`Paattu-0.11.0-android.apk`,
