@@ -200,7 +200,8 @@ def _call(path, token, body=None, query=None):
         except (ValueError, AttributeError):
             said = ""
         if error.code == 401:
-            raise ListenBrainzError("ListenBrainz didn't accept the token") from None
+            # Its own reason when it gives one (an unverified email, say).
+            raise ListenBrainzError("ListenBrainz: " + said if said else "ListenBrainz didn't accept the token") from None
         if error.code == 429:
             raise ListenBrainzError("ListenBrainz asked to wait a while") from None
         raise ListenBrainzError("ListenBrainz said %d %s" % (error.code, said)) from None
