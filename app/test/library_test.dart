@@ -1,10 +1,13 @@
 // The library model: your playlists, favourites and mixes, in the desktop
-// Paattu's library.json format.
+// Paattu's library.json format; songs played join their language's mix as
+// on the desktop (tests/played_cases.json).
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:paattu/src/library.dart';
+import 'package:paattu/src/util.dart';
 
 void main() {
   late Directory dir;
@@ -72,5 +75,41 @@ void main() {
     final again = Library(library.file);
     await again.load();
     expect(again.isFavourite('hvqnG6VjqV0'), isTrue);
+  });
+
+  group('played', () {
+    final cases = asJson(jsonDecode(File('../tests/played_cases.json').readAsStringSync()));
+    void fresh() => library.replaceWith(jsonDecode(jsonEncode(cases['library'])));
+
+    test('the language of a song', () {
+      fresh();
+      for (final c in asList(cases['language']).map(asJson)) {
+        expect(library.playedLanguage(asJson(c['track'])), c['language'], reason: '$c');
+      }
+    });
+
+    test('songs played join their language\'s mix', () {
+      fresh();
+      for (final c in asList(cases['plays']).map(asJson)) {
+        expect(library.notePlayed(asJson(c['track'])), c['language'], reason: '$c');
+        for (final language in ['malayalam', 'tamil']) {
+          expect(library.playlist('$playedPrefix$language')?['tracks'], c[language], reason: '$c');
+        }
+      }
+      final sources = {for (final m in library.mixList()) m['id']: m['sources']};
+      expect(sources['mix-malayalam'], anyElement(equals({'type': 'playlist', 'id': 'paattu-played-malayalam'})));
+      expect(sources['mix-tamil'], anyElement(equals({'type': 'playlist', 'id': 'paattu-played-tamil'})));
+      expect(library.playlist('paattu-played-tamil')!['title'], 'Played in Tamil');
+      expect(library.track('s2'), isNotNull);
+    });
+
+    test('a deleted played playlist stays deleted', () {
+      fresh();
+      library.notePlayed({'id': 's1', 'title': 'Pularikalo', 'language': 'Malayalam'});
+      library.removePlaylist('paattu-played-malayalam');
+      expect(library.data['playedOff'], ['Malayalam']);
+      expect(library.notePlayed({'id': 's3', 'title': 'x', 'language': 'Malayalam'}), '');
+      expect(library.playlist('paattu-played-malayalam'), isNull);
+    });
   });
 }

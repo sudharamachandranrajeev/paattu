@@ -11,8 +11,8 @@ import subprocess
 import sys
 import time
 
-from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, made, paths, radio, seeds,
-               sound, sources, youtube)
+from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, made, paths, radio, rhythm,
+               seeds, sound, sources, youtube)
 from .depth import DepthError
 from .engine import EngineError
 from .sources import SourceError
@@ -1189,6 +1189,10 @@ def cmd_played(args, out):
             track.update(url=args.url, site=sources.site_of(args.url))
     with history.editing() as h:
         h.played(track, args.heard, length=args.length or None)
+    # A song heard properly joins its language's mix.
+    if history.counted({"heard": args.heard, "length": args.length or track.get("duration") or 0}):
+        with library.edit() as data:
+            library.note_played(data, track)
     out.done()
 
 
@@ -1499,6 +1503,24 @@ def cmd_depth(args, out):
         print("Subject: %s\nRest of the cover: %s" % (found["subject"], found["back"]))
     else:
         print("Nothing in that cover stands out to lift")
+
+
+def cmd_rhythm(args, out):
+    """The rhythm of a song (Now Playing's cover moves with it): from its link
+    (the engine's path) or id, decoded by mpv, kept in ~/.cache/paattu/rhythm."""
+    target = args.target
+    tid = sources.track_id(target) if "://" in target else _song_id(target)
+    if not tid:
+        raise ValueError("not a song: %s" % target)
+    if "://" not in target:
+        track = _known(library.load(), tid) or {"id": tid}
+        target = sources.track_url(track)
+    out.progress("Finding the song's rhythm…")
+    found = rhythm.find(target, str(paths.CACHE / "rhythm"), re.sub(r"[^A-Za-z0-9_-]", "_", tid))
+    if args.json:
+        out.done("", id=tid, fps=found["fps"], level=found["level"], punch=found["punch"])
+    else:
+        print("%s: %d s, %d beats" % (tid, len(found["level"]) // found["fps"], sum(1 for p in found["punch"] if p > 153)))
 
 
 def cmd_theme(args, out):
@@ -1945,6 +1967,10 @@ def build_parser():
     a = sub.add_parser("depth", help="lift a song's cover's subject out of it (the cover in 3D in Now Playing)")
     a.add_argument("target", help="the song: an id or a link")
     a.set_defaults(func=cmd_depth)
+
+    a = sub.add_parser("rhythm", help="a song's loudness and beats (Now Playing's cover moves with them)")
+    a.add_argument("target", help="the song: an id or a link")
+    a.set_defaults(func=cmd_rhythm)
 
     a = sub.add_parser("engine", help="the mpv playback engine")
     a.add_argument("action", choices=("start", "stop", "restart", "status"))

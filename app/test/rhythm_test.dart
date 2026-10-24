@@ -1,7 +1,9 @@
-// The rhythm behind Now Playing's rings: beats found where the kick hits,
-// loudness that follows the song, and the desktop's libmpv decode (where
+// The rhythm behind Now Playing's rings and cover: beats found where the
+// kick hits, loudness that follows the song, the same as the desktop
+// Paattu's (tests/rhythm_cases.json), and the desktop's libmpv decode (where
 // libmpv is installed).
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -9,6 +11,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:paattu/src/player/rhythm.dart';
+import 'package:paattu/src/util.dart';
 
 const rate = 11025;
 
@@ -38,6 +41,23 @@ void main() {
     final rhythm = analyse(kicks(10), rate);
     expect(rhythm.levelOf(rhythm.frameAt(const Duration(milliseconds: 2020))), greaterThan(0.8));
     expect(rhythm.levelOf(rhythm.frameAt(const Duration(milliseconds: 2300))), lessThan(0.3));
+  });
+
+  test('the same as the desktop Paattu', () {
+    final cases = asJson(jsonDecode(File('../tests/rhythm_cases.json').readAsStringSync()));
+    final at = toInt(cases['rate'])!;
+    final pcm = Int16List.fromList([
+      for (var i = 0; i < toInt(cases['seconds'])! * at; i++)
+        ((((i / at) % 0.5 < 0.08 ? 0.8 * sin(2 * pi * 55 * i / at) : 0.0) + 0.02 * sin(2 * pi * 3000 * i / at)) * 32767)
+            .truncate(),
+    ]);
+    final rhythm = analyse(pcm, at);
+    for (final (got, want) in [(rhythm.level, asList(cases['level'])), (rhythm.punch, asList(cases['punch']))]) {
+      expect(got.length, want.length);
+      for (var i = 0; i < got.length; i++) {
+        expect((got[i] - (want[i] as int)).abs(), lessThanOrEqualTo(1), reason: 'frame $i');
+      }
+    }
   });
 
   test('silence has no beats', () {

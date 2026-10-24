@@ -13,6 +13,7 @@ the bar, the desktop widget and the app update as soon as it changes.
                quality: see sources.py)
     removed    playlist id -> {title, owner, removed}
     mixes      [{id, title, sources: [{type: language|user|playlist, id}]}]
+    playedOff  [language]  (its played playlist was deleted: not made again)
 
 A user's playlists are listed when the user is added; a playlist's tracks are
 fetched when it is saved, opened or played (tracks is None until then).
@@ -28,6 +29,11 @@ Mixes are the shuffle buttons (bar, desktop, Home). Each shuffles everything
 in its sources: a language (its saved playlists), a followed user (their
 saved playlists) or one playlist. A new library starts with a Malayalam and a
 Tamil mix; after that they're yours to rename, change, reorder or delete.
+
+Songs listened to (anywhere: a search, the radio, a link) go to the front of
+their language's own "played" playlist, which is in that language's mix, so
+the Malayalam and Tamil mixes take in what you play. The playlist keeps the
+last PLAYED_KEEP; deleting it stops it being made again.
 """
 
 import contextlib
@@ -50,6 +56,8 @@ OWN_PREFIX = "paattu-"
 MIX_PREFIX = "mix-"
 MIX_SOURCES = ("language", "user", "playlist")
 FIRST_MIXES = ("Malayalam", "Tamil")
+PLAYED_PREFIX = "paattu-played-"
+PLAYED_KEEP = 300
 
 
 def now():
@@ -424,11 +432,13 @@ def add_tracks(data, playlist_id, tracks):
 
 def remove_playlist(data, playlist_id):
     """Take a playlist out of the app; syncing its owner won't bring it back.
-    Your own playlists are simply deleted."""
+    Your own playlists are simply deleted (a played playlist isn't made again)."""
     playlist = data["playlists"].pop(playlist_id, None)
     if playlist is None:
         return None
     if playlist.get("local"):
+        if playlist_id.startswith(PLAYED_PREFIX) and playlist.get("language"):
+            data["playedOff"] = sorted(set(data.get("playedOff", [])) | {playlist["language"]})
         prune_tracks(data)
         return playlist
     owner = data["users"].get(playlist.get("owner"))
@@ -483,6 +493,50 @@ def remove_starter(data):
         del data["removed"][pid]
     prune_tracks(data)
     return list(starter.values()), gone
+
+
+# ---------------------------------------------------------------- played
+
+def played_language(data, track):
+    """The mix language (Malayalam or Tamil) of a song, or "": its own, else
+    the one most of the library's playlists holding it are in, else guessed
+    from its names."""
+    from .titles import guess_language
+    own = (track.get("language") or "").title()
+    if own in FIRST_MIXES:
+        return own
+    votes = {}
+    for playlist in data["playlists"].values():
+        language = playlist.get("language")
+        if language in FIRST_MIXES and not playlist.get("local") and track.get("id") in (playlist.get("tracks") or []):
+            votes[language] = votes.get(language, 0) + 1
+    if votes:
+        return max(FIRST_MIXES, key=lambda language: votes.get(language, 0))
+    credits = [str(c) for c in track.get("credits") or []]
+    return guess_language(track.get("title", ""), track.get("movie", ""), track.get("channel", ""), *credits)
+
+
+def note_played(data, track):
+    """A song listened to goes to the front of its language's played playlist
+    (made the first time, and put in that language's mix). Returns the
+    language, or "" when it has none or its played playlist was deleted."""
+    tid = track.get("id") or ""
+    language = played_language(data, track) if tid else ""
+    if not language or language in data.get("playedOff", []):
+        return ""
+    pid = PLAYED_PREFIX + language.lower()
+    playlist = data["playlists"].get(pid)
+    if playlist is None:
+        playlist = data["playlists"][pid] = dict(_own(pid, "Played in " + language), language=language)
+        mix = next((m for m in data["mixes"] if m["id"] == MIX_PREFIX + language.lower()), None) or find_mix(data, language)
+        if mix:
+            add_mix_sources(data, mix["id"], [{"type": "playlist", "id": pid}])
+    if tid not in data["tracks"]:
+        data["tracks"][tid] = {k: v for k, v in track.items() if not k.startswith("_") and v is not None}
+    playlist["tracks"] = ([tid] + [t for t in playlist["tracks"] if t != tid])[:PLAYED_KEEP]
+    playlist["count"] = len(playlist["tracks"])
+    prune_tracks(data)
+    return language
 
 
 # ---------------------------------------------------------------- mixes

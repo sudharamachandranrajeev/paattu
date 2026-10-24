@@ -6,7 +6,9 @@ import "Model.js" as Model
 // one of four looks (Settings › Now Playing): the cover (in 3D when that's
 // on), the cover making way for the song's video, the picture across the
 // window (AppWindow draws it), or the cover on a turning record. AppWindow
-// shows the song's video behind it all, blurred (VideoBackdrop).
+// shows the song's video behind it all, blurred (VideoBackdrop). The cover in
+// 3D moves with the song: its rhythm (`paattu rhythm`, paattu/rhythm.py) is
+// followed as it plays.
 Item {
   id: root
 
@@ -20,6 +22,72 @@ Item {
     .filter(function(row) { return row.index > player.index }).slice(0, 6)
   readonly property bool videoOn: app.store.config.videoBackground !== false
   readonly property real artSize: Math.max(160, Math.min(420, height - 64, (width - 84) * 0.45))
+
+  // The song's rhythm ({fps, level, punch} for `rhythmFor`, the engine's
+  // path) and where it is: loudness followed smoothly, the beat jumping up
+  // and dying away. The engine's position comes once a second, so it is
+  // carried on between.
+  property var rhythm: null
+  property string rhythmFor: ""
+  property real beatLevel: 0
+  property real beatPunch: 0
+  property real positionAt: Date.now()
+  property int beatFrame: -1
+  readonly property bool beating: rhythm !== null && rhythmFor === player.path && player.playing
+    && depth && style !== "record" && style !== "full" && visible
+  onBeatingChanged: if (!beating) { beatLevel = 0; beatPunch = 0; beatFrame = -1 }
+
+  Connections {
+    target: root.player
+    function onPositionChanged() { root.positionAt = Date.now() }
+    function onPathChanged() { rhythmSoon.restart() }
+  }
+  Component.onCompleted: rhythmSoon.restart()
+  onDepthChanged: rhythmSoon.restart()
+
+  // Skipping through songs doesn't work every one out.
+  Timer {
+    id: rhythmSoon
+    interval: 1500
+    onTriggered: root.findRhythm()
+  }
+
+  Jobs { id: rhythmJobs }
+
+  function findRhythm() {
+    var asked = player.path
+    if (!asked || !depth || rhythmFor === asked) return
+    if (rhythmJobs.busy) {
+      rhythmSoon.restart()
+      return
+    }
+    rhythmJobs.run(["rhythm", "--", asked], "", function(ok, e) {
+      if (ok && e.level && e.level.length) {
+        root.rhythm = e
+        root.rhythmFor = asked
+      } else if (!ok) {
+        console.warn("paattu: rhythm: " + (e && e.message || "failed"))
+      }
+    })
+  }
+
+  FrameAnimation {
+    running: root.beating
+    onTriggered: {
+      var r = root.rhythm
+      var at = root.player.position + (Date.now() - root.positionAt) / 1000
+      var frame = Math.max(0, Math.min(r.level.length - 1, Math.floor(at * r.fps)))
+      // Every frame since the last refresh counts; a seek starts afresh.
+      var from = root.beatFrame < 0 || frame < root.beatFrame || frame - root.beatFrame > 10 ? frame : root.beatFrame + 1
+      root.beatFrame = frame
+      var hit = 0
+      for (var i = from; i <= frame; i++) hit = Math.max(hit, r.punch[i] / 255)
+      var loud = r.level[frame] / 255
+      var step = Math.min(0.1, frameTime)
+      root.beatLevel += (loud - root.beatLevel) * (1 - Math.exp(-step * (loud > root.beatLevel ? 30 : 8)))
+      root.beatPunch = Math.max(hit, root.beatPunch * Math.exp(-step * 9))
+    }
+  }
 
   // The cover, with the accent glowing under it.
   Item {
@@ -65,6 +133,8 @@ Item {
       active: root.style !== "record" && root.style !== "full" && root.depth
       sourceComponent: DepthCover {
         app: root.app
+        beatLevel: root.beatLevel
+        beatPunch: root.beatPunch
         trackId: root.track.id || ""
         radius: 32
         tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)

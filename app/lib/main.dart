@@ -92,7 +92,11 @@ Future<void> main() async {
     ..offline = offline
     ..rhythms = rhythms
     ..radioSongs = SongRadio(history).next
-    ..onPlayed = ((track, heard, length) => history.played(track, heard, length: length));
+    ..onPlayed = ((track, heard, length) {
+      history.played(track, heard, length: length);
+      // A song heard properly joins its language's mix.
+      if (counted({'heard': heard, 'length': length ?? 0}) && library.notePlayed(track).isNotEmpty) library.changed();
+    });
   void playback() {
     jiosaavnSaveData = settings.saveData;
     player
