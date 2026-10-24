@@ -1,0 +1,79 @@
+{
+  "comment": "ListenBrainz scrobbling and sync: paattu/listenbrainz.py and app/lib/src/listenbrainz.dart both run these. VERSION stands for the Paattu version.",
+  "device": "dev1",
+  "listens": [
+    {
+      "play": {"id": "hvqnG6VjqV0", "at": 1760000000, "heard": 250, "length": 300},
+      "song": {"id": "hvqnG6VjqV0", "title": "Malare", "movie": "Premam", "credits": ["Vijay Yesudas", "Rajesh Murugesan"],
+               "channel": "Muzik247", "duration": 300, "kind": "song", "quality": "x", "rawTitle": ""},
+      "listen": {
+        "listened_at": 1760000000,
+        "track_metadata": {
+          "artist_name": "Vijay Yesudas, Rajesh Murugesan",
+          "track_name": "Malare",
+          "release_name": "Premam",
+          "additional_info": {
+            "media_player": "Paattu", "submission_client": "Paattu", "submission_client_version": "VERSION",
+            "origin_url": "https://www.youtube.com/watch?v=hvqnG6VjqV0", "music_service": "youtube.com",
+            "duration": 300, "artist_names": ["Vijay Yesudas", "Rajesh Murugesan"],
+            "paattu_device": "dev1", "paattu_heard": 250,
+            "paattu_song": {"id": "hvqnG6VjqV0", "title": "Malare", "movie": "Premam",
+                            "credits": ["Vijay Yesudas", "Rajesh Murugesan"], "channel": "Muzik247", "kind": "song",
+                            "duration": 300}
+          }
+        }
+      }
+    },
+    {
+      "play": {"id": "jiosaavn.com_song_x", "at": 1760000400, "heard": 200},
+      "song": {"id": "jiosaavn.com_song_x", "title": "Kannaana Kanney", "credits": [], "channel": "",
+               "url": "https://www.jiosaavn.com/song/x", "site": "jiosaavn", "language": "Tamil"},
+      "listen": {
+        "listened_at": 1760000400,
+        "track_metadata": {
+          "artist_name": "Unknown artist",
+          "track_name": "Kannaana Kanney",
+          "additional_info": {
+            "media_player": "Paattu", "submission_client": "Paattu", "submission_client_version": "VERSION",
+            "origin_url": "https://www.jiosaavn.com/song/x", "music_service": "jiosaavn.com",
+            "paattu_device": "dev1", "paattu_heard": 200,
+            "paattu_song": {"id": "jiosaavn.com_song_x", "title": "Kannaana Kanney",
+                            "url": "https://www.jiosaavn.com/song/x", "site": "jiosaavn", "language": "Tamil"}
+          }
+        }
+      }
+    }
+  ],
+  "history": {
+    "version": 1,
+    "plays": [
+      {"id": "a", "at": 100, "heard": 300, "length": 300},
+      {"id": "a", "at": 1000, "heard": 300, "length": 300},
+      {"id": "b", "at": 2000, "heard": 20, "length": 300},
+      {"id": "b", "at": 3000, "heard": 150, "length": 300},
+      {"id": "c", "at": 4000, "heard": 239},
+      {"id": "c", "at": 5000, "heard": 300, "from": "listenbrainz"},
+      {"id": "gone", "at": 6000, "heard": 300},
+      {"id": "a", "at": 7000, "heard": 500, "length": 900}
+    ],
+    "tracks": {"a": {"id": "a", "title": "A"}, "b": {"id": "b", "title": "B"}, "c": {"id": "c", "title": "C"}},
+    "made": {},
+    "listenbrainz": {"device": "dev1", "sent": 500, "fetched": 0}
+  },
+  "pending": [["a", 1000], ["b", 3000], ["a", 7000]],
+  "fetched": [
+    {"listened_at": 7500, "track_metadata": {"artist_name": "X", "track_name": "Other player"}},
+    {"listened_at": 7000, "track_metadata": {"artist_name": "X", "track_name": "A",
+      "additional_info": {"paattu_device": "dev1", "paattu_heard": 500, "paattu_song": {"id": "a", "title": "A"}}}},
+    {"listened_at": 4500, "track_metadata": {"artist_name": "X", "track_name": "D",
+      "additional_info": {"paattu_device": "dev2", "paattu_heard": 200, "duration": 260,
+                          "paattu_song": {"id": "d", "title": "D", "language": "Tamil"}}}},
+    {"listened_at": 9000, "track_metadata": {"artist_name": "X", "track_name": "E",
+      "additional_info": {"paattu_device": "dev2", "paattu_heard": 300, "paattu_song": {"id": "e", "title": "E"}}}},
+    {"listened_at": 5000, "track_metadata": {"artist_name": "X", "track_name": "C",
+      "additional_info": {"paattu_device": "dev3", "paattu_heard": 300, "paattu_song": {"id": "c", "title": "C"}}}}
+  ],
+  "merged": [["a", 100], ["a", 1000], ["b", 2000], ["b", 3000], ["c", 4000], ["d", 4500], ["c", 5000],
+             ["gone", 6000], ["a", 7000], ["e", 9000]],
+  "added": [["d", 4500], ["e", 9000]]
+}

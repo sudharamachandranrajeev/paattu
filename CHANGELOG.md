@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.11.0 — Plays follow you across devices (ListenBrainz)
+
+Which file: the same as before (`Paattu-0.11.0-android.apk`,
+`Paattu-0.11.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **Scrobble to ListenBrainz, and every device shares what you play.** Settings
+  › Sync between devices (the app) or Look & settings (Omarchy; or `paattu
+  listenbrainz login`) takes your ListenBrainz user token. After that each
+  song you hear properly (half of it, or four minutes: ListenBrainz's own rule)
+  is sent as a listen with the song itself in it, and each device reads the
+  others' plays back into its own history. So the daily, weekly and monthly
+  playlists, the radio and the *Played in Malayalam / Tamil* playlists follow
+  you from phone to desktop to Omarchy. It syncs at start, after each play and
+  when the app comes back. Plays already in the history are sent when you
+  connect. Listens from other players are left alone.
+- **ListenBrainz listening history is public.** Playlists, favourites and mixes
+  don't go through it (ListenBrainz playlists need MusicBrainz IDs that most
+  YouTube and JioSaavn songs don't have); move those with Export / Import.
+- The token is kept in the app's settings, or in
+  `~/.config/paattu/listenbrainz.json` (readable only by you) on Omarchy.
+  *Stop scrobbling* forgets it; the listens stay on ListenBrainz.
+
 ## 0.10.0 — Mixes that grow as you listen, and a cover that moves with the music
 
 Which file: the same as before (`Paattu-0.10.0-android.apk`,
