@@ -9,6 +9,7 @@ Rectangle {
   property string placeholder: ""
   property string glyph: Model.GLYPH_USER
   property alias text: input.text
+  property alias echoMode: input.echoMode
   readonly property var pal: app.pal
 
   signal accepted()

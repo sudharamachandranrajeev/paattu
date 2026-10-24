@@ -3,7 +3,9 @@
 import argparse
 import concurrent.futures
 import contextlib
+import getpass
 import json
+import os
 import random
 import re
 import shutil
@@ -11,9 +13,10 @@ import subprocess
 import sys
 import time
 
-from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, made, paths, radio, rhythm,
-               seeds, sound, sources, youtube)
+from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, listenbrainz, made, paths,
+               radio, rhythm, seeds, sound, sources, youtube)
 from .depth import DepthError
+from .listenbrainz import ListenBrainzError
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1193,7 +1196,64 @@ def cmd_played(args, out):
     if history.counted({"heard": args.heard, "length": args.length or track.get("duration") or 0}):
         with library.edit() as data:
             library.note_played(data, track)
+    # Sent to ListenBrainz, and the other devices' plays read back.
+    if listenbrainz.account():
+        try:
+            _listenbrainz_sync()
+        except ListenBrainzError as e:
+            print("paattu: " + str(e), file=sys.stderr)
     out.done()
+
+
+def _listenbrainz_sync():
+    """Sync with ListenBrainz; the songs other devices played join the mixes
+    like the ones played here. Returns how many plays came in."""
+    found = listenbrainz.account()
+    added = listenbrainz.sync(found["token"], found["user"])
+    heard = [song for play, song in added if history.counted(play)]
+    if heard:
+        with library.edit() as data:
+            for song in heard:
+                library.note_played(data, song)
+    return len(added)
+
+
+def cmd_listenbrainz(args, out):
+    """Scrobbling to ListenBrainz, which carries plays between devices."""
+    found = listenbrainz.account()
+    if args.action == "login":
+        # From the environment (the shell's Settings) or asked for, so it
+        # stays out of the shell history and the process list.
+        token = os.environ.get("PAATTU_LISTENBRAINZ_TOKEN", "").strip()
+        if not token:
+            token = getpass.getpass("ListenBrainz user token (listenbrainz.org/settings): ").strip()
+        if not token:
+            raise ValueError("no token given")
+        out.progress("Checking the token…")
+        user = listenbrainz.user_of(token)
+        listenbrainz.save_account(token, user)
+        out.progress("Sending your plays…")
+        added = _listenbrainz_sync()
+        out.done("Scrobbling to ListenBrainz as %s; %d plays from other devices came in" % (user, added), user=user,
+                 added=added)
+    elif args.action == "logout":
+        listenbrainz.forget_account()
+        out.done("Not scrobbling any more (your listens stay on ListenBrainz)")
+    elif args.action == "sync":
+        if not found:
+            raise ValueError("not connected to ListenBrainz: paattu listenbrainz login")
+        added = _listenbrainz_sync()
+        out.done("%d plays from other devices came in" % added, user=found["user"], added=added)
+    else:
+        synced = history.History.load().data.get("listenbrainz") or {}
+        fields = {"user": found["user"] if found else "", "synced": synced.get("synced") or 0}
+        if args.json:
+            out.data(fields)
+        elif found:
+            when = time.strftime("%Y-%m-%d %H:%M", time.localtime(fields["synced"])) if fields["synced"] else "never"
+            print("Scrobbling to ListenBrainz as %s (last synced %s)" % (found["user"], when))
+        else:
+            print("Not connected to ListenBrainz (paattu listenbrainz login)")
 
 
 def _made_summary(h, kind, today):
@@ -1945,6 +2005,10 @@ def build_parser():
     a.add_argument("--length", type=int, help="the song's length in seconds")
     a.add_argument("--title", help="what the engine called it")
     a.set_defaults(func=cmd_played)
+    a = sub.add_parser("listenbrainz", help="scrobble to ListenBrainz, which carries plays between devices: "
+                                            "login | logout | sync | status")
+    a.add_argument("action", nargs="?", default="status", choices=("login", "logout", "sync", "status"))
+    a.set_defaults(func=cmd_listenbrainz)
     a = sub.add_parser("made", help="playlists made for you: daily, weekly or monthly (none: what's there)")
     a.add_argument("kind", nargs="?", choices=made.KINDS)
     a.add_argument("--refresh", action="store_true", help="make a new one now")
@@ -2030,7 +2094,7 @@ def main(argv=None):
         return 2
     try:
         args.func(args, out)
-    except (YouTubeError, EngineError, SourceError, DepthError, ValueError, KeyError) as e:
+    except (YouTubeError, EngineError, SourceError, DepthError, ListenBrainzError, ValueError, KeyError) as e:
         out.error(str(e).strip("'"))
         return 1
     except KeyboardInterrupt:

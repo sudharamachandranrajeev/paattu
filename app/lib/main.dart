@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'src/app_state.dart';
 import 'src/history.dart';
 import 'src/library.dart';
+import 'src/listenbrainz.dart';
 import 'src/log.dart';
 import 'src/offline.dart';
 import 'src/player/android_power.dart';
@@ -51,7 +52,7 @@ Future<void> main() async {
       problemLog.error('libmpv', error);
       playbackUnavailable = Platform.isLinux
           ? "Paattu needs mpv's library to play. Install it (Arch: mpv, Debian/Ubuntu: libmpv2, "
-              'Fedora: mpv-libs) and open Paattu again'
+                'Fedora: mpv-libs) and open Paattu again'
           : "Paattu can't find libmpv-2.dll next to paattu.exe. Reinstall Paattu";
     }
   }
@@ -59,8 +60,12 @@ Future<void> main() async {
   final dir = await getApplicationSupportDirectory();
   // Before the log's header, so it says what this build really is.
   await readAppVersion();
-  unawaited(problemLog.start(File('${dir.path}${Platform.pathSeparator}paattu.log'),
-      header: 'Paattu $appVersion on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}'));
+  unawaited(
+    problemLog.start(
+      File('${dir.path}${Platform.pathSeparator}paattu.log'),
+      header: 'Paattu $appVersion on ${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+    ),
+  );
   final library = Library(File('${dir.path}${Platform.pathSeparator}library.json'));
   final settings = Settings(File('${dir.path}${Platform.pathSeparator}settings.json'));
   final history = History(File('${dir.path}${Platform.pathSeparator}history.json'));
@@ -69,9 +74,14 @@ Future<void> main() async {
 
   // The songs kept on this device: the folder picked in Settings where Paattu
   // can write to one, else a folder of the app's own.
-  final offline =
-      OfflineLibrary(keptSongsDirectory(settings.offlineDir, dir), limitBytes: settings.offlineLimitMb << 20);
+  final offline = OfflineLibrary(
+    keptSongsDirectory(settings.offlineDir, dir),
+    limitBytes: settings.offlineLimitMb << 20,
+  );
   await offline.load();
+
+  // Plays scrobbled to ListenBrainz, and other devices' read back.
+  final listenBrainz = ListenBrainz(history, library, settings);
 
   final player = await _player();
   try {
@@ -86,7 +96,9 @@ Future<void> main() async {
   final songs = SongCache(Directory('${(await getTemporaryDirectory()).path}${Platform.pathSeparator}paattu-songs'));
   fire(songs.start());
   // Kept between runs: small, and a song's rhythm never changes.
-  final rhythms = RhythmFinder(Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}rhythm'));
+  final rhythms = RhythmFinder(
+    Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}rhythm'),
+  );
   player
     ..cache = songs
     ..offline = offline
@@ -96,6 +108,7 @@ Future<void> main() async {
       history.played(track, heard, length: length);
       // A song heard properly joins its language's mix.
       if (counted({'heard': heard, 'length': length ?? 0}) && library.notePlayed(track).isNotEmpty) library.changed();
+      if (scrobbles({'heard': heard, 'length': length ?? 0})) fire(listenBrainz.sync());
     });
   void playback() {
     jiosaavnSaveData = settings.saveData;
@@ -122,13 +135,12 @@ Future<void> main() async {
     // What the last run found, so Settings can say it at once.
     updates
       ..available = Release.fromJsonKept(offered)
-      ..state = isNewerVersion(updates.available!.version, appVersion)
-          ? UpdateState.available
-          : UpdateState.idle;
+      ..state = isNewerVersion(updates.available!.version, appVersion) ? UpdateState.available : UpdateState.idle;
   }
 
-  final app = AppState(library, settings, player, history, offline, updates);
+  final app = AppState(library, settings, player, history, offline, updates, listenBrainz);
   runApp(PaattuApp(state: app));
+  fire(listenBrainz.sync());
   fire(_lookForUpdates(app));
   if (Platform.isAndroid) fire(_androidBackground(settings));
   final problem = playbackUnavailable;

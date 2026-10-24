@@ -21,7 +21,10 @@ Flickable {
   boundsBehavior: Flickable.StopAtBounds
   ScrollBar.vertical: ScrollBar {}
 
-  Component.onCompleted: themeProc.running = true
+  Component.onCompleted: {
+    themeProc.running = true
+    lbStatus.running = true
+  }
 
   Process {
     id: themeProc
@@ -34,6 +37,47 @@ Flickable {
   }
 
   function set(key, value) { root.app.setConfig(key, value) }
+
+  // ListenBrainz: who plays are scrobbled as ("" when not connected), and
+  // what the last connect or sync said.
+  property string lbUser: ""
+  property string lbMessage: ""
+
+  Process {
+    id: lbStatus
+    command: ["paattu", "--json", "listenbrainz", "status"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try { root.lbUser = JSON.parse(text).user || "" } catch (e) { root.lbUser = "" }
+      }
+    }
+  }
+
+  // The token goes in the environment, so it stays out of the process list.
+  Process {
+    id: lbLogin
+    property string token: ""
+    command: ["paattu", "--json", "listenbrainz", "login"]
+    environment: ({ PAATTU_LISTENBRAINZ_TOKEN: token })
+    stdout: SplitParser {
+      onRead: function(line) {
+        var e = Model.parseEvent(line)
+        if (e && (e.event === "done" || e.event === "error" || e.event === "progress")) root.lbMessage = e.message || ""
+      }
+    }
+    onExited: {
+      token = ""
+      lbStatus.running = true
+    }
+  }
+
+  function connectListenBrainz(token) {
+    token = (token || "").trim()
+    if (!token || lbLogin.running) return
+    lbMessage = "Checking the token…"
+    lbLogin.token = token
+    lbLogin.running = true
+  }
 
   // Inline components can't see this file's ids, so they take `app`.
   component Stepper: Row {
@@ -441,6 +485,70 @@ Flickable {
       valueText: Math.round((root.desktop.opacity === undefined ? 0.92 : root.desktop.opacity) * 100) + "%"
       onDown: root.set("desktop.opacity", Math.max(0, Math.round(((root.desktop.opacity === undefined ? 0.92 : root.desktop.opacity) - 0.1) * 100) / 100))
       onUp: root.set("desktop.opacity", Math.min(1, Math.round(((root.desktop.opacity === undefined ? 0.92 : root.desktop.opacity) + 0.1) * 100) / 100))
+    }
+
+    // ---------- ListenBrainz ----------
+    Item { width: 1; height: 8 }
+    SectionTitle { app: root.app; text: "Sync between devices" }
+    Hint {
+      app: root.app
+      width: column.width
+      text: root.lbUser
+        ? "Scrobbling to ListenBrainz as " + root.lbUser + ". Songs you play here and in the Paattu app show up in each one's history, made-for-you playlists and mixes."
+        : "Scrobble to ListenBrainz and songs you play here and in the Paattu app show up in each one's history, made-for-you playlists and mixes. "
+          + "Paste your user token from listenbrainz.org/settings. Your listening history on ListenBrainz is public."
+    }
+    Row {
+      visible: !root.lbUser
+      spacing: 8
+      InputBox {
+        id: lbToken
+        width: Math.min(360, column.width - 120)
+        app: root.app
+        glyph: Model.GLYPH_LINK
+        placeholder: "ListenBrainz user token"
+        echoMode: TextInput.Password
+        onAccepted: { root.connectListenBrainz(text); text = "" }
+      }
+      Chip {
+        anchors.verticalCenter: parent.verticalCenter
+        text: "Connect"
+        glyph: Model.GLYPH_CHECK
+        enabled: !lbLogin.running
+        textColor: root.pal.foreground; accent: root.pal.accent
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: { root.connectListenBrainz(lbToken.text); lbToken.text = "" }
+      }
+    }
+    Row {
+      visible: root.lbUser !== ""
+      spacing: 8
+      Chip {
+        text: "Sync now"
+        glyph: Model.GLYPH_REFRESH
+        textColor: root.pal.foreground; accent: root.pal.accent
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.app.jobs.run(["listenbrainz", "sync"], "Syncing with ListenBrainz…", function(ok, event) {
+          root.lbMessage = event && event.message ? event.message : ""
+        })
+      }
+      Chip {
+        text: "Stop scrobbling"
+        glyph: Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.app.jobs.run(["listenbrainz", "logout"], "", function() {
+          root.lbMessage = ""
+          lbStatus.running = true
+        })
+      }
+    }
+    Hint {
+      app: root.app
+      width: column.width
+      visible: root.lbMessage !== ""
+      text: root.lbMessage
+      color: root.pal.accent
     }
 
     // ---------- cliamp ----------

@@ -38,7 +38,12 @@ class History extends ChangeNotifier {
   Json data = _empty();
   Timer? _saveTimer;
 
-  static Json _empty() => {'version': 1, 'plays': <dynamic>[], 'tracks': <String, dynamic>{}, 'made': <String, dynamic>{}};
+  static Json _empty() => {
+    'version': 1,
+    'plays': <dynamic>[],
+    'tracks': <String, dynamic>{},
+    'made': <String, dynamic>{},
+  };
 
   List<Json> get plays => asList(data['plays']).map(asJson).toList();
   Json get _tracks => asJson(data['tracks']);
@@ -93,13 +98,26 @@ class History extends ChangeNotifier {
     for (final song in songs) {
       _tracks[trackId(song)] = storedTrack(song);
     }
-    _made[kind] = <String, dynamic>{'key': key, 'made': nowStamp(), 'tracks': [for (final s in songs) trackId(s)]};
+    _made[kind] = <String, dynamic>{
+      'key': key,
+      'made': nowStamp(),
+      'tracks': [for (final s in songs) trackId(s)],
+    };
     _prune();
     _changed();
   }
 
   void clear() {
+    // Where ListenBrainz sync got to stays: those plays were sent already.
+    final kept = data['listenbrainz'];
     data = _empty();
+    if (kept != null) data['listenbrainz'] = kept;
+    _changed();
+  }
+
+  /// Changes made straight to [data] (listenbrainz.dart's sync).
+  void edited() {
+    _prune();
     _changed();
   }
 
@@ -161,12 +179,12 @@ class History extends ChangeNotifier {
 
 /// Songs played (or skipped) since [since], by song and by id.
 Set<String> heardSince(List<Json> plays, DateTime since, {String Function(String id)? keyOf}) => {
-      for (final play in plays)
-        if ((toInt(play['at']) ?? 0) >= epochSeconds(since)) ...{
-          asString(play['id']),
-          if (keyOf != null) keyOf(asString(play['id'])),
-        },
-    };
+  for (final play in plays)
+    if ((toInt(play['at']) ?? 0) >= epochSeconds(since)) ...{
+      asString(play['id']),
+      if (keyOf != null) keyOf(asString(play['id'])),
+    },
+};
 
 /// The key a song is known by across uploads, falling back to its id when it
 /// has no title.

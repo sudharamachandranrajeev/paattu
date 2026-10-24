@@ -13,14 +13,18 @@ import 'ui/glass.dart';
 import 'util.dart';
 
 class PaattuTheme {
-  const PaattuTheme(this.id, this.name, this.description,
-      {required this.dark,
-      required this.background,
-      required this.surface,
-      required this.foreground,
-      required this.muted,
-      required this.accent,
-      required this.highlight});
+  const PaattuTheme(
+    this.id,
+    this.name,
+    this.description, {
+    required this.dark,
+    required this.background,
+    required this.surface,
+    required this.foreground,
+    required this.muted,
+    required this.accent,
+    required this.highlight,
+  });
 
   final String id;
   final String name;
@@ -102,7 +106,10 @@ class PaattuTheme {
         fillColor: scheme.glass,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: edge),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: edge),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: accent, width: 1.5)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: accent,
@@ -121,70 +128,102 @@ class PaattuTheme {
 }
 
 const themes = [
-  PaattuTheme('chembarathi', 'Chembarathi', 'Hibiscus red and marigold on a night sky',
-      dark: true,
-      background: Color(0xFF0D0608),
-      surface: Color(0xFF1C0D11),
-      foreground: Color(0xFFFFF1F2),
-      muted: Color(0xFFBC979D),
-      accent: Color(0xFFF0405A),
-      highlight: Color(0xFFF7942E)),
-  PaattuTheme('paattu', 'Paattu', 'Teal, the app icon\'s colours',
-      dark: true,
-      background: Color(0xFF0B1514),
-      surface: Color(0xFF13211F),
-      foreground: Color(0xFFE6F4F1),
-      muted: Color(0xFF86A7A1),
-      accent: Color(0xFF2DD4BF),
-      highlight: Color(0xFF99F6E4)),
-  PaattuTheme('filter-coffee', 'Filter Coffee', 'Degree coffee in a davara-tumbler',
-      dark: true,
-      background: Color(0xFF1B1410),
-      surface: Color(0xFF261C16),
-      foreground: Color(0xFFF3E9DF),
-      muted: Color(0xFFA68E7B),
-      accent: Color(0xFFD49A5A),
-      highlight: Color(0xFFE8C8A0)),
-  PaattuTheme('kanjeevaram', 'Kanjeevaram', 'Kanchipuram silk: deep magenta with gold zari',
-      dark: true,
-      background: Color(0xFF1E0A14),
-      surface: Color(0xFF2E1220),
-      foreground: Color(0xFFF6E7D8),
-      muted: Color(0xFFB89A8A),
-      accent: Color(0xFFE0B44A),
-      highlight: Color(0xFFD81B60)),
-  PaattuTheme('kasavu', 'Kasavu', 'Kerala kasavu: cream silk with a gold border',
-      dark: false,
-      background: Color(0xFFF6F0E1),
-      surface: Color(0xFFEDE3CB),
-      foreground: Color(0xFF2B2416),
-      muted: Color(0xFF7A6A4A),
-      accent: Color(0xFFB8901F),
-      highlight: Color(0xFF8C6A12)),
-  PaattuTheme('monsoon', 'Monsoon', 'Kerala backwaters in the rain',
-      dark: true,
-      background: Color(0xFF0F1A17),
-      surface: Color(0xFF16241F),
-      foreground: Color(0xFFE3F2EC),
-      muted: Color(0xFF7FA597),
-      accent: Color(0xFF4FC3A1),
-      highlight: Color(0xFF8BD3E6)),
-  PaattuTheme('neelakurinji', 'Neelakurinji', 'Munnar hills in kurinji bloom',
-      dark: true,
-      background: Color(0xFF14122A),
-      surface: Color(0xFF1E1B3A),
-      foreground: Color(0xFFECEAFF),
-      muted: Color(0xFF9A95C6),
-      accent: Color(0xFF8E7CFF),
-      highlight: Color(0xFFC7A8FF)),
-  PaattuTheme('theyyam', 'Theyyam', 'Theyyam: fire red, turmeric and black',
-      dark: true,
-      background: Color(0xFF120A08),
-      surface: Color(0xFF1F110D),
-      foreground: Color(0xFFFBEDE6),
-      muted: Color(0xFFB98C7E),
-      accent: Color(0xFFFF5A1F),
-      highlight: Color(0xFFFFC400)),
+  PaattuTheme(
+    'chembarathi',
+    'Chembarathi',
+    'Hibiscus red and marigold on a night sky',
+    dark: true,
+    background: Color(0xFF0D0608),
+    surface: Color(0xFF1C0D11),
+    foreground: Color(0xFFFFF1F2),
+    muted: Color(0xFFBC979D),
+    accent: Color(0xFFF0405A),
+    highlight: Color(0xFFF7942E),
+  ),
+  PaattuTheme(
+    'paattu',
+    'Paattu',
+    'Teal, the app icon\'s colours',
+    dark: true,
+    background: Color(0xFF0B1514),
+    surface: Color(0xFF13211F),
+    foreground: Color(0xFFE6F4F1),
+    muted: Color(0xFF86A7A1),
+    accent: Color(0xFF2DD4BF),
+    highlight: Color(0xFF99F6E4),
+  ),
+  PaattuTheme(
+    'filter-coffee',
+    'Filter Coffee',
+    'Degree coffee in a davara-tumbler',
+    dark: true,
+    background: Color(0xFF1B1410),
+    surface: Color(0xFF261C16),
+    foreground: Color(0xFFF3E9DF),
+    muted: Color(0xFFA68E7B),
+    accent: Color(0xFFD49A5A),
+    highlight: Color(0xFFE8C8A0),
+  ),
+  PaattuTheme(
+    'kanjeevaram',
+    'Kanjeevaram',
+    'Kanchipuram silk: deep magenta with gold zari',
+    dark: true,
+    background: Color(0xFF1E0A14),
+    surface: Color(0xFF2E1220),
+    foreground: Color(0xFFF6E7D8),
+    muted: Color(0xFFB89A8A),
+    accent: Color(0xFFE0B44A),
+    highlight: Color(0xFFD81B60),
+  ),
+  PaattuTheme(
+    'kasavu',
+    'Kasavu',
+    'Kerala kasavu: cream silk with a gold border',
+    dark: false,
+    background: Color(0xFFF6F0E1),
+    surface: Color(0xFFEDE3CB),
+    foreground: Color(0xFF2B2416),
+    muted: Color(0xFF7A6A4A),
+    accent: Color(0xFFB8901F),
+    highlight: Color(0xFF8C6A12),
+  ),
+  PaattuTheme(
+    'monsoon',
+    'Monsoon',
+    'Kerala backwaters in the rain',
+    dark: true,
+    background: Color(0xFF0F1A17),
+    surface: Color(0xFF16241F),
+    foreground: Color(0xFFE3F2EC),
+    muted: Color(0xFF7FA597),
+    accent: Color(0xFF4FC3A1),
+    highlight: Color(0xFF8BD3E6),
+  ),
+  PaattuTheme(
+    'neelakurinji',
+    'Neelakurinji',
+    'Munnar hills in kurinji bloom',
+    dark: true,
+    background: Color(0xFF14122A),
+    surface: Color(0xFF1E1B3A),
+    foreground: Color(0xFFECEAFF),
+    muted: Color(0xFF9A95C6),
+    accent: Color(0xFF8E7CFF),
+    highlight: Color(0xFFC7A8FF),
+  ),
+  PaattuTheme(
+    'theyyam',
+    'Theyyam',
+    'Theyyam: fire red, turmeric and black',
+    dark: true,
+    background: Color(0xFF120A08),
+    surface: Color(0xFF1F110D),
+    foreground: Color(0xFFFBEDE6),
+    muted: Color(0xFFB98C7E),
+    accent: Color(0xFFFF5A1F),
+    highlight: Color(0xFFFFC400),
+  ),
 ];
 
 PaattuTheme themeById(String id) => themes.firstWhere((t) => t.id == id, orElse: () => themes.first);
@@ -256,8 +295,8 @@ class Settings extends ChangeNotifier {
   set videoBackground(bool on) => _set('videoBackground', on);
 
   /// How Now Playing looks (the cover, the video first, the full picture or a record).
-  NowPlayingStyle get nowPlayingStyle => NowPlayingStyle.values
-      .firstWhere((s) => s.name == _data['nowPlayingStyle'], orElse: () => NowPlayingStyle.cover);
+  NowPlayingStyle get nowPlayingStyle =>
+      NowPlayingStyle.values.firstWhere((s) => s.name == _data['nowPlayingStyle'], orElse: () => NowPlayingStyle.cover);
   set nowPlayingStyle(NowPlayingStyle style) => _set('nowPlayingStyle', style.name);
 
   /// How blurred the video behind Now Playing is, 0 (sharp) to 100.
@@ -311,6 +350,15 @@ class Settings extends ChangeNotifier {
   /// When the queue runs out, carry on with songs like the last one.
   bool get autoRadio => _data['autoRadio'] != false;
   set autoRadio(bool on) => _set('autoRadio', on);
+
+  /// The ListenBrainz account plays are scrobbled to (listenbrainz.dart):
+  /// empty when not connected.
+  String get listenBrainzToken => asString(_data['listenBrainzToken']);
+  String get listenBrainzUser => asString(_data['listenBrainzUser']);
+  set listenBrainz(({String token, String user})? account) {
+    _data['listenBrainzUser'] = account?.user;
+    _set('listenBrainzToken', account?.token);
+  }
 
   /// What was searched lately, newest first.
   List<String> get recentSearches => asStrings(_data['recentSearches']);

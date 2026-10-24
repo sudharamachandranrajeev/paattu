@@ -483,6 +483,24 @@ download in pieces while one plays, so a slow stream doesn't stop the music.
 On Omarchy mpv plays one song at a time, so the fade out and the fade in
 come one after the other rather than overlapping.
 
+## Sync plays between devices (ListenBrainz)
+
+```
+paattu listenbrainz login     # asks for your user token (listenbrainz.org/settings)
+paattu listenbrainz sync      # send new plays, read the other devices' in
+paattu listenbrainz status
+paattu listenbrainz logout
+```
+
+Each song heard properly is scrobbled with the song in the listen's
+`additional_info`, and the plays other Paattu installs (the app on Android,
+Windows and Linux, and this one) scrobbled come back into
+`~/.local/share/paattu/history.json`. Made-for-you playlists and the *Played
+in ...* playlists are made from that history, so they follow you. Your
+listening history on ListenBrainz is public. Playlists and favourites don't
+sync this way (ListenBrainz playlists need MusicBrainz IDs); use the library
+export and import for them.
+
 ## Sound: equaliser, tone, balance and speed
 
 A ten-band equaliser (31 Hz to 16 kHz, ±12 dB) with presets (Melody, Kuthu,

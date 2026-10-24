@@ -110,7 +110,11 @@ class History:
         self._prune()
 
     def clear(self):
+        # Where ListenBrainz sync got to stays: those plays were sent already.
+        kept = self.data.get("listenbrainz")
         self.data = _empty()
+        if kept:
+            self.data["listenbrainz"] = kept
 
     def _prune(self):
         """Forget songs nothing refers to any more."""
