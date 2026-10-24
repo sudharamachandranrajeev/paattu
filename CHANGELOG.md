@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.0 — Now Playing moves with the music
+
+Which file: the same as before (`Paattu-0.9.0-android.apk`,
+`Paattu-0.9.0-windows-x64-setup.exe`, the AppImage or the tarball). Omarchy's
+Now Playing has no rings, so nothing changes there; `git pull` keeps the
+version in step.
+
+- The rings around Now Playing's play button follow the song: the inner ring
+  swells with how loud it is, the outer ring and the glow kick on the beats,
+  and the hardest beats send a ripple out. Paattu works out each song's
+  rhythm once, from its file, and keeps it (a few kilobytes a song). The
+  file is the one already downloaded ahead or kept on the device; the first
+  song of a queue is downloaded for it, except with *Save data* on, when
+  only songs already on the device move. The rings stay still while paused
+  and when the system's animations are turned off.
+
 ## 0.8.2 — Media controls on Android, updates found, and a folder of your own
 
 Which file: `Paattu-0.8.2-android.apk` (and the same Windows and Linux files

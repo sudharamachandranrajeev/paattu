@@ -17,6 +17,7 @@ import 'src/log.dart';
 import 'src/offline.dart';
 import 'src/player/android_power.dart';
 import 'src/player/paattu_audio_handler.dart';
+import 'src/player/rhythm.dart';
 import 'src/player/song_cache.dart';
 import 'src/radio.dart';
 import 'src/settings.dart';
@@ -84,9 +85,12 @@ Future<void> main() async {
   fire(player.setSound(settings.sound));
   final songs = SongCache(Directory('${(await getTemporaryDirectory()).path}${Platform.pathSeparator}paattu-songs'));
   fire(songs.start());
+  // Kept between runs: small, and a song's rhythm never changes.
+  final rhythms = RhythmFinder(Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}rhythm'));
   player
     ..cache = songs
     ..offline = offline
+    ..rhythms = rhythms
     ..radioSongs = SongRadio(history).next
     ..onPlayed = ((track, heard, length) => history.played(track, heard, length: length));
   void playback() {

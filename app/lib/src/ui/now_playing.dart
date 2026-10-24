@@ -9,11 +9,13 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:rxdart/rxdart.dart';
 
 import '../app_state.dart';
 import '../links.dart';
 import '../player/paattu_audio_handler.dart';
+import '../player/rhythm.dart';
 import '../settings.dart';
 import '../track.dart';
 import '../util.dart';
@@ -634,6 +636,8 @@ class _Dome extends StatelessWidget {
                           Expanded(
                             child: Stack(
                               alignment: Alignment.center,
+                              // The play button's ripples go past the row.
+                              clipBehavior: Clip.none,
                               children: [
                                 Glass(
                                   radius: 999,
@@ -656,7 +660,7 @@ class _Dome extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                _BigPlay(playing: playing, loading: loading, onPressed: player.togglePlay),
+                                _BigPlay(player: player, track: track, playing: playing, loading: loading),
                               ],
                             ),
                           ),
@@ -810,38 +814,111 @@ class _DomePainter extends CustomPainter {
   bool shouldRepaint(_DomePainter old) => old.edge != edge || old.glow != glow || old.fill != fill;
 }
 
-/// Play / pause in rings of light.
-class _BigPlay extends StatelessWidget {
-  const _BigPlay({required this.playing, required this.loading, required this.onPressed});
+/// Play / pause in rings of light that move with the song: the inner ring
+/// swells with how loud it is, the outer one and the glow kick on its beats,
+/// and the hardest beats send a ripple out (rhythm.dart). Still while paused,
+/// before the rhythm is known, and with animations turned off.
+class _BigPlay extends StatefulWidget {
+  const _BigPlay({required this.player, required this.track, required this.playing, required this.loading});
+  final PaattuAudioHandler player;
+  final Json track;
   final bool playing;
   final bool loading;
-  final Future<void> Function() onPressed;
+
+  @override
+  State<_BigPlay> createState() => _BigPlayState();
+}
+
+class _BigPlayState extends State<_BigPlay> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(_tick);
+  final _beat = _Beat();
+  Rhythm? _rhythm;
+  Json? _asked;
+  int _frame = -1;
+  Duration _last = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ask();
+  }
+
+  @override
+  void didUpdateWidget(_BigPlay old) {
+    super.didUpdateWidget(old);
+    _ask();
+    _run();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _run();
+  }
+
+  /// The song's rhythm, asked for once it has loaded (so the player knows
+  /// which copy of the song it plays).
+  void _ask() {
+    final track = widget.track;
+    if (widget.loading || identical(track, _asked)) return;
+    _asked = track;
+    _rhythm = null;
+    widget.player.rhythmOf(track).then((rhythm) {
+      if (!mounted || !identical(track, _asked)) return;
+      _rhythm = rhythm;
+      _run();
+    });
+  }
+
+  /// Moving only while there is something to move with.
+  void _run() {
+    final moving = _rhythm != null && widget.playing && !widget.loading && !MediaQuery.disableAnimationsOf(context);
+    if (moving && !_ticker.isActive) {
+      _frame = -1;
+      _ticker.start();
+    } else if (!moving && _ticker.isActive) {
+      _ticker.stop();
+      _beat.settle();
+    }
+  }
+
+  void _tick(Duration elapsed) {
+    final rhythm = _rhythm;
+    if (rhythm == null) return;
+    final step = (elapsed - _last).inMicroseconds / Duration.microsecondsPerSecond;
+    _last = elapsed;
+    final frame = rhythm.frameAt(widget.player.position);
+    // Every frame since the last refresh (none skipped); a seek starts afresh.
+    final from = _frame < 0 || frame < _frame || frame - _frame > 10 ? frame : _frame + 1;
+    _frame = frame;
+    _beat.follow(rhythm.levelOf(frame), rhythm.punchBetween(from, frame), step.clamp(0.0, 0.1), elapsed);
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _beat.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    Widget ring(double size, double alpha, {double width = 1.5}) => Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: scheme.primary.withValues(alpha: alpha), width: width),
-          ),
-        );
+    final playing = widget.playing;
     return Semantics(
       button: true,
       label: playing ? 'Pause' : 'Play',
       excludeSemantics: true,
-      onTap: onPressed,
+      onTap: widget.player.togglePlay,
       child: GestureDetector(
-        onTap: onPressed,
+        onTap: widget.player.togglePlay,
         child: SizedBox.square(
           dimension: 104,
           child: Stack(
             alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
-              ring(104, 0.25),
-              ring(90, 0.5),
+              Positioned.fill(child: CustomPaint(painter: _RingsPainter(_beat, scheme.primary))),
               Container(
                 width: 76,
                 height: 76,
@@ -852,10 +929,9 @@ class _BigPlay extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: tileColours(scheme, 0),
                   ),
-                  boxShadow: [BoxShadow(color: scheme.primary.withValues(alpha: 0.6), blurRadius: 28, spreadRadius: 2)],
                 ),
               ),
-              if (loading)
+              if (widget.loading)
                 const SizedBox.square(dimension: 68, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
               Container(
                 width: 52,
@@ -869,6 +945,76 @@ class _BigPlay extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where the rings are: the loudness followed smoothly, the beat jumping up
+/// and dying away, and the ripples going out.
+class _Beat extends ChangeNotifier {
+  double level = 0;
+  double punch = 0;
+  final ripples = <(Duration, double)>[];
+  Duration now = Duration.zero;
+  Duration _lastRipple = Duration.zero;
+
+  /// How long a ripple takes to go out.
+  static const rippleTime = Duration(milliseconds: 700);
+
+  void follow(double loudness, double hit, double seconds, Duration at) {
+    now = at;
+    // Up quickly, down slowly, so it breathes rather than flickers.
+    level += (loudness - level) * (1 - exp(-seconds * (loudness > level ? 30 : 8)));
+    punch = max(hit, punch * exp(-seconds * 9));
+    if (hit > 0.6 && at - _lastRipple > const Duration(milliseconds: 220)) {
+      _lastRipple = at;
+      ripples.add((at, hit));
+    }
+    ripples.removeWhere((r) => at - r.$1 > rippleTime);
+    notifyListeners();
+  }
+
+  /// Back to still (paused).
+  void settle() {
+    level = 0;
+    punch = 0;
+    ripples.clear();
+    notifyListeners();
+  }
+}
+
+class _RingsPainter extends CustomPainter {
+  _RingsPainter(this.beat, this.colour) : super(repaint: beat);
+  final _Beat beat;
+  final Color colour;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final level = beat.level, punch = beat.punch;
+    void ring(double radius, double alpha, double width) => canvas.drawCircle(
+        centre,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width
+          ..color = colour.withValues(alpha: alpha.clamp(0.0, 1.0)));
+    for (final (start, strength) in beat.ripples) {
+      final t = (beat.now - start).inMicroseconds / _Beat.rippleTime.inMicroseconds;
+      final eased = 1 - (1 - t) * (1 - t);
+      ring(45 + 27 * eased, strength * 0.55 * (1 - t), 2.5 * (1 - t) + 0.5);
+    }
+    // The glow behind the button.
+    canvas.drawCircle(
+        centre,
+        38 + 3 * punch,
+        Paint()
+          ..color = colour.withValues(alpha: 0.6 + 0.3 * punch)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10 + 8 * punch + 3 * level));
+    ring(52 * (1 + 0.1 * punch), 0.25 + 0.5 * punch, 1.5 + punch);
+    ring(45 * (1 + 0.05 * level), 0.5 + 0.3 * level, 1.5);
+  }
+
+  @override
+  bool shouldRepaint(_RingsPainter old) => old.beat != beat || old.colour != colour;
 }
 
 class _SeekBar extends StatefulWidget {
