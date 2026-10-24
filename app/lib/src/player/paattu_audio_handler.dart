@@ -32,6 +32,7 @@ import '../track.dart';
 import '../util.dart';
 import 'android_power.dart';
 import 'reasons.dart';
+import 'rhythm.dart';
 import 'sleep_timer.dart';
 import 'song_cache.dart';
 
@@ -133,6 +134,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Download the next songs while this one plays (off to save data).
   bool cacheAhead = true;
   SongCache? cache;
+
+  /// The songs' rhythms, for Now Playing (rhythm.dart).
+  RhythmFinder? rhythms;
 
   /// Songs kept on this device (offline.dart): played from here when they are,
   /// and added to as the songs worth keeping are listened to.
@@ -461,6 +465,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       deck.saved = key;
       return AudioSource.file(stream.uri.toFilePath(), tag: trackId(way.track));
     }
+    deck.source = key;
     final file = way.attempt == 0 ? cache?.file(key) : null;
     deck.cached = file == null ? null : key;
     deck.saved = null;
@@ -776,6 +781,28 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final stream = await streamFor(track, attempt: attempt).timeout(const Duration(seconds: 12));
     _streams[key] = stream;
     return stream;
+  }
+
+  /// The rhythm of [track], the song playing: from its file kept on this
+  /// device or downloaded ahead, else downloaded now (unless saving data).
+  /// When it plays as the same song from another site, that one's (known
+  /// once it has loaded).
+  Future<Rhythm?> rhythmOf(Json track) async {
+    final finder = rhythms;
+    if (finder == null) return null;
+    final own = _streamKey(track);
+    final key = identical(track, current.value) && !_loading ? _deck.source ?? own : own;
+    return finder.of(key, () async {
+      final kept = await offline?.localStream(key);
+      if (kept != null) return File(kept.uri.toFilePath());
+      final songs = cache;
+      if (songs == null) return null;
+      final cached = songs.file(key);
+      if (cached != null || !cacheAhead) return cached;
+      final known = _streams[key];
+      final stream = known != null && known.fresh ? known : key == own ? await _resolve(track, 0) : null;
+      return stream == null ? null : songs.fetch(key, stream);
+    });
   }
 
   /// Find the next two songs' streams while this one plays, and download
@@ -1205,6 +1232,9 @@ class _Deck {
 
   /// The song kept on this device that it plays (its offline key), if it plays one.
   String? saved;
+
+  /// The song it plays (its key: the one picked, or the same song elsewhere).
+  String? source;
 }
 
 /// The song at [index] in the queue, loading (then [loaded]) on [deck].
