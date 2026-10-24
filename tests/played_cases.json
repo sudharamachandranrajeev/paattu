@@ -1,0 +1,34 @@
+{
+  "comment": "Songs played join their language's played playlist and mix: paattu/library.py note_played and app/lib/src/library.dart notePlayed both run these.",
+  "library": {
+    "version": 1, "users": {}, "tracks": {"a1": {"id": "a1", "title": "Athmave Poo"}}, "removed": {},
+    "playlists": {
+      "PLml": {"id": "PLml", "title": "Romancham", "language": "Malayalam", "saved": true, "tracks": ["a1", "both"]},
+      "PLta": {"id": "PLta", "title": "Tamil hits", "language": "Tamil", "saved": true, "tracks": ["t1", "both"]}
+    },
+    "mixes": [
+      {"id": "mix-malayalam", "title": "Malayalam mix", "sources": [{"type": "language", "id": "Malayalam"}]},
+      {"id": "mix-tamil", "title": "Tamil mix", "sources": [{"type": "language", "id": "Tamil"}]}
+    ]
+  },
+  "language": [
+    {"track": {"id": "x", "title": "Song", "language": "tamil"}, "language": "Tamil"},
+    {"track": {"id": "a1", "title": "Athmave Poo"}, "language": "Malayalam"},
+    {"track": {"id": "both", "title": "Both"}, "language": "Malayalam"},
+    {"track": {"id": "y", "title": "Kanmani Anbodu", "movie": "Guna", "channel": "Tamil Film Songs"}, "language": "Tamil"},
+    {"track": {"id": "z", "title": "Song", "credits": ["ഗോപി സുന്ദർ"]}, "language": "Malayalam"},
+    {"track": {"id": "w", "title": "Shape of You", "channel": "Ed Sheeran"}, "language": ""}
+  ],
+  "plays": [
+    {"track": {"id": "s1", "title": "Pularikalo", "language": "Malayalam"}, "language": "Malayalam",
+     "malayalam": ["s1"], "tamil": null},
+    {"track": {"id": "s2", "title": "Song", "channel": "Tamil Songs"}, "language": "Tamil",
+     "malayalam": ["s1"], "tamil": ["s2"]},
+    {"track": {"id": "a1", "title": "Athmave Poo"}, "language": "Malayalam",
+     "malayalam": ["a1", "s1"], "tamil": ["s2"]},
+    {"track": {"id": "s1", "title": "Pularikalo", "language": "Malayalam"}, "language": "Malayalam",
+     "malayalam": ["s1", "a1"], "tamil": ["s2"]},
+    {"track": {"id": "w", "title": "Shape of You"}, "language": "",
+     "malayalam": ["s1", "a1"], "tamil": ["s2"]}
+  ]
+}

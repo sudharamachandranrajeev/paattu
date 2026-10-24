@@ -1,3 +1,5 @@
+import copy
+import json
 import os
 import pathlib
 import shutil
@@ -516,3 +518,45 @@ class ConfigTest(TempDirs):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlayedTest(unittest.TestCase):
+    """Songs played join their language's mix (tests/played_cases.json, shared with the app)."""
+
+    CASES = json.loads((pathlib.Path(__file__).parent / "played_cases.json").read_text())
+
+    def library(self):
+        return copy.deepcopy(self.CASES["library"])
+
+    def test_language(self):
+        data = self.library()
+        for case in self.CASES["language"]:
+            self.assertEqual(library.played_language(data, case["track"]), case["language"], case)
+
+    def test_plays(self):
+        data = self.library()
+        for case in self.CASES["plays"]:
+            self.assertEqual(library.note_played(data, case["track"]), case["language"], case)
+            for language in ("malayalam", "tamil"):
+                playlist = data["playlists"].get(library.PLAYED_PREFIX + language)
+                self.assertEqual(playlist and playlist["tracks"], case[language], case)
+        mixes = {m["id"]: m["sources"] for m in data["mixes"]}
+        self.assertIn({"type": "playlist", "id": "paattu-played-malayalam"}, mixes["mix-malayalam"])
+        self.assertIn({"type": "playlist", "id": "paattu-played-tamil"}, mixes["mix-tamil"])
+        self.assertEqual(data["playlists"]["paattu-played-tamil"]["title"], "Played in Tamil")
+        self.assertIn("s2", data["tracks"])
+
+    def test_deleted_stays_deleted(self):
+        data = self.library()
+        library.note_played(data, {"id": "s1", "title": "Pularikalo", "language": "Malayalam"})
+        library.remove_playlist(data, "paattu-played-malayalam")
+        self.assertEqual(data["playedOff"], ["Malayalam"])
+        self.assertEqual(library.note_played(data, {"id": "s3", "title": "x", "language": "Malayalam"}), "")
+        self.assertNotIn("paattu-played-malayalam", data["playlists"])
+
+    def test_dropped_source_stays_dropped(self):
+        data = self.library()
+        library.note_played(data, {"id": "s1", "title": "Pularikalo", "language": "Malayalam"})
+        library.drop_mix_sources(data, "mix-malayalam", [{"type": "playlist", "id": "paattu-played-malayalam"}])
+        library.note_played(data, {"id": "s3", "title": "x", "language": "Malayalam"})
+        self.assertEqual(data["mixes"][0]["sources"], [{"type": "language", "id": "Malayalam"}])

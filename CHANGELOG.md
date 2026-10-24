@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.10.0 — Mixes that grow as you listen, and a cover that moves with the music
+
+Which file: the same as before (`Paattu-0.10.0-android.apk`,
+`Paattu-0.10.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **The Malayalam and Tamil mixes take in what you play.** A song listened to
+  properly (half of it, or 30 seconds), from anywhere — a search, the radio,
+  a link — goes to the front of its language's own playlist, *Played in
+  Malayalam* or *Played in Tamil* (the last 300), which is in that
+  language's mix. The language is the song's own (JioSaavn says), else that
+  of the library's playlists it is in, else what its title, film, channel
+  and credits show; a song with none shows nothing. Delete the playlist and
+  it isn't made again; take it out of the mix and it stays out. The same on
+  Omarchy and in the app.
+- **The cover in 3D moves with the song** (Settings › Cover in 3D): its
+  subject swells and rises a little on each beat, while the picture behind
+  breathes with the loudness, always inside the margin the lifted subject
+  already covers, so the picture's own copy of it never shows. In the app
+  the subject also glows softly at its edges on the beat, in the cover's
+  colour; on Omarchy `paattu rhythm SONG` works the rhythm out (mpv decodes
+  it in a couple of seconds) and keeps it in `~/.cache/paattu/rhythm`.
+
 ## 0.9.0 — Now Playing moves with the music
 
 Which file: the same as before (`Paattu-0.9.0-android.apk`,

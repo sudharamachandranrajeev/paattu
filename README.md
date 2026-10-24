@@ -267,7 +267,10 @@ into `library.json`. Search settings are in `paattu config`:
 The shuffle buttons on the bar panel, the desktop widget and Home are
 **mixes**, and you choose what goes in them. A new library starts with
 *Malayalam mix* and *Tamil mix*. You can rename, change, reorder or delete
-them, and add as many more as you like. A mix shuffles everything in it:
+them, and add as many more as you like. Songs you listen to properly, from
+anywhere, go into *Played in Malayalam* or *Played in Tamil* (by the song's
+language), playlists that are in those two mixes, so the mixes grow as you
+listen. A mix shuffles everything in it:
 
 - **a language:** every saved playlist in that language, including ones
   saved later
@@ -317,6 +320,7 @@ paattu status | queue | jump 5
 paattu watch                            # this song's video in Brave, audio pauses
 paattu video SONG                       # where to stream its small, silent video
 paattu depth SONG                       # its cover's subject, cut out for the cover in 3D
+paattu rhythm SONG                      # its loudness and beats (the cover in 3D moves with them)
 ```
 
 Now Playing (in the app, and on Omarchy from the sidebar or by clicking the

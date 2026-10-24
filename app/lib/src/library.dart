@@ -10,6 +10,10 @@
 //     tracks     track id    -> {id, title, movie, credits, kind, duration, ...}
 //     removed    playlist id -> {title, owner, removed}
 //     mixes      [{id, title, sources: [{type: language|user|playlist, id}]}]
+//     playedOff  [language]  (its played playlist was deleted: not made again)
+//
+// Songs listened to go to the front of their language's own "played"
+// playlist, which is in that language's mix (notePlayed).
 
 import 'dart:async';
 import 'dart:convert';
@@ -28,6 +32,8 @@ const _ownPrefix = 'paattu-';
 const _mixPrefix = 'mix-';
 const mixSourceTypes = ['language', 'user', 'playlist'];
 const _firstMixes = ['Malayalam', 'Tamil'];
+const playedPrefix = 'paattu-played-';
+const playedKeep = 300;
 const _favouriteNames = ['favourites', 'favorites', 'fav', 'favs', 'liked'];
 const _savedNames = ['saved songs', 'saved', 'saved-songs'];
 
@@ -490,6 +496,10 @@ class Library extends ChangeNotifier {
     if (value == null) return null;
     final p = asJson(value);
     if (p['local'] == true) {
+      final language = asString(p['language']);
+      if (playlistId.startsWith(playedPrefix) && language.isNotEmpty) {
+        data['playedOff'] = ({...asStrings(data['playedOff']), language}.toList()..sort());
+      }
       pruneTracks();
       return p;
     }
@@ -655,6 +665,61 @@ class Library extends ChangeNotifier {
       if (seen.add('$type:$id')) keep.add(<String, dynamic>{'type': type, 'id': id});
     }
     mix['sources'] = keep;
+  }
+
+  // ---------------------------------------------------------------- played
+
+  /// The mix language (Malayalam or Tamil) of a song, or '': its own, else
+  /// the one most of the library's playlists holding it are in, else guessed
+  /// from its names.
+  String playedLanguage(Json track) {
+    final own = asString(track['language']);
+    final titled = own.isEmpty ? '' : own[0].toUpperCase() + own.substring(1).toLowerCase();
+    if (_firstMixes.contains(titled)) return titled;
+    final id = trackId(track);
+    final votes = <String, int>{};
+    for (final p in playlists.values.map(asJson)) {
+      final language = asString(p['language']);
+      if (_firstMixes.contains(language) && p['local'] != true && asStrings(p['tracks']).contains(id)) {
+        votes[language] = (votes[language] ?? 0) + 1;
+      }
+    }
+    if (votes.isNotEmpty) {
+      // The first of the most (as Python's max).
+      return _firstMixes.reduce((a, b) => (votes[b] ?? 0) > (votes[a] ?? 0) ? b : a);
+    }
+    return guessLanguage([
+      asString(track['title']),
+      asString(track['movie']),
+      asString(track['channel']),
+      ...asStrings(track['credits']),
+    ]);
+  }
+
+  /// A song listened to goes to the front of its language's played playlist
+  /// (made the first time, and put in that language's mix). Returns the
+  /// language, or '' when it has none or its played playlist was deleted.
+  String notePlayed(Json track) {
+    final tid = trackId(track);
+    final language = tid.isEmpty ? '' : playedLanguage(track);
+    if (language.isEmpty || asStrings(data['playedOff']).contains(language)) return '';
+    final pid = '$playedPrefix${language.toLowerCase()}';
+    var p = playlist(pid);
+    if (p == null) {
+      p = playlists[pid] = {..._own(pid, 'Played in $language'), 'language': language};
+      final mix = findMix('$_mixPrefix${language.toLowerCase()}') ?? findMix(language);
+      if (mix != null) {
+        setMixSources(asString(mix['id']), [
+          ...asList(mix['sources']).map(asJson),
+          {'type': 'playlist', 'id': pid},
+        ]);
+      }
+    }
+    if (!tracks.containsKey(tid)) tracks[tid] = storedTrack(track);
+    p['tracks'] = [tid, ...asStrings(p['tracks']).where((t) => t != tid)].take(playedKeep).toList();
+    p['count'] = (p['tracks'] as List).length;
+    pruneTracks();
+    return language;
   }
 
   /// Forget mix sources whose user or playlist has left the library.

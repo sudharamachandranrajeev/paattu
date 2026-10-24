@@ -6,7 +6,10 @@ import "Model.js" as Model
 // moving over it, drifting slowly when nothing moves it, and its subject (cut
 // out by `paattu depth`, paattu/depth.py) stands out of the picture: sharp, a
 // little bigger and nearer, over the rest of the cover, softened, with the
-// subject's shadow on it. A cover without a subject to lift only tilts.
+// subject's shadow on it. A cover without a subject to lift only tilts. On
+// Now Playing the subject moves with the song: it swells and rises a little
+// on each beat while the picture behind breathes with the loudness, within
+// the margin the lifted subject already covers.
 Item {
   id: root
 
@@ -16,6 +19,9 @@ Item {
   property color tint: "#333333"
   property color glyphColor: "#ffffff"
   property string glyph: Model.GLYPH_NOTE
+  // The song's loudness and beat, 0 to 1 (NowPlayingPage).
+  property real beatLevel: 0
+  property real beatPunch: 0
 
   // `paattu depth`'s answer: {subject, back, centre: [x, y]}, for `foundFor`.
   property var found: null
@@ -132,6 +138,12 @@ Item {
       glyph: ""
       opacity: shown ? 1 : 0
       Behavior on opacity { NumberAnimation { duration: 600 } }
+      transform: Scale {
+        origin.x: subject.centre[0] * back.width
+        origin.y: subject.centre[1] * back.height
+        xScale: 1 + 0.012 * root.beatLevel
+        yScale: xScale
+      }
     }
 
     // The subject, nearer: bigger, and moving further as the cover leans
@@ -149,12 +161,12 @@ Item {
         Scale {
           origin.x: subject.centre[0] * subject.width
           origin.y: subject.centre[1] * subject.height
-          xScale: 1.06
-          yScale: 1.06
+          xScale: 1.06 * (1 + 0.03 * root.beatPunch + 0.008 * root.beatLevel)
+          yScale: xScale
         },
         Translate {
           x: root.tilt.x * card.width * 0.02
-          y: root.tilt.y * card.height * 0.02
+          y: root.tilt.y * card.height * 0.02 - card.height * 0.008 * root.beatPunch
         }
       ]
     }

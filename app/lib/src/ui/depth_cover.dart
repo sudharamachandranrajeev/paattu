@@ -2,7 +2,11 @@
 // pointer moves over it), drifting slowly when nothing moves it, and its
 // subject (found by subject.dart) stands out of the picture: sharp, a little
 // bigger and nearer, with a shadow on the rest of the picture, softened
-// behind it. A cover without a subject to lift only tilts.
+// behind it. A cover without a subject to lift only tilts. On Now Playing
+// the subject also moves with the song (beat.dart): it swells and rises a
+// little on each beat, glowing softly at its edges, while the picture behind
+// breathes with the loudness — always within the margin the lifted subject
+// already covers, so the picture's own copy of it never shows.
 
 import 'dart:async';
 import 'dart:io';
@@ -17,6 +21,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import '../subject.dart';
 import '../track.dart';
 import '../util.dart';
+import 'beat.dart';
 import 'widgets.dart';
 
 class DepthCover extends StatefulWidget {
@@ -148,7 +153,7 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
                     boxShadow: const [BoxShadow(color: Color(0x73000000), blurRadius: 28, offset: Offset(0, 12))],
                   ),
                 ),
-                CustomPaint(painter: _DepthPainter(layers, _tilt, widget.radius)),
+                CustomPaint(painter: _DepthPainter(layers, _tilt, BeatDriver.of(context), widget.radius, Theme.of(context).colorScheme.primary)),
               ],
             ),
     );
@@ -215,11 +220,14 @@ class _Layers {
 }
 
 class _DepthPainter extends CustomPainter {
-  _DepthPainter(this.layers, this.tilt, this.radius) : super(repaint: tilt);
+  _DepthPainter(this.layers, this.tilt, this.beat, this.radius, this.glow)
+      : super(repaint: Listenable.merge([tilt, beat]));
 
   final _Layers layers;
   final ValueListenable<Offset> tilt;
+  final Beat? beat;
   final double radius;
+  final Color glow;
 
   static Rect _all(ui.Image image) => Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
 
@@ -229,20 +237,39 @@ class _DepthPainter extends CustomPainter {
     final box = Offset.zero & size;
     final smooth = Paint()..filterQuality = FilterQuality.medium;
     final t = tilt.value;
+    final punch = beat?.punch ?? 0, level = beat?.level ?? 0;
     // The subject is nearer than the picture: it moves further as the cover
-    // tilts, and its shadow falls the other way.
+    // tilts, and its shadow falls the other way. On a beat it rises and
+    // swells, its shadow dropping further.
+    final rise = Offset(0, -size.shortestSide * 0.008 * punch);
     final lift = t * size.shortestSide * subjectLean;
     final centre = Offset(subject.centre.dx * size.width, subject.centre.dy * size.height);
 
     canvas.save();
     canvas.clipRRect(RRect.fromRectAndRadius(box, Radius.circular(radius)));
+    // The picture breathes with the loudness, about the subject.
+    final breath = 1 + 0.012 * level;
+    canvas.translate(centre.dx, centre.dy);
+    canvas.scale(breath);
+    canvas.translate(-centre.dx, -centre.dy);
     canvas.drawImageRect(layers.back, _all(layers.back), box, smooth);
-    canvas.drawImageRect(layers.shadow, _all(layers.shadow), box.shift(-lift * 0.8 + Offset(0, size.height * 0.015)), smooth);
+    canvas.drawImageRect(layers.shadow, _all(layers.shadow),
+        box.shift(-lift * 0.8 + Offset(0, size.height * (0.015 + 0.01 * punch))), smooth);
+    // A soft light behind the subject on the beat, in the cover's colour.
+    if (punch > 0.02) {
+      canvas.translate(centre.dx + lift.dx, centre.dy + lift.dy);
+      canvas.scale(subjectLift * (1 + 0.05 * punch) / breath);
+      canvas.translate(-centre.dx, -centre.dy);
+      canvas.drawImageRect(layers.shadow, _all(layers.shadow), box, Paint()
+        ..filterQuality = FilterQuality.medium
+        ..blendMode = BlendMode.plus
+        ..colorFilter = ColorFilter.mode(glow.withValues(alpha: 0.45 * punch), BlendMode.srcIn));
+    }
     canvas.restore();
 
     canvas.save();
-    canvas.translate(centre.dx + lift.dx, centre.dy + lift.dy);
-    canvas.scale(subjectLift);
+    canvas.translate(centre.dx + lift.dx + rise.dx, centre.dy + lift.dy + rise.dy);
+    canvas.scale(subjectLift * (1 + 0.03 * punch + 0.008 * level));
     canvas.translate(-centre.dx, -centre.dy);
     canvas.saveLayer(box.inflate(size.shortestSide * 0.05), Paint());
     canvas.drawImageRect(subject.picture, _all(subject.picture), box, smooth);
@@ -254,5 +281,6 @@ class _DepthPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DepthPainter old) => old.layers != layers || old.radius != radius;
+  bool shouldRepaint(_DepthPainter old) =>
+      old.layers != layers || old.radius != radius || old.beat != beat || old.glow != glow;
 }
