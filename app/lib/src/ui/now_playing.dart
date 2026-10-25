@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../app_state.dart';
+import '../history.dart' show counted;
 import '../links.dart';
 import '../player/paattu_audio_handler.dart';
 import '../settings.dart';
@@ -21,6 +22,7 @@ import 'beat.dart';
 import 'cover_theme.dart';
 import 'depth_cover.dart';
 import 'glass.dart';
+import 'lyrics_view.dart';
 import 'sleep_timer.dart';
 import 'sound_page.dart';
 import 'video_background.dart';
@@ -171,6 +173,7 @@ class NowPlayingPage extends StatelessWidget {
   // Heights the layout plans with (the dome grows by the volume bar off Android).
   static const _barHeight = 60.0;
   static const _arcHeight = 128.0;
+  static const _infoHeight = 44.0;
   static double get _domeHeight => Platform.isAndroid ? 340 : 384;
 
   @override
@@ -240,7 +243,7 @@ class NowPlayingPage extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: TrackCover(track, size: null, large: true, radius: 24),
           ));
-    final card = switch (style) {
+    final shownCard = switch (style) {
       // The cover stays, with the video playing behind it.
       NowPlayingStyle.cover => cover,
       // The cover makes way for the video while it plays.
@@ -254,6 +257,9 @@ class NowPlayingPage extends StatelessWidget {
       NowPlayingStyle.full => const SizedBox.expand(),
       NowPlayingStyle.record => square(_Record(track: track, playing: playing)),
     };
+    final card = settings.lyricsShown
+        ? _WithWords(square: style != NowPlayingStyle.full, words: CoverLyrics(app: app, track: track), child: shownCard)
+        : shownCard;
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: Stack(
@@ -274,6 +280,8 @@ class NowPlayingPage extends StatelessWidget {
                 constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
                 child: LayoutBuilder(builder: (context, box) {
                   final room = box.maxHeight - _barHeight - _domeHeight;
+                  final info = settings.songInfo && room - _infoHeight > 120;
+                  final arc = room - _arcHeight - (info ? _infoHeight : 0) > 120;
                   if (room < 40) {
                     // A short window (a phone on its side): scroll instead.
                     return SingleChildScrollView(
@@ -284,7 +292,8 @@ class NowPlayingPage extends StatelessWidget {
                     children: [
                       bar,
                       Expanded(child: card),
-                      if (room - _arcHeight > 120) _UpcomingArc(player: app.player),
+                      if (info) _SongInfo(app: app, track: track),
+                      if (arc) _UpcomingArc(player: app.player),
                       dome,
                     ],
                   );
@@ -504,6 +513,105 @@ class _GroovesPainter extends CustomPainter {
 }
 
 /// The next songs, fanned out on an arc above the dome. Tap one to play it.
+/// The words over the card: at the top of the cover's square, or of the
+/// card when the picture fills it.
+class _WithWords extends StatelessWidget {
+  const _WithWords({required this.square, required this.words, required this.child});
+  final bool square;
+  final Widget words;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        // The square the cover sits in: centred, 24 in from the edges.
+        final side = max(0.0, min(box.maxWidth, box.maxHeight) - 48);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            child,
+            if (square)
+              Positioned(
+                left: (box.maxWidth - side) / 2,
+                top: (box.maxHeight - side) / 2,
+                width: side,
+                height: side * 0.62,
+                child: words,
+              )
+            else
+              Positioned(left: 24, right: 24, top: 8, height: max(0.0, box.maxHeight * 0.6), child: words),
+          ],
+        );
+      });
+}
+
+/// What the song is, in a line above Up next: the film and year, the
+/// singers and music, its language and label, how it's streaming, and how
+/// often you've played it.
+class _SongInfo extends StatelessWidget {
+  const _SongInfo({required this.app, required this.track});
+  final AppState app;
+  final Json track;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final film = asString(track['movie']), year = asString(track['year']);
+    final id = trackId(track);
+    final plays = app.history.plays.where((p) => p['id'] == id && counted(p)).length;
+    final views = toInt(track['views']) ?? 0;
+    final style = theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600);
+    Widget part(IconData icon, String text) => Padding(
+          padding: const EdgeInsets.only(right: 14),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 15, color: scheme.secondary),
+            const SizedBox(width: 5),
+            Text(text, style: style),
+          ]),
+        );
+    return SizedBox(
+      height: NowPlayingPage._infoHeight,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        child: Glass(
+          radius: 18,
+          child: StreamBuilder<String>(
+            stream: app.player.quality,
+            initialData: app.player.quality.value,
+            builder: (context, quality) {
+              final parts = [
+                if (film.isNotEmpty || year.isNotEmpty)
+                  part(Icons.movie_outlined, [film, year].where((s) => s.isNotEmpty).join(' · ')),
+                if (asStrings(track['credits']).isNotEmpty)
+                  part(Icons.person_outline, asStrings(track['credits']).take(4).join(', ')),
+                if (asString(track['language']).isNotEmpty) part(Icons.translate, asString(track['language'])),
+                if (asString(track['channel']).isNotEmpty) part(Icons.label_outline, asString(track['channel'])),
+                if ((quality.data ?? '').isNotEmpty) part(Icons.graphic_eq, quality.data!),
+                part(Icons.public, siteName(trackSite(track))),
+                if (views > 0) part(Icons.trending_up, '${shortCount(views)} plays'),
+                part(Icons.replay, plays == 0 ? 'First play' : 'Played ${plural(plays, 'time')}'),
+              ];
+              return ShaderMask(
+                // The ends fade, so it reads as more to scroll to.
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (b) => const LinearGradient(
+                  colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+                  stops: [0, 0.04, 0.94, 1],
+                ).createShader(b),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  children: [Center(child: Row(children: parts))],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _UpcomingArc extends StatelessWidget {
   const _UpcomingArc({required this.player});
   final PaattuAudioHandler player;

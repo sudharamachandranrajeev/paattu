@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.13.0 — Lyrics over the cover
+
+Which file: the same as before (`Paattu-0.13.0-android.apk`,
+`Paattu-0.13.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **Lyrics.** The line being sung shows over the top of the cover on Now
+  Playing, popping out of it in 3D and filled with the cover's colours moving
+  slowly through the letters. Under it is how it sounds in English letters,
+  for Malayalam, Tamil, Hindi, Telugu and Kannada. The words come from LRCLIB
+  (timed, in the song's own script) or YouTube Music.
+- **The Lyrics button** on Now Playing shows all the words in place of Up
+  next, the line being sung lit up.
+- **Settings › Lyrics** turns the words over the cover on or off, picks how
+  each line comes in (3D, fade or plain), and turns the moving colours and
+  the English letters on or off.
+- **About the song.** A bar just above Up next has the film and year, the
+  singers and composer, the language, the label, the quality, the site and
+  the plays (Settings › Now Playing › About the song).
+- **`paattu lyrics`** prints a song's words with their times.
+
 ## 0.12.0 — Recommendations that learn, charts, and music with no internet
 
 Which file: the same as before (`Paattu-0.12.0-android.apk`,

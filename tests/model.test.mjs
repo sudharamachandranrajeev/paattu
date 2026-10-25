@@ -412,3 +412,11 @@ test("songs kept on this computer, newest first", () => {
   eq(M.offlineSongs(null), [])
   eq(M.offlineDropArgs("youtube:-a"), ["offline", "drop", "--", "youtube:-a"])
 })
+
+test("songFacts", () => {
+  const track = { id: "hvqnG6VjqV0", title: "Thalatherichavar", movie: "Romancham", credits: ["Sushin Shyam"], channel: "Think Music" }
+  eq(M.songFacts(track, { id: "hvqnG6VjqV0", year: 2023, language: "Malayalam", views: 2500000, quality: 320 }),
+    ["Romancham · 2023", "Sushin Shyam", "Malayalam", "Think Music", "320 kbps", "YouTube", "2.5M plays"])
+  eq(M.songFacts({ id: "x", title: "Song", credits: [] }, {}), ["YouTube"])
+  eq(M.songFacts({ id: "" }, {}), [])
+})

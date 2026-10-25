@@ -16,6 +16,7 @@ import 'src/history.dart';
 import 'src/library.dart';
 import 'src/listenbrainz.dart';
 import 'src/log.dart';
+import 'src/lyrics.dart';
 import 'src/offline.dart';
 import 'src/player/android_power.dart';
 import 'src/player/paattu_audio_handler.dart';
@@ -147,7 +148,8 @@ Future<void> main() async {
     File('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}charts.json'),
   );
   fire(charts.load());
-  final app = AppState(library, settings, player, history, offline, updates, listenBrainz, charts);
+  final lyrics = Lyrics(Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}lyrics'));
+  final app = AppState(library, settings, player, history, offline, updates, listenBrainz, charts, lyrics);
   runApp(PaattuApp(state: app));
   fire(listenBrainz.sync());
   fire(_lookForUpdates(app));

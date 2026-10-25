@@ -21,6 +21,7 @@ import 'package:paattu/src/charts.dart';
 import 'package:paattu/src/history.dart';
 import 'package:paattu/src/library.dart';
 import 'package:paattu/src/listenbrainz.dart';
+import 'package:paattu/src/lyrics.dart';
 import 'package:paattu/src/made.dart';
 import 'package:paattu/src/offline.dart';
 import 'package:paattu/src/player/paattu_audio_handler.dart';
@@ -188,8 +189,15 @@ Future<AppState> _openApp(Directory root, String theme) async {
   player.queueTracks.add(queue);
   player.quality.add('AAC · 320 kbps');
   final updates = UpdateManager(currentVersion: sourceVersion, dir: Directory('${dir.path}/updates'));
+  // Words for every song, the line at 1:47 sung (the player stands there).
+  final lyrics = Lyrics(Directory('${dir.path}/lyrics'), find: (track, language) async => {
+        'synced': '[01:40.00]പുഴയോരം തഴുകുന്നീ തണു ഈറൻ കാറ്റും\n[01:45.00]തെളിമാനം മഴവില്ലിൻ നിറമണിയും നേരം\n'
+            '[01:52.00]നിറമാർന്നൊരു കനവെന്നിൽ തെളിയുന്ന പോലെ',
+        'plain': '',
+        'source': 'LRCLIB',
+      });
   return AppState(lib, settings, player, history, offline, updates, ListenBrainz(history, lib, settings),
-      Charts(history, File('${dir.path}/charts.json')));
+      Charts(history, File('${dir.path}/charts.json')), lyrics);
 }
 
 // ------------------------------------------------------------- made-up music

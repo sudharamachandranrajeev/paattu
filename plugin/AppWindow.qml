@@ -43,6 +43,8 @@ FloatingWindow {
   property int browseSerial: 0
   // How far down the results were, for coming back from an album.
   property real searchScroll: 0
+  // The Lyrics panel on Now Playing (in place of Up next) is open.
+  property bool lyricsOpen: false
   // Suggestions for what's being typed (`paattu browse suggest`).
   property var suggestions: ({ query: "", items: [] })
   // A short message over the player bar ("Playing … next").

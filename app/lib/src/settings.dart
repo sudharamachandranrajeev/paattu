@@ -241,6 +241,19 @@ enum NowPlayingStyle {
   final String description;
 }
 
+/// How each line of a song's words comes in over its cover. The names are
+/// what the desktop Paattu's config keeps (lyrics.effect).
+enum LyricEffect {
+  pop('3d', 'Pop out in 3D', 'Each line turns towards you out of the cover and settles'),
+  fade('fade', 'Fade', 'Each line fades in as the last fades out'),
+  plain('plain', 'Plain', 'Each line simply takes the place of the last');
+
+  const LyricEffect(this.key, this.label, this.description);
+  final String key;
+  final String label;
+  final String description;
+}
+
 class Settings extends ChangeNotifier {
   Settings(this.file);
 
@@ -310,6 +323,27 @@ class Settings extends ChangeNotifier {
   /// The cover's subject lifted out of the picture, tilting in 3D (on unless turned off).
   bool get coverDepth => _data['coverDepth'] != false;
   set coverDepth(bool on) => _set('coverDepth', on);
+
+  /// The song's words over its cover on Now Playing (on unless turned off).
+  bool get lyricsShown => _data['lyricsShown'] != false;
+  set lyricsShown(bool on) => _set('lyricsShown', on);
+
+  /// How each line of the words comes in.
+  LyricEffect get lyricEffect =>
+      LyricEffect.values.firstWhere((e) => e.key == _data['lyricEffect'], orElse: () => LyricEffect.pop);
+  set lyricEffect(LyricEffect effect) => _set('lyricEffect', effect.key);
+
+  /// The cover's colours moving through the letters of the words (on unless turned off).
+  bool get lyricGradient => _data['lyricGradient'] != false;
+  set lyricGradient(bool on) => _set('lyricGradient', on);
+
+  /// The words in English letters under a line in an Indian script (on unless turned off).
+  bool get lyricsTransliterated => _data['lyricsTransliterated'] != false;
+  set lyricsTransliterated(bool on) => _set('lyricsTransliterated', on);
+
+  /// The bar of what the song is (film, year, singers...) above Up next.
+  bool get songInfo => _data['songInfo'] != false;
+  set songInfo(bool on) => _set('songInfo', on);
 
   /// Seconds one song fades into the next (0 for none).
   int get crossfade => (toInt(_data['crossfade']) ?? 3).clamp(0, 12);

@@ -45,6 +45,40 @@ Future<RadioPage> musicRadio(String videoId, {String? more}) async {
   return radioPage(await postJson(_nextApi, body, headers: _headers));
 }
 
+/// The words on a song's Lyrics tab (from Musixmatch, in English letters, not
+/// timed) and where they're from, or null.
+Future<(String, String)?> musicLyricsOf(String videoId) async {
+  final browseId = musicLyricsId(await postJson(
+      _nextApi, {'context': const {'client': _client}, 'videoId': videoId},
+      headers: _headers));
+  if (browseId == null) return null;
+  return musicLyrics(await postJson(
+      _browseApi, {'context': const {'client': _client}, 'browseId': browseId},
+      headers: _headers));
+}
+
+/// The browse id of the Lyrics tab in a song's /next (lyrics.py's music_lyrics_id).
+String? musicLyricsId(Object? response) {
+  for (final tab in _all(response, 'tabRenderer')) {
+    final id = asString(asJson(asJson(tab['endpoint'])['browseEndpoint'])['browseId']);
+    if (id.startsWith('MPLY')) return id;
+  }
+  return null;
+}
+
+String _runsText(Object? node) => [for (final r in asList(asJson(node)['runs'])) asString(asJson(r)['text'])].join();
+
+/// (words, where from) on a Lyrics page (lyrics.py's music_lyrics), or null.
+(String, String)? musicLyrics(Object? response) {
+  for (final shelf in _all(response, 'musicDescriptionShelfRenderer')) {
+    final text = _runsText(shelf['description']).trim();
+    if (text.isEmpty) continue;
+    final source = _runsText(shelf['footer']).replaceAll('Source:', '').trim();
+    return (text, 'YouTube Music${source.isEmpty ? '' : ' ($source)'}');
+  }
+  return null;
+}
+
 /// The playlists on YouTube Music's charts page for India, title -> playlist id.
 Future<Map<String, String>> musicCharts() async => youtubeCharts(await postJson(
     _browseApi,

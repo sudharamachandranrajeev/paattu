@@ -1,0 +1,469 @@
+{
+ "comment": "Lyrics: paattu/lyrics.py and app/lib/src/lyrics.dart both run these.",
+ "lrc": {
+  "text": "[ar: Vijay Yesudas]\n[offset:+500]\n[00:17.76]തെളിമാനം മഴവില്ലിൻ\n[00:22.03][01:40.5]നിറമാർന്നൊരു കനവെന്നിൽ\n[00:30.00]\nnot a line",
+  "lines": [
+   [
+    17.26,
+    "തെളിമാനം മഴവില്ലിൻ"
+   ],
+   [
+    21.53,
+    "നിറമാർന്നൊരു കനവെന്നിൽ"
+   ],
+   [
+    29.5,
+    ""
+   ],
+   [
+    100.0,
+    "നിറമാർന്നൊരു കനവെന്നിൽ"
+   ]
+  ]
+ },
+ "sameSong": [
+  {
+   "name": "Premam- Malare (KuttyWap.com)",
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "same": true
+  },
+  {
+   "name": "Malare (From \"Premam\")",
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "same": true
+  },
+  {
+   "name": "Malar",
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "same": false
+  },
+  {
+   "name": "Kuthanthram",
+   "track": {
+    "title": "Manjummel Boys",
+    "movie": "Kuthanthram"
+   },
+   "same": true
+  },
+  {
+   "name": "Pularikalo",
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "same": false
+  },
+  {
+   "name": "",
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "same": false
+  }
+ ],
+ "queries": [
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "queries": [
+    "Malare Premam",
+    "Malare",
+    "Premam"
+   ]
+  },
+  {
+   "track": {
+    "title": "Manjummel Boys",
+    "movie": "Kuthanthram"
+   },
+   "queries": [
+    "Manjummel Boys Kuthanthram",
+    "Manjummel Boys",
+    "Kuthanthram"
+   ]
+  },
+  {
+   "track": {
+    "title": "Vaathi Coming (From \"Master\")",
+    "movie": ""
+   },
+   "queries": [
+    "Vaathi Coming"
+   ]
+  },
+  {
+   "track": {
+    "title": "Malare",
+    "movie": "Malare"
+   },
+   "queries": [
+    "Malare"
+   ]
+  }
+ ],
+ "best": [
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "language": "Malayalam",
+   "found": [
+    {
+     "trackName": "Malare (Telugu)",
+     "duration": 316,
+     "syncedLyrics": "[00:10.00]మలరే",
+     "plainLyrics": "మలరే"
+    },
+    {
+     "trackName": "Malare (From \"Premam\")",
+     "duration": 330,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    },
+    {
+     "trackName": "Premam- Malare (KuttyWap.com)",
+     "duration": 316.0,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    },
+    {
+     "trackName": "Malare",
+     "duration": 318,
+     "syncedLyrics": "[00:17.00]Thelimaanam",
+     "plainLyrics": "Thelimaanam"
+    },
+    {
+     "trackName": "Pularikalo",
+     "duration": 316,
+     "syncedLyrics": "[00:01.00]പുലരികളോ"
+    },
+    {
+     "trackName": "Malare",
+     "duration": 316,
+     "instrumental": true
+    }
+   ],
+   "picked": {
+    "index": 2,
+    "timed": true
+   }
+  },
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "language": "",
+   "found": [
+    {
+     "trackName": "Malare (Telugu)",
+     "duration": 316,
+     "syncedLyrics": "[00:10.00]మలరే",
+     "plainLyrics": "మలరే"
+    },
+    {
+     "trackName": "Malare (From \"Premam\")",
+     "duration": 330,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    },
+    {
+     "trackName": "Premam- Malare (KuttyWap.com)",
+     "duration": 316.0,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    },
+    {
+     "trackName": "Malare",
+     "duration": 318,
+     "syncedLyrics": "[00:17.00]Thelimaanam",
+     "plainLyrics": "Thelimaanam"
+    },
+    {
+     "trackName": "Pularikalo",
+     "duration": 316,
+     "syncedLyrics": "[00:01.00]പുലരികളോ"
+    },
+    {
+     "trackName": "Malare",
+     "duration": 316,
+     "instrumental": true
+    }
+   ],
+   "picked": {
+    "index": 0,
+    "timed": true
+   }
+  },
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "language": "Malayalam",
+   "found": [
+    {
+     "trackName": "Malare (From \"Premam\")",
+     "duration": 330,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    }
+   ],
+   "picked": {
+    "index": 0,
+    "timed": false
+   }
+  },
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 316
+   },
+   "language": "Malayalam",
+   "found": [
+    {
+     "trackName": "Pularikalo",
+     "duration": 316,
+     "syncedLyrics": "[00:01.00]പുലരികളോ"
+    },
+    {
+     "trackName": "Malare",
+     "duration": 316,
+     "instrumental": true
+    }
+   ],
+   "picked": null
+  },
+  {
+   "track": {
+    "id": "x1",
+    "url": "https://www.jiosaavn.com/song/malare/x1",
+    "title": "Malare",
+    "movie": "Premam",
+    "duration": 0
+   },
+   "language": "Malayalam",
+   "found": [
+    {
+     "trackName": "Malare (From \"Premam\")",
+     "duration": 330,
+     "syncedLyrics": "[00:17.76]തെളിമാനം",
+     "plainLyrics": "തെളിമാനം"
+    }
+   ],
+   "picked": {
+    "index": 0,
+    "timed": true
+   }
+  }
+ ],
+ "youtubeNext": {
+  "contents": {
+   "singleColumnMusicWatchNextResultsRenderer": {
+    "tabbedRenderer": {
+     "watchNextTabbedResultsRenderer": {
+      "tabs": [
+       {
+        "tabRenderer": {
+         "title": "Up next",
+         "content": {}
+        }
+       },
+       {
+        "tabRenderer": {
+         "title": "Lyrics",
+         "endpoint": {
+          "browseEndpoint": {
+           "browseId": "MPLYt_abc"
+          }
+         }
+        }
+       },
+       {
+        "tabRenderer": {
+         "title": "Related",
+         "endpoint": {
+          "browseEndpoint": {
+           "browseId": "MPTRt_abc"
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "youtubeNextId": "MPLYt_abc",
+ "youtubeBrowse": {
+  "contents": {
+   "sectionListRenderer": {
+    "contents": [
+     {
+      "musicDescriptionShelfRenderer": {
+       "description": {
+        "runs": [
+         {
+          "text": "Thelimaanam mazhavillin\nniramaniyum neram\n\nNiramaarnnoru"
+         }
+        ]
+       },
+       "footer": {
+        "runs": [
+         {
+          "text": "Source: Musixmatch"
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  }
+ },
+ "youtubeLyrics": [
+  "Thelimaanam mazhavillin\nniramaniyum neram\n\nNiramaarnnoru",
+  "YouTube Music (Musixmatch)"
+ ],
+ "shown": [
+  {
+   "found": {
+    "synced": "[00:01.00]മലരേ\n[00:05.00]\n[00:06.00]Malare, my love",
+    "plain": "",
+    "source": "LRCLIB"
+   },
+   "latin": true,
+   "shows": {
+    "found": true,
+    "synced": true,
+    "source": "LRCLIB",
+    "script": "malayalam",
+    "language": "Malayalam",
+    "lines": [
+     {
+      "time": 1.0,
+      "text": "മലരേ",
+      "latin": "Malare"
+     },
+     {
+      "time": 5.0,
+      "text": "",
+      "latin": ""
+     },
+     {
+      "time": 6.0,
+      "text": "Malare, my love",
+      "latin": ""
+     }
+    ]
+   }
+  },
+  {
+   "found": {
+    "synced": "",
+    "plain": "\n\nThelimaanam\n\nNeram",
+    "source": "YouTube Music (Musixmatch)"
+   },
+   "latin": true,
+   "shows": {
+    "found": true,
+    "synced": false,
+    "source": "YouTube Music (Musixmatch)",
+    "script": "latin",
+    "language": "",
+    "lines": [
+     {
+      "time": null,
+      "text": "Thelimaanam",
+      "latin": ""
+     },
+     {
+      "time": null,
+      "text": "",
+      "latin": ""
+     },
+     {
+      "time": null,
+      "text": "Neram",
+      "latin": ""
+     }
+    ]
+   }
+  },
+  {
+   "found": {
+    "synced": "[00:01.00]முன்பே வா",
+    "plain": "",
+    "source": "LRCLIB"
+   },
+   "latin": false,
+   "shows": {
+    "found": true,
+    "synced": true,
+    "source": "LRCLIB",
+    "script": "tamil",
+    "language": "Tamil",
+    "lines": [
+     {
+      "time": 1.0,
+      "text": "முன்பே வா",
+      "latin": ""
+     }
+    ]
+   }
+  },
+  {
+   "found": null,
+   "latin": true,
+   "shows": {
+    "found": false,
+    "synced": false,
+    "lines": []
+   }
+  }
+ ]
+}

@@ -54,10 +54,18 @@ DEFAULTS = {
     # folder ("" for ~/.local/share/paattu/offline), the room they may take, and
     # whether a song played to the end is kept by itself.
     "offline": {"dir": "", "limitMb": 2048, "autoSave": True},
+    # The song's words over its cover on Now Playing (paattu lyrics): whether
+    # they show, how each line comes in (popping out in 3D, fading in, or
+    # plain), whether the cover's colours move through the letters, and the
+    # words in English letters under the song's own script. The bar of what
+    # the song is (film, year, singers, music...) above Up next.
+    "lyrics": {"show": True, "effect": "3d", "gradient": True, "transliterate": True},
+    "songInfo": True,
 }
 
 STYLES = ("vinyl", "card", "minimal")
 NOW_PLAYING_STYLES = ("cover", "video", "full", "record")
+LYRIC_EFFECTS = ("3d", "fade", "plain")
 SITES = ("jiosaavn", "youtube", "soundcloud")
 POSITIONS = ("top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right")
 
@@ -121,7 +129,10 @@ def validate(key, value):
         raise ValueError("videoBlur is 0 to 100")
     if key == "fade" and not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 12):
         raise ValueError("fade is 0 to 12 seconds")
-    if key in ("autoRadio", "offline.autoSave") and not isinstance(value, bool):
+    if key == "lyrics.effect" and value not in LYRIC_EFFECTS:
+        raise ValueError("lyrics.effect is one of: " + ", ".join(LYRIC_EFFECTS))
+    if key in ("autoRadio", "offline.autoSave", "songInfo", "lyrics.show", "lyrics.gradient",
+               "lyrics.transliterate") and not isinstance(value, bool):
         raise ValueError(key + " is true or false")
     if key == "offline.limitMb" and not (isinstance(value, int) and not isinstance(value, bool) and value >= 0):
         raise ValueError("offline.limitMb is a number of megabytes (0 for no limit)")
