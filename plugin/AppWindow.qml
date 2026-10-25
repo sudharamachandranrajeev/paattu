@@ -497,9 +497,21 @@ FloatingWindow {
       anchors.bottomMargin: 10
       radius: 28
 
-      Column {
-        anchors.fill: parent
+      // Nav scrolls instead of running under the footer on short windows.
+      Flickable {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: sidebarFooter.top
         anchors.margins: 16
+        anchors.bottomMargin: 8
+        clip: true
+        contentHeight: navColumn.height
+        boundsBehavior: Flickable.StopAtBounds
+
+      Column {
+        id: navColumn
+        width: parent.width
         spacing: 4
 
         Row {
@@ -589,9 +601,11 @@ FloatingWindow {
           }
         }
       }
+      }
 
       // Library size and background work.
       Column {
+        id: sidebarFooter
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
