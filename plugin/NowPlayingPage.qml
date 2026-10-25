@@ -22,6 +22,11 @@ Item {
     .filter(function(row) { return row.index > player.index }).slice(0, 6)
   readonly property bool videoOn: app.store.config.videoBackground !== false
   readonly property real artSize: Math.max(160, Math.min(420, height - 64, (width - 84) * 0.45))
+  // The song as the library has it (year, language, views...), when it does.
+  readonly property var known: (track.id && app.store.tracks[track.id]) || ({})
+  readonly property var words: coverWords.words
+  readonly property bool hasWords: !!(words && words.found)
+  readonly property bool showWords: app.lyricsOpen && hasWords
 
   // The song's rhythm ({fps, level, punch} for `rhythmFor`, the engine's
   // path) and where it is: loudness followed smoothly, the beat jumping up
@@ -156,6 +161,18 @@ Item {
     }
   }
 
+  // The words over the top of the cover (or of the window, when the picture fills it).
+  CoverLyrics {
+    id: coverWords
+    app: root.app
+    track: root.track
+    x: root.style === "full" ? (root.width - width) / 2 : art.x
+    y: root.style === "full" ? 8 : art.y
+    width: root.style === "full" ? Math.min(560, root.width - 56) : root.artSize
+    height: root.style === "full" ? 200 : root.artSize
+    z: 1
+  }
+
   Column {
     id: info
     anchors.left: art.right
@@ -245,6 +262,19 @@ Item {
         fontFamily: root.app.fontFamily
         onClicked: root.app.setConfig("videoBackground", !root.videoOn)
       }
+      // All the words, in place of Up next.
+      Chip {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.hasWords
+        text: "Lyrics"
+        glyph: Model.GLYPH_NOTE
+        textColor: root.pal.foreground
+        accent: root.pal.accent
+        selected: root.showWords
+        fontSize: 12
+        fontFamily: root.app.fontFamily
+        onClicked: root.app.lyricsOpen = !root.app.lyricsOpen
+      }
       // Songs like this one, without end (on by itself when a queue runs
       // out, unless auto radio is off in Settings).
       Chip {
@@ -275,10 +305,92 @@ Item {
 
     Item { width: 1; height: 10 }
 
+    // What the song is: the film and year, singers and music, language, label, site, plays.
+    Glass {
+      pal: root.pal
+      visible: root.player.hasTrack && root.app.store.config.songInfo !== false && infoText.text !== ""
+      width: Math.min(parent.width, 560)
+      height: 38
+      radius: 19
+      Text {
+        id: infoText
+        anchors.verticalCenter: parent.verticalCenter
+        x: 16
+        width: parent.width - 32
+        textFormat: Text.PlainText
+        text: Model.songFacts(root.track, root.known)
+          .join("   ·   ")
+        color: root.pal.foreground
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+        font.weight: Font.DemiBold
+        elide: Text.ElideRight
+      }
+    }
+
+    // All the words, the line being sung lit up and kept in sight.
+    Glass {
+      pal: root.pal
+      visible: root.showWords
+      width: Math.min(parent.width, 560)
+      height: Math.min(360, Math.max(160, root.height - y - 40))
+      radius: 28
+      ListView {
+        id: wordsList
+        anchors.fill: parent
+        anchors.margins: 14
+        clip: true
+        model: root.showWords ? root.words.lines : []
+        currentIndex: coverWords.line
+        highlightRangeMode: ListView.ApplyRange
+        preferredHighlightBegin: height * 0.3
+        preferredHighlightEnd: height * 0.5
+        highlightMoveDuration: 500
+        header: Text {
+          width: wordsList.width
+          bottomPadding: 8
+          textFormat: Text.PlainText
+          text: [root.words ? root.words.language : "", root.words ? root.words.source : "",
+                 root.words && !root.words.synced ? "not timed" : ""].filter(function(s) { return s }).join(" · ")
+          color: root.pal.muted
+          font.family: root.app.fontFamily
+          font.pixelSize: 11
+        }
+        delegate: Column {
+          required property var modelData
+          required property int index
+          width: wordsList.width
+          bottomPadding: modelData.text ? 8 : 4
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: modelData.text
+            visible: text !== ""
+            wrapMode: Text.WordWrap
+            color: index === coverWords.line ? root.pal.accent : root.pal.foreground
+            opacity: index === coverWords.line || coverWords.line < 0 ? 1 : 0.7
+            font.family: root.app.fontFamily
+            font.pixelSize: 15
+            font.weight: Font.Bold
+          }
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: modelData.latin || ""
+            visible: text !== ""
+            wrapMode: Text.WordWrap
+            color: root.pal.muted
+            font.family: root.app.fontFamily
+            font.pixelSize: 12
+          }
+        }
+      }
+    }
+
     // Up next
     Glass {
       pal: root.pal
-      visible: root.upNext.length > 0
+      visible: root.upNext.length > 0 && !root.showWords
       width: Math.min(parent.width, 560)
       height: nextColumn.implicitHeight + 20
       radius: 28

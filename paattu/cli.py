@@ -13,8 +13,8 @@ import subprocess
 import sys
 import time
 
-from . import (__version__, art, browse, charts, cliamp, config, depth, engine, history, library, listenbrainz, made,
-               offline, paths, radio, rhythm, seeds, sound, sources, update, youtube)
+from . import (__version__, art, browse, charts, cliamp, config, depth, engine, history, library, listenbrainz, lyrics,
+               made, offline, paths, radio, rhythm, seeds, sound, sources, titles, update, youtube)
 from .depth import DepthError
 from .listenbrainz import ListenBrainzError
 from .offline import OfflineError
@@ -1726,6 +1726,43 @@ def cmd_rhythm(args, out):
         print("%s: %d s, %d beats" % (tid, len(found["level"]) // found["fps"], sum(1 for p in found["punch"] if p > 153)))
 
 
+def cmd_lyrics(args, out):
+    """A song's words (the one playing, if none is given), timed where they
+    can be, with English letters under each line in an Indian script."""
+    data = library.load()
+    if args.target:
+        tid = sources.track_id(args.target) if "://" in args.target else _song_id(args.target)
+        track = dict(_known(data, tid) or {"id": tid})
+    else:
+        track = dict(_playing_track(data, out) or {})
+        if not track:
+            raise ValueError("nothing is playing; give a song")
+    for key in ("title", "movie"):
+        if getattr(args, key):
+            track[key] = getattr(args, key)
+    if args.duration:
+        track["duration"] = args.duration
+    settings = config.load()
+    language = args.language or track.get("language") or titles.guess_language(
+        track.get("rawTitle"), track.get("title"), track.get("movie"), track.get("channel"),
+        default=(settings.get("languages") or [""])[0])
+    out.progress("Looking for the words…")
+    found = lyrics.shown(lyrics.lookup(track, language, refresh=args.refresh),
+                         latin=(settings.get("lyrics") or {}).get("transliterate", True))
+    if args.json:
+        out.done("", id=track.get("id"), **found)
+        return
+    if not found["found"]:
+        print("No words found for %s" % (track.get("title") or track.get("id")))
+        return
+    for line in found["lines"]:
+        stamp = ("%d:%02d" % divmod(int(line["time"]), 60)) + "  " if line["time"] is not None else ""
+        print(stamp + line["text"])
+        if line["latin"]:
+            print(" " * len(stamp) + line["latin"])
+    print("\n(%s%s)" % (found["source"], "" if found["synced"] else ", not timed"))
+
+
 def cmd_theme(args, out):
     if args.action == "list" or not args.name:
         current = config.load()["theme"]
@@ -2192,6 +2229,15 @@ def build_parser():
     a = sub.add_parser("depth", help="lift a song's cover's subject out of it (the cover in 3D in Now Playing)")
     a.add_argument("target", help="the song: an id or a link")
     a.set_defaults(func=cmd_depth)
+
+    a = sub.add_parser("lyrics", help="a song's words, timed, with English letters under them (none: the one playing)")
+    a.add_argument("target", nargs="?", help="the song: an id or a link")
+    a.add_argument("--title", help="what the song is called, if Paattu doesn't know it")
+    a.add_argument("--movie", help="the film or album it's from")
+    a.add_argument("--duration", type=int, help="its length in seconds")
+    a.add_argument("--language", help="the language it's in (Malayalam, Tamil, Hindi, Telugu, Kannada)")
+    a.add_argument("--refresh", action="store_true", help="look again, not in what was kept")
+    a.set_defaults(func=cmd_lyrics)
 
     a = sub.add_parser("rhythm", help="a song's loudness and beats (Now Playing's cover moves with them)")
     a.add_argument("target", help="the song: an id or a link")

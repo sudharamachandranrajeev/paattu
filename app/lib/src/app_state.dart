@@ -10,9 +10,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'charts.dart';
 import 'history.dart';
 import 'library.dart';
+import 'links.dart';
 import 'listenbrainz.dart';
 import 'log.dart';
-import 'links.dart';
+import 'lyrics.dart';
 import 'made.dart';
 import 'offline.dart';
 import 'player/paattu_audio_handler.dart';
@@ -24,7 +25,7 @@ import 'util.dart';
 
 /// The version in pubspec.yaml. A test keeps this and pubspec together, so
 /// the app never says it's a version it isn't.
-const sourceVersion = '0.12.0';
+const sourceVersion = '0.13.0';
 
 /// What this build says it is, read at start-up (package_info_plus), which is
 /// the truth the updater compares against. It starts as [sourceVersion], so a
@@ -45,7 +46,7 @@ Future<void> readAppVersion() async {
 
 class AppState {
   AppState(this.library, this.settings, this.player, this.history, this.offline, this.updates, this.listenBrainz,
-      this.charts)
+      this.charts, this.lyrics)
       : made = MadeForYou(history, library);
 
   final Library library;
@@ -65,6 +66,9 @@ class AppState {
 
   /// What's played most this week, by language (charts.dart).
   final Charts charts;
+
+  /// Songs' words for Now Playing (lyrics.dart).
+  final Lyrics lyrics;
   final messenger = GlobalKey<ScaffoldMessengerState>();
   final navigator = GlobalKey<NavigatorState>();
 

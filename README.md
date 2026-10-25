@@ -54,6 +54,10 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
   (cover, video first, full picture, record), colours from the cover, and the cover in 3D with its
   subject lifted out and moving with the song's rhythm.
+* **Lyrics over the cover** – the line being sung pops out of the cover in 3D, filled with the
+  cover's colours moving through it, with how it sounds in English letters under it (Malayalam,
+  Tamil, Hindi, Telugu, Kannada); all the words in place of Up next, and a bar with the film, year,
+  singers, language and plays.
 * **Sound** – a ten-band equaliser with presets (Melody, Kuthu, Bass boost, Late night…), preamp,
   bass, treble, balance and pitch-keeping speed, on every platform.
 * **Fades and crossfades** – songs fade into each other; the app readies the next song 25 s early
@@ -516,6 +520,39 @@ cut-out is kept in `~/.cache/paattu/depth/`.
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
+**About the song** (Settings › Now Playing, on by default) puts a bar just
+above Up next: the film and year, the singers and composer, the language, the
+label, the stream's quality, the site, its plays on the site and, in the app,
+how many times you've played it.
+
+</details>
+
+<details>
+<summary><b>Lyrics</b></summary>
+
+When the song's words can be found, the line being sung shows over the top
+of the cover on Now Playing, with how it sounds in English letters under it
+(for Malayalam, Tamil, Hindi, Telugu and Kannada). The **Lyrics** button
+shows all the words in place of Up next, the line being sung lit up.
+
+The words come from [LRCLIB](https://lrclib.net) (in the song's own script,
+timed to the song) or, when it has none, YouTube Music (the words without
+timing; then only the Lyrics button shows them). The English letters are
+worked out on the device from the script. What was found is kept for each
+song, and a song with no words is asked about again after three days.
+
+Settings › Lyrics:
+
+- **Over the cover** shows the line being sung (on by default).
+- **Each line** comes in **popping out in 3D** (the default), **fading in**,
+  or **plain**.
+- **Cover's colours** fills the words with the cover's colours, moving slowly
+  through them; off, they're one colour.
+- **English letters** shows how each line sounds under it.
+
+On Omarchy, `paattu lyrics [id]` prints the words of a song (the one playing
+when no id is given) with their times; `--refresh` asks again.
+
 </details>
 
 <details>
@@ -768,6 +805,11 @@ paattu config set nowPlayingStyle record  # cover | video | full | record
 paattu config set videoBlur 50          # 0 (sharp) to 100
 paattu config set coverColors true      # Now Playing in the cover's colours
 paattu config set coverDepth false      # a flat cover in Now Playing
+paattu config set songInfo false        # no bar about the song above Up next
+paattu config set lyrics.show false     # no words over the cover
+paattu config set lyrics.effect fade    # 3d | fade | plain
+paattu config set lyrics.gradient false # the words in one colour
+paattu config set lyrics.transliterate false  # no English letters under them
 ```
 
 - **Themes** are JSON files in `~/.config/paattu/themes/` (`background`,
@@ -838,7 +880,8 @@ added the rule before search existed, run it again to add the new sites.
    from a description, fades between songs and songs downloaded ahead
 9. A real spectrum visualizer on the widgets
 10. Malayalam / Tamil radio stations (Radio Browser)
-11. Synced lyrics in the app and on the desktop widget
+11. ✅ Synced lyrics over the cover, with English letters, in the app and on
+    Omarchy
 12. ✅ Now Playing looks (cover, video first, full picture, record), video
     blur, the cover's colours and the cover in 3D, with Windows media
     controls

@@ -102,3 +102,29 @@ class _CoverThemeState extends State<CoverTheme> {
     );
   }
 }
+
+/// Bright colours of the cover at [art] that read over a dark shade, for
+/// the words over it (lyrics_view.dart), whatever the theme; null when the
+/// picture can't be had. Kept for the last few covers.
+Future<List<Color>?> coverBrightColours(String art) {
+  final made = _bright.remove(art) ??
+      ColorScheme.fromImageProvider(
+        provider: NetworkImage(art),
+        brightness: Brightness.dark,
+        dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+      ).timeout(const Duration(seconds: 20)).then<List<Color>?>(
+        (s) => [s.primary, s.tertiary, s.secondary, s.primaryFixed],
+        onError: (Object error) {
+          problemLog.warn("couldn't take colours from the cover: ${errorText(error)}");
+          _bright.remove(art);
+          return null;
+        },
+      );
+  _bright[art] = made;
+  while (_bright.length > 24) {
+    _bright.remove(_bright.keys.first);
+  }
+  return made;
+}
+
+final _bright = <String, Future<List<Color>?>>{};

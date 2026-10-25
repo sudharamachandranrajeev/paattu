@@ -286,6 +286,56 @@ class SettingsPage extends StatelessWidget {
                   label: '${settings.videoBlur}',
                   onChanged: settings.videoBackground ? (v) => settings.videoBlur = v.round() : null,
                 ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.info_outline),
+                  title: const Text('About the song'),
+                  subtitle: const Text('A bar above Up next: the film and year, singers and music, language and label'),
+                  value: settings.songInfo,
+                  onChanged: (on) => settings.songInfo = on,
+                ),
+              ],
+            ),
+            const SectionHeader('Lyrics'),
+            GlassGroup(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.lyrics_outlined),
+                  title: const Text('Lyrics over the cover'),
+                  subtitle: const Text(
+                    "The line being sung, at the top of the cover, from LRCLIB or YouTube Music. "
+                    'Tap them for all the words',
+                  ),
+                  value: settings.lyricsShown,
+                  onChanged: (on) => settings.lyricsShown = on,
+                ),
+                for (final effect in LyricEffect.values)
+                  ListTile(
+                    enabled: settings.lyricsShown,
+                    leading: Icon(
+                      settings.lyricEffect == effect ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: settings.lyricEffect == effect ? theme.colorScheme.primary : null,
+                    ),
+                    title: Text(effect == LyricEffect.pop ? '${effect.label} (the usual)' : effect.label),
+                    subtitle: Text(effect.description),
+                    onTap: () => settings.lyricEffect = effect,
+                  ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.gradient),
+                  title: const Text("The cover's colours in the words"),
+                  subtitle: const Text('A gradient of the colours of the cover moving slowly through the letters'),
+                  value: settings.lyricGradient,
+                  onChanged: settings.lyricsShown ? (on) => settings.lyricGradient = on : null,
+                ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.translate),
+                  title: const Text('In English letters too'),
+                  subtitle: const Text(
+                    'Malayalam, Tamil, Hindi, Telugu and Kannada words, and under them how they sound '
+                    '(thelimaanam, kaadhal)',
+                  ),
+                  value: settings.lyricsTransliterated,
+                  onChanged: settings.lyricsShown ? (on) => settings.lyricsTransliterated = on : null,
+                ),
               ],
             ),
             const SectionHeader('Music from'),

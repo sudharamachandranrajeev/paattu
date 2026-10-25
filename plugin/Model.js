@@ -162,6 +162,25 @@ function qualityLabel(track) {
   return track.quality ? track.quality + " kbps" : ""
 }
 
+// What a song is, for the bar above Up next on Now Playing: the film and
+// year, who sings and made it, language, label, quality, site and plays.
+// track is nowPlaying's; known is the library's entry for it, or {}.
+function songFacts(track, known) {
+  if (!track || !track.id) return []
+  known = known || {}
+  var facts = []
+  var film = [track.movie || "", known.year ? String(known.year) : ""].filter(function(s) { return s })
+  if (film.length) facts.push(film.join(" · "))
+  if (track.credits && track.credits.length) facts.push(track.credits.slice(0, 4).join(", "))
+  if (known.language) facts.push(known.language)
+  if (track.channel) facts.push(track.channel)
+  var quality = qualityLabel(known)
+  if (quality) facts.push(quality)
+  facts.push(siteName(siteOf(known.id ? known : track)))
+  if (Number(known.views) > 0) facts.push(formatCount(known.views) + " plays")
+  return facts
+}
+
 // Streams are encoded at a few standard rates; mpv measures a little under.
 function snapKbps(kbps) {
   var steps = [64, 96, 128, 160, 192, 256, 320]

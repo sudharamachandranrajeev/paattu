@@ -13,6 +13,7 @@ Flickable {
   required property var app
   readonly property var pal: app.pal
   readonly property var desktop: app.store.desktop
+  readonly property var lyrics: app.store.config.lyrics || ({})
   property var themes: []
 
   contentWidth: width
@@ -333,6 +334,118 @@ Flickable {
       }
     }
     Hint { app: root.app; width: column.width; text: "Cover in 3D lifts the people out of the cover and tilts it as the pointer moves over it (it runs U²-Net through uv, on this computer; the first time, uv fetches ONNX Runtime). Cover colours gives Now Playing and the player bar the colours of the song's cover." }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "About the song"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.songInfo !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("songInfo", !on)
+      }
+    }
+
+    // ---------- Lyrics ----------
+    Item { width: 1; height: 8 }
+    SectionTitle { app: root.app; text: "Lyrics" }
+    Hint { app: root.app; width: column.width; text: "The line being sung, over the top of the cover on Now Playing, from LRCLIB (in the song's own script, timed) or YouTube Music. A line in Malayalam, Tamil, Hindi, Telugu or Kannada has how it sounds in English letters under it. The Lyrics button shows all the words in place of Up next." }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Over the cover"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.lyrics.show !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("lyrics.show", !on)
+      }
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Each line"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Repeater {
+        model: [{ key: "3d", label: "Pops out in 3D" }, { key: "fade", label: "Fades in" }, { key: "plain", label: "Plain" }]
+        Chip {
+          required property var modelData
+          text: modelData.label
+          textColor: root.pal.foreground; accent: root.pal.accent
+          selected: (root.lyrics.effect || "3d") === modelData.key
+          fontSize: 12; fontFamily: root.app.fontFamily
+          onClicked: root.set("lyrics.effect", modelData.key)
+        }
+      }
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Cover's colours"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.lyrics.gradient !== false
+        text: on ? "Moving through the words" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("lyrics.gradient", !on)
+      }
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "English letters"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.lyrics.transliterate !== false
+        text: on ? "Under the words" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("lyrics.transliterate", !on)
+      }
+    }
 
     // ---------- Playback ----------
     Item { width: 1; height: 8 }

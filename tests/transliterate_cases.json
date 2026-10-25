@@ -1,0 +1,224 @@
+{
+ "comment": "Lyrics in English letters: paattu/transliterate.py and app/lib/src/transliterate.dart both run these.",
+ "lines": [
+  {
+   "text": "തെളിമാനം മഴവില്ലിൻ നിറമണിയും നേരം",
+   "script": "malayalam",
+   "latin": "Thelimaanam mazhavillin niramaniyum neram"
+  },
+  {
+   "text": "എന്റെ പാട്ട്",
+   "script": "malayalam",
+   "latin": "Ente paattu"
+  },
+  {
+   "text": "ഞാൻ",
+   "script": "malayalam",
+   "latin": "Njaan"
+  },
+  {
+   "text": "നിങ്ങൾ",
+   "script": "malayalam",
+   "latin": "Ningal"
+  },
+  {
+   "text": "സംഗീതം",
+   "script": "malayalam",
+   "latin": "Sangeetham"
+  },
+  {
+   "text": "തിരുവനന്തപുരം",
+   "script": "malayalam",
+   "latin": "Thiruvananthapuram"
+  },
+  {
+   "text": "മലരേ",
+   "script": "malayalam",
+   "latin": "Malare"
+  },
+  {
+   "text": "അച്ഛൻ",
+   "script": "malayalam",
+   "latin": "Acchan"
+  },
+  {
+   "text": "ഹൃദയം",
+   "script": "malayalam",
+   "latin": "Hrudayam"
+  },
+  {
+   "text": "ക്ഷണം",
+   "script": "malayalam",
+   "latin": "Kshanam"
+  },
+  {
+   "text": "വിയർപ്പ് തുന്നിയിട്ട കുപ്പായം",
+   "script": "malayalam",
+   "latin": "Viyarppu thunniyitta kuppaayam"
+  },
+  {
+   "text": "முன்பே வா என் அன்பே வா",
+   "script": "tamil",
+   "latin": "Munbe vaa en anbe vaa"
+  },
+  {
+   "text": "காதலன்",
+   "script": "tamil",
+   "latin": "Kaadhalan"
+  },
+  {
+   "text": "தமிழ்",
+   "script": "tamil",
+   "latin": "Thamizh"
+  },
+  {
+   "text": "காற்று",
+   "script": "tamil",
+   "latin": "Kaatru"
+  },
+  {
+   "text": "என்று",
+   "script": "tamil",
+   "latin": "Endru"
+  },
+  {
+   "text": "நெஞ்சம்",
+   "script": "tamil",
+   "latin": "Nenjam"
+  },
+  {
+   "text": "எங்கள்",
+   "script": "tamil",
+   "latin": "Engal"
+  },
+  {
+   "text": "முகம்",
+   "script": "tamil",
+   "latin": "Mugam"
+  },
+  {
+   "text": "ஆசை",
+   "script": "tamil",
+   "latin": "Aasai"
+  },
+  {
+   "text": "கொஞ்சம்",
+   "script": "tamil",
+   "latin": "Konjam"
+  },
+  {
+   "text": "உயிரே",
+   "script": "tamil",
+   "latin": "Uyire"
+  },
+  {
+   "text": "दिल",
+   "script": "devanagari",
+   "latin": "Dil"
+  },
+  {
+   "text": "प्यार",
+   "script": "devanagari",
+   "latin": "Pyaar"
+  },
+  {
+   "text": "धड़कन",
+   "script": "devanagari",
+   "latin": "Dhadkan"
+  },
+  {
+   "text": "मैं तेरा",
+   "script": "devanagari",
+   "latin": "Main tera"
+  },
+  {
+   "text": "तुम ही हो",
+   "script": "devanagari",
+   "latin": "Tum hi ho"
+  },
+  {
+   "text": "करना",
+   "script": "devanagari",
+   "latin": "Karna"
+  },
+  {
+   "text": "ज़िंदगी",
+   "script": "devanagari",
+   "latin": "Zindagi"
+  },
+  {
+   "text": "मित्र",
+   "script": "devanagari",
+   "latin": "Mitra"
+  },
+  {
+   "text": "नहीं",
+   "script": "devanagari",
+   "latin": "Nahin"
+  },
+  {
+   "text": "समझना",
+   "script": "devanagari",
+   "latin": "Samajhna"
+  },
+  {
+   "text": "हूँ",
+   "script": "devanagari",
+   "latin": "Hoon"
+  },
+  {
+   "text": "నీ కోసం",
+   "script": "telugu",
+   "latin": "Nee kosam"
+  },
+  {
+   "text": "అందం",
+   "script": "telugu",
+   "latin": "Andam"
+  },
+  {
+   "text": "ప్రేమ",
+   "script": "telugu",
+   "latin": "Prema"
+  },
+  {
+   "text": "ನನ್ನ",
+   "script": "kannada",
+   "latin": "Nanna"
+  },
+  {
+   "text": "ಹೃದಯ",
+   "script": "kannada",
+   "latin": "Hrudaya"
+  },
+  {
+   "text": "കൊണ്ടു",
+   "script": "malayalam",
+   "latin": "Kondu"
+  },
+  {
+   "text": "അമ്പിളി",
+   "script": "malayalam",
+   "latin": "Ambili"
+  },
+  {
+   "text": "ഉണ്ട്",
+   "script": "malayalam",
+   "latin": "Undu"
+  }
+ ],
+ "scripts": [
+  {
+   "text": "Kanmani anbodu",
+   "script": null
+  },
+  {
+   "text": "Hey Jude ஹே",
+   "script": null
+  },
+  {
+   "text": "முன்பே வா என் அன்பே வா (Munbe Vaa)",
+   "script": "tamil"
+  }
+ ]
+}
