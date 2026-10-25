@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.2 — Sidebar fits short windows (Omarchy)
+
+- On a short Omarchy app window the sidebar menu no longer runs under the
+  library counts at the bottom; it scrolls instead.
+
 ## 0.11.1 — ListenBrainz says why
 
 - When ListenBrainz turns plays away, Paattu shows its reason instead of
