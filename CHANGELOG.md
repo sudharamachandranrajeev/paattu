@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.14.0 — A fifteen-band equaliser that lands where you put it
+
+Which file: the same as before (`Paattu-0.14.0-android.apk`,
+`Paattu-0.14.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **Fifteen bands.** The equaliser has the ISO 2/3-octave bands, from 25 Hz
+  to 16 kHz, on every platform and on `paattu sound` (`--band 1.6k=+2`).
+- **Each slider is what you hear.** Band filters overlap, so before, a curve
+  could come out far louder than its sliders (all ten at +12 dB gave about
+  +18.5 dB) and one band lifted its neighbours. Now the filters' gains are
+  worked out so the sound lands within about half a dB of every slider, and
+  the curve drawn behind them is the one you hear.
+- **Fine tuning.** Hold Shift while dragging or scrolling a band (or turn on
+  *Fine steps* in the app) to move it in tenths of a dB.
+- **Your sound stays the same.** Ten-band settings and your own presets
+  become the fifteen levels they gave, and the built-in presets were carried
+  over the same way.
+
 ## 0.13.0 — Lyrics over the cover
 
 Which file: the same as before (`Paattu-0.13.0-android.apk`,

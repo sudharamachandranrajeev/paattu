@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "Model.js" as Model
 
-// Sound: a ten-band equaliser, preamp, bass, treble, balance and speed, after
+// Sound: a fifteen-band equaliser, preamp, bass, treble, balance and speed, after
 // Poweramp and AIMP; `paattu sound` underneath. Moving a control changes the
 // playing song at once (af-command on the engine's filter graph); letting go
 // saves it through the CLI, which also sets the graph mpv keeps for the next
@@ -167,7 +167,8 @@ Flickable {
     var shape = Model.soundCurve(s)
     var points = []
     for (var x = 0; x <= w + 2; x += 3)
-      points.push([x, yOf(Model.soundResponse(shape, 31.25 * Math.pow(2, (x - column / 2) / column)))])
+      // A column is 2/3 octave, the first centred on 25 Hz.
+      points.push([x, yOf(Model.soundResponse(shape, 25 * Math.pow(2, (x - column / 2) / column * 2 / 3)))])
     var fill = ctx.createLinearGradient(0, 0, 0, h)
     fill.addColorStop(0, Qt.rgba(accent.r, accent.g, accent.b, 0.3))
     fill.addColorStop(0.5, Qt.rgba(accent.r, accent.g, accent.b, 0.02))
@@ -289,6 +290,12 @@ Flickable {
           }
         }
       }
+    }
+
+    Hint {
+      app: root.app
+      width: column.width
+      text: "Fifteen bands, 25 Hz to 16 kHz, each the level the sound has there. Hold Shift to move a slider in tenths of a dB; double-click puts it back to 0."
     }
 
     // ---------- Presets ----------

@@ -26,9 +26,35 @@ class SharedCases(unittest.TestCase):
 
 class Curve(unittest.TestCase):
     def test_a_band_peaks_at_its_frequency(self):
-        band = [(sound.FILTERS[6][1], 6.0)]  # 1 kHz
+        band = [(sound.FILTERS[9][1], 6.0)]  # 1 kHz
         self.assertAlmostEqual(sound.response(band, 1000), 6.0, places=2)
-        self.assertLess(sound.response(band, 62), 0.3)
+        self.assertLess(sound.response(band, 100), 0.3)
+
+    def test_the_curve_lands_on_the_sliders(self):
+        hard = {"all up": [12] * 15, "zigzag": [12 if i % 2 else -12 for i in range(15)],
+                "one band": [12 if i == 7 else 0 for i in range(15)], "step": [-12] * 7 + [12] * 8,
+                "melody": list(sound.PRESETS[1][2])}
+        for name, bands in hard.items():
+            with self.subTest(name):
+                shape = sound.curve({"bands": bands})
+                for f, want in zip(sound.BANDS, bands):
+                    self.assertAlmostEqual(sound.response(shape, f), want, delta=0.5)
+                for i in range(14):
+                    halfway = (sound.BANDS[i] * sound.BANDS[i + 1]) ** 0.5
+                    self.assertAlmostEqual(sound.response(shape, halfway), (bands[i] + bands[i + 1]) / 2, delta=1.2)
+
+    def test_ten_bands_become_fifteen(self):
+        old = [4, 3, 1, 0, -1, 0, 1.5, 2, 3, 3]
+        shape = [("f=%d:t=o:w=1" % f, g) for f, g in zip(sound.OLD_BANDS, old)]
+        new = sound.normalize({"bands": old})["bands"]
+        self.assertEqual(len(new), 15)
+        for f, level in zip(sound.BANDS, new):
+            self.assertAlmostEqual(level, sound.response(shape, f), delta=0.051)
+        # A built-in preset stays that preset, and your own presets come along.
+        s = sound.normalize({"preset": "rock", "bands": [5, 3, -2, -3.5, -1.5, 1.5, 3.5, 4.5, 4.5, 4.5],
+                             "presets": {"Car": old}})
+        self.assertEqual(s["bands"], list(sound.PRESETS[6][2]))
+        self.assertEqual(s["presets"]["Car"], new)
 
     def test_tiny_q_is_a_flat_gain(self):
         pre = [(sound.FILTERS[0][1], -6.0)]
@@ -36,14 +62,14 @@ class Curve(unittest.TestCase):
             self.assertAlmostEqual(sound.response(pre, f), -6.0, delta=0.05)
 
     def test_noclip_lowers_the_preamp_by_the_peak(self):
-        s = {"on": True, "bands": [0, 0, 0, 0, 0, 6, 0, 0, 0, 0]}
-        self.assertEqual(sound.gains(s)["pre"], -6.0)
+        s = {"on": True, "bands": [0] * 8 + [6] + [0] * 6}
+        self.assertAlmostEqual(sound.gains(s)["pre"], -6.0, delta=0.2)
         self.assertEqual(sound.gains(dict(s, noclip=False))["pre"], 0.0)
-        self.assertEqual(sound.gains({"on": True, "bands": [-3] * 10})["pre"], 0.0)  # cuts need no room
+        self.assertEqual(sound.gains({"on": True, "bands": [-3] * 15})["pre"], 0.0)  # cuts need no room
 
     def test_numbers(self):
         self.assertEqual([sound.fmt(x) for x in (2.5, 3.0, -0.0, -0.04, 1.25, -2.25)], ["2.5", "3", "0", "0", "1.3", "-2.2"])
-        self.assertEqual(sound.graph({"on": False, "bands": [5] * 10}), "")
+        self.assertEqual(sound.graph({"on": False, "bands": [5] * 15}), "")
         self.assertEqual(sound.summary({"on": True, "preset": "melody", "bass": 2, "speed": 1.25}),
                          "On · Melody · bass +2 dB · 1.25×")
 
@@ -96,9 +122,11 @@ class Command(unittest.TestCase):
 
     def test_presets_bands_and_saving(self):
         s = self.run_cli("sound", "preset", "Bass", "boost")
-        self.assertEqual((s["on"], s["preset"], s["bands"][0]), (True, "bass", 6.0))
-        s = self.run_cli("sound", "set", "--band", "16k=+2", "--band", "1=-1", "--preamp", "-3", "--balance", "-0.2")
-        self.assertEqual((s["bands"][9], s["bands"][0], s["preamp"], s["balance"], s["preset"]), (2.0, -1.0, -3.0, -0.2, ""))
+        self.assertEqual((s["on"], s["preset"], s["bands"][2]), (True, "bass", 7.0))
+        s = self.run_cli("sound", "set", "--band", "16k=+2", "--band", "1.6k=+1", "--band", "1=-1", "--preamp", "-3",
+                         "--balance", "-0.2")
+        self.assertEqual((s["bands"][14], s["bands"][9], s["bands"][0], s["preamp"], s["balance"], s["preset"]),
+                         (2.0, 1.0, -1.0, -3.0, -0.2, ""))
         s = self.run_cli("sound", "save", "Car")
         self.assertEqual((s["preset"], s["presets"]["Car"]), ("Car", s["bands"]))
         s = self.run_cli("sound", "set", "--bands=" + ",".join(str(b) for b in sound.PRESETS[1][2]))
@@ -113,7 +141,7 @@ class Command(unittest.TestCase):
             self.assertEqual(cli.main(["sound", "save", "Rock"]), 1)
             self.assertEqual(cli.main(["sound", "set", "--band", "3k=1"]), 1)
             self.assertEqual(cli.main(["sound", "preset", "nope"]), 1)
-        self.assertEqual([cli._sound_band(k) for k in ("1", "10", "31", "1k", "16000")], [0, 9, 0, 5, 9])
+        self.assertEqual([cli._sound_band(k) for k in ("1", "15", "25", "1k", "1.6k", "16000")], [0, 14, 0, 8, 9, 14])
 
 
 if __name__ == "__main__":

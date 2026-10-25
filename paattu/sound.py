@@ -7,36 +7,55 @@ flat gain, which makes the preamp and the left / right levels. The engine
 here, the desktop app (the same graph) and the Android app (this curve on
 the phone's own equaliser) all share these numbers: tests/sound_cases.json.
 
+The equaliser has fifteen bands, the ISO 2/3-octave centres from 25 Hz to
+16 kHz. Peaking filters overlap: fifteen of them at +12 dB sum to far more
+than 12 dB, and one band at +12 dB lifts its neighbours too. So the sliders
+are the levels wanted at the band centres, and the filters' own gains are
+worked out to give them (band_gains): the interaction of each filter at each
+centre and halfway between centres, solved by least squares, then once more
+with the interaction measured at the gains found (V. Valimaki and J. Liski,
+"Accurate cascade graphic equalizer", IEEE Signal Processing Letters 24(2),
+2017). The curve then lands within about half a dB of every slider.
+
 Each filter is named (equalizer@b3), so a slider can move it while it plays
 with `af-command paattu g <dB> equalizer@b3`; the graph is set again when the
 slider is let go, as mpv rebuilds filters from it between songs.
 """
 
+import functools
 import math
 
-# The bands (Hz), Poweramp's ten.
-BANDS = (31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+# The bands (Hz): the ISO 2/3-octave centres.
+BANDS = (25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000)
+# Each band filter's width (octaves): a little wider than the 2/3 octave
+# between bands, which measured the closest fit to the sliders.
+WIDTH = 0.8
+# Settings from before 0.14 have ten bands, one octave wide, uncompensated.
+OLD_BANDS = (31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
 LIMIT = 12.0  # dB either way: bands, preamp, bass, treble
 SPEED = (0.5, 2.0)
 LABEL = "paattu"
 RATE = 48000  # for drawing the curve and finding its peak
 
+# The levels the ten-band presets gave at these centres, so they sound as before.
 PRESETS = (
-    ("flat", "Flat", (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
-    ("melody", "Melody", (-2, -1.5, -1, 0.5, 2, 3.5, 3.5, 2, 0.5, -0.5)),
-    ("kuthu", "Kuthu", (6, 5, 3, 1, 0, 0, 1, 2, 2, 1)),
-    ("bass", "Bass boost", (6, 5, 4.5, 2.5, 0.5, 0, 0, 0, 0, 0)),
-    ("treble", "Treble boost", (0, 0, 0, 0, 0, 0.5, 2, 3.5, 5, 6)),
-    ("classical", "Classical", (0, 0, 0, 0, 0, 0, -3, -3, -3, -4.5)),
-    ("rock", "Rock", (5, 3, -2, -3.5, -1.5, 1.5, 3.5, 4.5, 4.5, 4.5)),
-    ("pop", "Pop", (-1, 2.5, 4, 4.5, 3, 0, -1.5, -1.5, -1, -1)),
-    ("dance", "Dance", (6, 4.5, 1.5, 0, 0, -3, -4, -4, 0, 0)),
-    ("jazz", "Jazz", (3, 2, 1, 2, -1.5, -1.5, 0, 1, 2, 3)),
-    ("acoustic", "Acoustic", (4, 4, 3, 1, 1.5, 1.5, 3, 3.5, 3, 2)),
-    ("loudness", "Loudness", (5, 4, 2, 0, -1, -1, 0, 2, 4, 5)),
-    ("headphones", "Headphones", (3, 2, 1, 0, -0.5, 0, 1, 2, 2.5, 3)),
-    ("night", "Late night", (-1, -1, 0, 1, 1.5, 1, 0, -1, -2, -3)),
+    ("flat", "Flat", (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+    ("melody", "Melody", (-1.5, -2, -2, -1, -0.5, 1, 2, 3, 4.5, 4, 3.5, 3, 1, 0.5, -0.5)),
+    ("kuthu", "Kuthu", (5, 6, 6.5, 4.5, 3, 2, 0.5, 0.5, 0.5, 1, 1.5, 2.5, 2.5, 2, 1)),
+    ("bass", "Bass boost", (5, 6, 7, 5.5, 4.5, 3.5, 1.5, 0.5, 0, 0, 0, 0, 0, 0, 0)),
+    ("treble", "Treble boost", (0, 0, 0, 0, 0, 0, 0, 0.5, 1, 2, 3.5, 5.5, 6, 7, 6.5)),
+    ("classical", "Classical", (0, 0, 0, 0, 0, 0, 0, 0, -0.5, -2.5, -3.5, -4.5, -4, -4.5, -5)),
+    ("rock", "Rock", (4, 4, 3.5, -0.5, -2.5, -4, -2, -0.5, 2, 3.5, 4.5, 6.5, 6, 6, 5)),
+    ("pop", "Pop", (-0.5, 0.5, 3.5, 4, 4.5, 6, 4, 2.5, 0.5, -1, -1.5, -2, -1.5, -1.5, -1)),
+    ("dance", "Dance", (5, 5.5, 6, 3, 1.5, 0.5, -0.5, -1.5, -4, -4.5, -4.5, -5, -1.5, -0.5, 0)),
+    ("jazz", "Jazz", (2.5, 3, 3, 1.5, 1.5, 2, -0.5, -1.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3, 3)),
+    ("acoustic", "Acoustic", (3.5, 4.5, 5.5, 4, 3, 2, 2, 2, 2.5, 3, 4, 5, 4, 3.5, 2.5)),
+    ("loudness", "Loudness", (4, 5, 5.5, 3, 2, 0.5, -0.5, -1, -1, 0, 1, 3, 4.5, 5.5, 5.5)),
+    ("headphones", "Headphones", (2.5, 3, 2.5, 1.5, 1, 0, 0, 0, 0, 1, 1.5, 3, 3, 3.5, 3.5)),
+    ("night", "Late night", (-1, -1, -1, -0.5, 0.5, 1.5, 1.5, 1.5, 1, 0, -0.5, -1.5, -2.5, -3, -3)),
 )
+
+_BUILT_IN = dict((key, bands) for key, _, bands in PRESETS)
 
 DEFAULTS = {
     "on": False,
@@ -52,14 +71,14 @@ DEFAULTS = {
     "noclip": True,
     # Faster or slower, at the same pitch. Not part of "on".
     "speed": 1,
-    # Your own presets: {name: [ten bands]}.
+    # Your own presets: {name: [fifteen bands]}.
     "presets": {},
 }
 
 # (name, the filter's fixed options); the order of the graph.
 FILTERS = (
     (("pre", "f=1000:t=q:w=0.001"),)
-    + tuple(("b%d" % i, "f=%d:t=o:w=1" % f) for i, f in enumerate(BANDS))
+    + tuple(("b%d" % i, "f=%d:t=o:w=%g" % (f, WIDTH)) for i, f in enumerate(BANDS))
     + (("bass", "f=60:t=o:w=3"), ("treble", "f=10000:t=o:w=2"),
        ("left", "f=1000:t=q:w=0.001:c=FL"), ("right", "f=1000:t=q:w=0.001:c=FR"))
 )
@@ -97,20 +116,34 @@ def preset_bands(name, settings=None):
     return list(saved[name]) if name in saved else None
 
 
+def bands_of(values):
+    """Fifteen band levels in range from a config value. Ten (settings from
+    before 0.14) become the levels their old filters gave at the new centres."""
+    values = list(values) if isinstance(values, (list, tuple)) else []
+    if len(values) == len(OLD_BANDS):
+        old = [("f=%d:t=o:w=1" % f, _number(v, -LIMIT, LIMIT)) for f, v in zip(OLD_BANDS, values)]
+        values = [response(old, f) for f in BANDS]
+    values = values[:len(BANDS)] + [0] * (len(BANDS) - len(values[:len(BANDS)]))
+    return [tenth(_number(v, -LIMIT, LIMIT)) for v in values]
+
+
 def normalize(settings):
     """settings with every key, each in range."""
     s = dict(DEFAULTS, **(settings or {}))
-    bands = list(s.get("bands") or [])[:len(BANDS)]
-    bands += [0] * (len(BANDS) - len(bands))
+    bands = bands_of(s.get("bands"))
+    # A built-in preset from before 0.14 is that preset in fifteen bands
+    # (which are its old levels to the half dB).
+    old = isinstance(s.get("bands"), list) and len(s["bands"]) == len(OLD_BANDS)
+    if old and [math.floor(b * 2 + 0.5) / 2 for b in bands] == list(_BUILT_IN.get(s.get("preset"), ())):
+        bands = [float(b) for b in _BUILT_IN[s["preset"]]]
     presets = {}
     for name, values in (s.get("presets") or {}).items():
         if isinstance(name, str) and name.strip() and isinstance(values, list):
-            values = [tenth(_number(v, -LIMIT, LIMIT)) for v in values[:len(BANDS)]]
-            presets[name.strip()] = values + [0.0] * (len(BANDS) - len(values))
+            presets[name.strip()] = bands_of(values)
     return {
         "on": s.get("on") is True,
         "preset": s.get("preset") if isinstance(s.get("preset"), str) else "",
-        "bands": [tenth(_number(b, -LIMIT, LIMIT)) for b in bands],
+        "bands": bands,
         "preamp": tenth(_number(s.get("preamp"), -LIMIT, LIMIT)),
         "bass": tenth(_number(s.get("bass"), -LIMIT, LIMIT)),
         "treble": tenth(_number(s.get("treble"), -LIMIT, LIMIT)),
@@ -147,10 +180,56 @@ def response(gains, freq, rate=RATE):
     return total
 
 
+# Where the curve is matched to the sliders: each centre, and halfway between
+# two (where it should be their average), which counts half as much.
+_FIT = [(f, i, i, 1.0) for i, f in enumerate(BANDS)] + [
+    (math.sqrt(f * BANDS[i + 1]), i, i + 1, 0.5) for i, f in enumerate(BANDS[:-1])]
+# A filter's interaction is measured at its gain, or at this when that's tiny.
+_PROTO = 12.0
+_BAND_LIMIT = 30.0
+
+
+def _solve(a, y):
+    """x with a·x = y (Gaussian elimination with partial pivoting)."""
+    n = len(y)
+    m = [list(row) + [y[i]] for i, row in enumerate(a)]
+    for c in range(n):
+        p = max(range(c, n), key=lambda r: abs(m[r][c]))
+        m[c], m[p] = m[p], m[c]
+        for r in range(n):
+            if r != c and m[r][c]:
+                k = m[r][c] / m[c][c]
+                for j in range(c, n + 1):
+                    m[r][j] -= k * m[c][j]
+    return [m[i][n] / m[i][i] for i in range(n)]
+
+
+def band_gains(bands):
+    """The band filters' gains (dB) that put the curve at bands' levels."""
+    return list(_band_gains(tuple(float(b) for b in bands)))
+
+
+@functools.lru_cache(maxsize=32)
+def _band_gains(bands):
+    if not any(bands):
+        return [0.0] * len(BANDS)
+    want = [(bands[i] + bands[j]) / 2 for _, i, j, _ in _FIT]
+    g = [_PROTO] * len(BANDS)
+    for _ in range(2):
+        at = [g_ if abs(g_) >= 0.5 else _PROTO for g_ in g]
+        # a[k][m]: filter m's level at fit point k, per dB of its gain.
+        a = [[response([(FILTERS[1 + m][1], at[m])], f) / at[m] for m in range(len(BANDS))] for f, _, _, _ in _FIT]
+        weights = [w for _, _, _, w in _FIT]
+        normal = [[sum(w * row[i] * row[j] for w, row in zip(weights, a)) for j in range(len(BANDS))]
+                  for i in range(len(BANDS))]
+        g = _solve(normal, [sum(w * row[i] * y for w, row, y in zip(weights, a, want)) for i in range(len(BANDS))])
+    return [min(_BAND_LIMIT, max(-_BAND_LIMIT, x)) for x in g]
+
+
 def curve(settings):
     """[(options, gain)] for the bands, bass and treble: the shape of the sound."""
     s = normalize(settings)
-    shape = [(opts, s["bands"][i]) for i, (_, opts) in enumerate(FILTERS[1:1 + len(BANDS)])]
+    shape = list(zip((opts for _, opts in FILTERS[1:1 + len(BANDS)]), band_gains(s["bands"])))
     return shape + [(FILTERS[-4][1], s["bass"]), (FILTERS[-3][1], s["treble"])]
 
 
@@ -170,7 +249,7 @@ def gains(settings):
     pre = s["preamp"] - (peak(s) if s["noclip"] else 0)
     b = s["balance"]
     out = {"pre": tenth(max(-30.0, pre))}
-    out.update(("b%d" % i, g) for i, g in enumerate(s["bands"]))
+    out.update(("b%d" % i, tenth(g)) for i, g in enumerate(band_gains(s["bands"])))
     out.update(bass=s["bass"], treble=s["treble"],
                left=tenth(20 * math.log10(max(0.01, 1 - b))) if b > 0 else 0.0,
                right=tenth(20 * math.log10(max(0.01, 1 + b))) if b < 0 else 0.0)

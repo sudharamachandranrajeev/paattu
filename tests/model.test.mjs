@@ -307,21 +307,30 @@ test("sound: the same numbers as paattu/sound.py", () => {
 
 test("sound: live moves, labels and presets", () => {
   const flat = M.soundGains({ on: true })
-  const louder = M.soundGains({ on: true, bands: [0, 0, 0, 2.5, 0, 0, 0, 0, 0, 0] })
-  // Only what changed: the preamp that makes room for the boost, and the band.
-  eq(M.soundCommands(flat, louder), [["af-command", "paattu", "g", M.soundFmt(louder.pre), "equalizer@pre"],
-                                     ["af-command", "paattu", "g", "2.5", "equalizer@b3"]])
-  assert.ok(louder.pre < -2 && louder.pre > -3)
+  const louder = M.soundGains({ on: true, bands: [0, 0, 0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] })
+  // Only what changed: the preamp that makes room for the boost, the band,
+  // and its neighbours, which give back what it lends them.
+  const moved = M.soundCommands(flat, louder)
+  eq(moved.map(c => c[4]), ["equalizer@pre", "equalizer@b2", "equalizer@b3", "equalizer@b4"])
+  assert.ok(louder.b3 > 2.5 && louder.b2 < 0 && louder.b4 < 0)
+  assert.ok(louder.pre < -2.3 && louder.pre > -2.7)
+  // The curve lands on the sliders.
+  const bands = [-12, 12, -6, 6, 0, 3, -3, 9, -9, 1.5, -1.5, 12, -12, 4, -4]
+  const shape = M.soundCurve(M.soundNormalize({ bands }))
+  M.SOUND_BANDS.forEach((f, i) => assert.ok(Math.abs(M.soundResponse(shape, f) - bands[i]) < 0.5, `${f} Hz`))
   assert.equal(M.soundCommands(flat, flat).length, 0)
   assert.equal(M.soundFmt(-0.04), "0")
   assert.equal(M.soundDb(2.5), "+2.5")
   assert.equal(M.soundDb(-3), "-3")
   assert.equal(M.soundBandLabel(16000), "16k")
-  assert.equal(M.soundBandLabel(62), "62")
-  const s = M.soundNormalize({ bands: [6, 5, 4.5, 2.5, 0.5, 0, 0, 0, 0, 0], presets: { Car: [1, 1] } })
+  assert.equal(M.soundBandLabel(1600), "1.6k")
+  assert.equal(M.soundBandLabel(63), "63")
+  // Ten bands from before 0.14: a built-in preset stays itself.
+  const s = M.soundNormalize({ preset: "bass", bands: [6, 5, 4.5, 2.5, 0.5, 0, 0, 0, 0, 0], presets: { Car: [1, 1] } })
   assert.equal(M.soundMatchingPreset(s), "bass")
   assert.equal(M.soundMatchingPreset(M.soundNormalize({ bands: [1, 1] , presets: { Car: [1, 1] } })), "Car")
-  eq(M.soundPresets(s).slice(-1), [{ id: "Car", name: "Car", bands: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0], saved: true }])
+  eq(M.soundPresets(s).slice(-1), [{ id: "Car", name: "Car", bands: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                     saved: true }])
   assert.ok(M.soundSame({ on: false }, {}))
   assert.ok(!M.soundSame({ on: true }, {}))
 })
