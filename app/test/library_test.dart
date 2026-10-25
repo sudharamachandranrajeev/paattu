@@ -22,8 +22,43 @@ void main() {
 
   final song = <String, dynamic>{'id': 'hvqnG6VjqV0', 'title': 'Malare', 'movie': 'Premam', '_media': 'x'};
 
-  test('a new library has the Malayalam and Tamil mixes', () {
-    expect(library.mixList().map((m) => m['title']), ['Malayalam mix', 'Tamil mix']);
+  test('a new library has no mixes', () {
+    expect(library.mixList(), isEmpty);
+  });
+
+  test('the mixes libraries used to start with go unless changed', () {
+    Json first(String lang, [List<Json> extra = const []]) => {
+          'id': 'mix-${lang.toLowerCase()}',
+          'title': '$lang mix',
+          'sources': [
+            {'type': 'language', 'id': lang},
+            ...extra,
+          ],
+        };
+    final data = normaliseLibrary(<String, dynamic>{
+      'mixes': [
+        first('Malayalam', [
+          {'type': 'playlist', 'id': 'paattu-played-malayalam'},
+        ]),
+        first('Tamil', [
+          {'type': 'language', 'id': 'Kannada'},
+        ]),
+        {
+          'id': 'mix-ab12',
+          'title': 'Mine',
+          'sources': [
+            {'type': 'language', 'id': 'Malayalam'},
+          ],
+        },
+      ],
+    });
+    expect(asList(data['mixes']).map((m) => asJson(m)['title']), ['Tamil mix', 'Mine']);
+    expect(data['mixesVersion'], mixesVersion);
+    // Made again by hand afterwards: it stays.
+    (data['mixes'] as List).insert(0, first('Malayalam'));
+    expect(asList(normaliseLibrary(data)['mixes']).length, 3);
+    // Libraries from before mixes don't get any.
+    expect(normaliseLibrary(<String, dynamic>{})['mixes'], isEmpty);
   });
 
   test('favourites and saved songs', () {
@@ -58,7 +93,9 @@ void main() {
     });
     library.setSaved('PLGSaQXigBvdM', true);
     library.setPlaylistLanguage('PLGSaQXigBvdM', 'Malayalam');
-    final malayalam = library.getMix('malayalam');
+    final malayalam = library.createMix('Malayalam mix', [
+      {'type': 'language', 'id': 'Malayalam'},
+    ]);
     expect(library.mixCounts(malayalam), (playlists: 1, songs: 1, waiting: 0));
     final mix = library.createMix('Sushin', [
       {'type': 'playlist', 'id': 'PLGSaQXigBvdM'},

@@ -155,101 +155,8 @@ Flickable {
         spacing: 24
         Repeater {
           model: Model.MADE
-          Item {
-            id: madeTile
-            required property var modelData
-            readonly property bool hovered: madeMouse.containsMouse || madePlay.hovered || madeNew.hovered
-            width: root.cardSize * 0.8
-            height: width + 52
-
-            Rectangle {
-              anchors.fill: parent
-              anchors.margins: -8
-              radius: 26
-              color: madeTile.hovered ? Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.06) : "transparent"
-              Behavior on color { ColorAnimation { duration: 120 } }
-            }
-            Rectangle {
-              id: madeArt
-              width: parent.width
-              height: width
-              radius: 20
-              gradient: Gradient {
-                GradientStop { position: 0; color: root.pal.accent }
-                GradientStop { position: 1; color: Qt.darker(root.pal.accent, 1.8) }
-              }
-              Text {
-                anchors.centerIn: parent
-                textFormat: Text.PlainText
-                text: madeTile.modelData.glyph
-                color: root.pal.accentText
-                font.family: root.app.fontFamily
-                font.pixelSize: madeArt.width * 0.3
-              }
-              GlyphButton {
-                id: madeNew
-                anchors.left: parent.left
-                anchors.bottom: parent.bottom
-                anchors.margins: 8
-                size: 32
-                glyph: Model.GLYPH_REFRESH
-                color: root.pal.accentText
-                fontFamily: root.app.fontFamily
-                tooltip: "Make a new one"
-                opacity: madeTile.hovered ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 140 } }
-                onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, true)
-              }
-              GlyphButton {
-                id: madePlay
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.margins: 8
-                size: 40
-                glyph: Model.GLYPH_PLAY
-                color: root.pal.accent
-                fill: root.pal.accentText
-                fontFamily: root.app.fontFamily
-                opacity: madeTile.hovered ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity { NumberAnimation { duration: 140 } }
-                onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, false)
-              }
-            }
-            Column {
-              anchors.top: madeArt.bottom
-              anchors.topMargin: 8
-              width: parent.width
-              spacing: 2
-              Text {
-                width: parent.width
-                textFormat: Text.PlainText
-                text: madeTile.modelData.title
-                color: root.pal.foreground
-                font.family: root.app.fontFamily
-                font.pixelSize: 13
-                font.bold: true
-                elide: Text.ElideRight
-              }
-              Text {
-                width: parent.width
-                textFormat: Text.PlainText
-                text: madeTile.modelData.blurb
-                color: root.pal.muted
-                font.family: root.app.fontFamily
-                font.pixelSize: 11
-                elide: Text.ElideRight
-              }
-            }
-            MouseArea {
-              id: madeMouse
-              anchors.fill: parent
-              z: -1
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.app.playMade(madeTile.modelData.kind, madeTile.modelData.title, false)
-            }
+          MadeTile {
+            onPlay: function(refresh) { root.app.playMade(modelData.kind, modelData.title, refresh) }
           }
         }
       }
@@ -286,6 +193,117 @@ Flickable {
           fontSize: 13
           fontFamily: root.app.fontFamily
           onClicked: root.app.describePlaylist(describeBox.text, describeBox.text.trim())
+        }
+      }
+    }
+
+    // The charts (home only): what's played most this week in your languages.
+    Column {
+      width: parent.width
+      spacing: 14
+      visible: !root.language
+
+      Text {
+        textFormat: Text.PlainText
+        text: "Charts"
+        color: root.pal.foreground
+        font.family: root.app.fontFamily
+        font.pixelSize: 19
+        font.bold: true
+      }
+
+      Flow {
+        width: parent.width
+        spacing: 24
+        Repeater {
+          model: Model.chartTiles(root.app.store.languages)
+          MadeTile {
+            onPlay: function(refresh) { root.app.playChart(modelData.kind, modelData.language, modelData.name, refresh) }
+          }
+        }
+      }
+    }
+
+    // On this computer (home only): the songs kept to play with no internet.
+    Column {
+      width: parent.width
+      spacing: 14
+      visible: !root.language
+
+      Row {
+        spacing: 16
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
+          text: "On this computer"
+          color: root.pal.foreground
+          font.family: root.app.fontFamily
+          font.pixelSize: 19
+          font.bold: true
+        }
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          textFormat: Text.PlainText
+          text: root.app.store.offline.length
+            ? Model.plural(root.app.store.offline.length, "song") + " · " + Model.formatBytes(Model.offlineBytes(root.app.store.offline))
+            : "Songs you play to the end are kept here, to play with no internet"
+          color: root.pal.muted
+          font.family: root.app.fontFamily
+          font.pixelSize: 12
+        }
+      }
+
+      Flow {
+        width: parent.width
+        spacing: 8
+        Chip {
+          visible: root.app.store.offline.length > 0
+          text: "Play"
+          glyph: Model.GLYPH_PLAY
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          selected: true
+          fontSize: 13
+          fontFamily: root.app.fontFamily
+          onClicked: root.app.playOffline(false)
+        }
+        Chip {
+          visible: root.app.store.offline.length > 0
+          text: "Shuffle"
+          glyph: Model.GLYPH_SHUFFLE
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          fontSize: 13
+          fontFamily: root.app.fontFamily
+          onClicked: root.app.playOffline(true)
+        }
+        Chip {
+          text: root.app.store.offline.length ? "See all" : "Manage"
+          glyph: Model.GLYPH_DOWNLOAD
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          fontSize: 13
+          fontFamily: root.app.fontFamily
+          onClicked: root.app.navigate("offline")
+        }
+      }
+
+      Column {
+        width: Math.min(parent.width, 720)
+        visible: root.app.store.offline.length > 0
+        Repeater {
+          model: root.app.store.offline.slice(0, 3)
+          TrackRow {
+            required property var modelData
+            required property int index
+            width: parent.width
+            app: root.app
+            track: modelData.track
+            number: index + 1
+            current: root.app.nowTrack && root.app.nowTrack.id === modelData.track.id
+            playing: current && root.app.player.playing
+            onActivated: root.app.playOffline(false, index)
+          }
         }
       }
     }
@@ -470,6 +488,106 @@ Flickable {
           }
         }
       }
+    }
+  }
+
+  // A tile that plays a playlist made when it's opened: a made-for-you
+  // playlist or a chart. Refresh (bottom left) makes it again first.
+  component MadeTile: Item {
+    id: madeTile
+    required property var modelData
+    signal play(bool refresh)
+    readonly property bool hovered: madeMouse.containsMouse || madePlay.hovered || madeNew.hovered
+    width: root.cardSize * 0.8
+    height: width + 52
+
+    Rectangle {
+      anchors.fill: parent
+      anchors.margins: -8
+      radius: 26
+      color: madeTile.hovered ? Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.06) : "transparent"
+      Behavior on color { ColorAnimation { duration: 120 } }
+    }
+    Rectangle {
+      id: madeArt
+      width: parent.width
+      height: width
+      radius: 20
+      gradient: Gradient {
+        GradientStop { position: 0; color: root.pal.accent }
+        GradientStop { position: 1; color: Qt.darker(root.pal.accent, 1.8) }
+      }
+      Text {
+        anchors.centerIn: parent
+        textFormat: Text.PlainText
+        text: madeTile.modelData.glyph
+        color: root.pal.accentText
+        font.family: root.app.fontFamily
+        font.pixelSize: madeArt.width * 0.3
+      }
+      GlyphButton {
+        id: madeNew
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.margins: 8
+        size: 32
+        glyph: Model.GLYPH_REFRESH
+        color: root.pal.accentText
+        fontFamily: root.app.fontFamily
+        tooltip: "Make a new one"
+        opacity: madeTile.hovered ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: 140 } }
+        onClicked: madeTile.play(true)
+      }
+      GlyphButton {
+        id: madePlay
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 8
+        size: 40
+        glyph: Model.GLYPH_PLAY
+        color: root.pal.accent
+        fill: root.pal.accentText
+        fontFamily: root.app.fontFamily
+        opacity: madeTile.hovered ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: 140 } }
+        onClicked: madeTile.play(false)
+      }
+    }
+    Column {
+      anchors.top: madeArt.bottom
+      anchors.topMargin: 8
+      width: parent.width
+      spacing: 2
+      Text {
+        width: parent.width
+        textFormat: Text.PlainText
+        text: madeTile.modelData.title
+        color: root.pal.foreground
+        font.family: root.app.fontFamily
+        font.pixelSize: 13
+        font.bold: true
+        elide: Text.ElideRight
+      }
+      Text {
+        width: parent.width
+        textFormat: Text.PlainText
+        text: madeTile.modelData.blurb
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 11
+        elide: Text.ElideRight
+      }
+    }
+    MouseArea {
+      id: madeMouse
+      anchors.fill: parent
+      z: -1
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: madeTile.play(false)
     }
   }
 }

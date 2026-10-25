@@ -292,7 +292,7 @@ class ListenBrainz extends ChangeNotifier {
       // The songs other devices played join the mixes like the ones played here.
       var joined = false;
       for (final (play, song) in added) {
-        if (counted(play) && library.notePlayed(song).isNotEmpty) joined = true;
+        if (fullyPlayed(play) && library.notePlayed(song).isNotEmpty) joined = true;
       }
       if (joined) library.changed();
       problem = null;

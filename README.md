@@ -44,10 +44,13 @@ the Linux command share one library format: export it from one (Settings → Exp
   paste a link to any site yt-dlp can play.
 * **Favourites, Saved songs and your own playlists** – from every now-playing view; sync and
   refresh never touch them.
-* **Mixes** – your own shuffle buttons made of languages, profiles and playlists; songs you listen
-  to join *Played in Malayalam / Tamil*, so the mixes grow as you listen.
-* **Radio and playlists made for you** – song radio from YouTube Music, auto radio when the queue
-  runs out, Daily mix, Weekly discovery, Monthly top, and playlists from a description.
+* **Mixes** – your own shuffle buttons made of languages, profiles and playlists; songs you play
+  to the end join *Played in Malayalam / Tamil*, so the mixes grow as you listen.
+* **Radio and playlists made for you** – song radio from YouTube Music, shaped by what you play
+  and skip, auto radio when the queue runs out, Daily mix, Weekly discovery, Monthly top, and
+  playlists from a description.
+* **Charts** – the week's top songs, most searched and love songs for Malayalam, Tamil, Hindi,
+  Telugu, Kannada and Punjabi, from JioSaavn and YouTube Music.
 * **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
   (cover, video first, full picture, record), colours from the cover, and the cover in 3D with its
   subject lifted out and moving with the song's rhythm.
@@ -56,8 +59,8 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Fades and crossfades** – songs fade into each other; the app readies the next song 25 s early
   and downloads the next two in pieces.
 * **Sleep timer** – minutes or *end of this song*, with an 8-second fade-out.
-* **Songs kept on this device** – songs you actually listen to are kept for playing offline
-  (2 GB by default, least recently played go first).
+* **Songs kept on this device** – songs you play to the end are kept for playing offline
+  (2 GB by default, least recently played go first), and take over when the internet goes.
 * **Plays follow you (ListenBrainz)** – scrobbles carry your history between the phone, the
   desktop app and Omarchy, so made-for-you playlists follow you.
 * **No ads, no third-party proxies** – streams come straight from the sites; Paattu never loads
@@ -164,7 +167,7 @@ systemd, `paattu` starts mpv itself.
 
 On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the widget on workspace 1, or
 Super+Space → Paattu. Elsewhere, use the command: `paattu search malare`,
-`paattu play --mix "Malayalam mix"`, `paattu --help`.
+`paattu play --lang Malayalam`, `paattu --help`.
 
 ### The apps
 
@@ -413,12 +416,13 @@ into `library.json`. Search settings are in `paattu config`:
 <summary><b>Mixes (the shuffle buttons)</b></summary>
 
 The shuffle buttons on the bar panel, the desktop widget and Home are
-**mixes**, and you choose what goes in them. A new library starts with
-*Malayalam mix* and *Tamil mix*. You can rename, change, reorder or delete
-them, and add as many more as you like. Songs you listen to properly, from
-anywhere, go into *Played in Malayalam* or *Played in Tamil* (by the song's
-language), playlists that are in those two mixes, so the mixes grow as you
-listen. A mix shuffles everything in it:
+**mixes**, and you choose what goes in them. A new library starts with none:
+*Make a mix* on Home (or **Mixes** in the sidebar) makes one, and you can
+rename, change, reorder or delete them and add as many as you like. Songs you
+play to the end (90% of them, or all but the last 20 seconds), from anywhere,
+go into *Played in Malayalam* or *Played in Tamil* (by the song's language),
+playlists you can put in a mix, so it grows as you listen. A mix shuffles
+everything in it:
 
 - **a language:** every saved playlist in that language, including ones
   saved later
@@ -442,7 +446,7 @@ paattu mix list
 paattu mix new "Night drive" --user @Muzik247 --playlist favourites
 paattu mix add "Night drive" --lang Tamil --playlist 'https://www.youtube.com/playlist?list=…'
 paattu mix drop "Night drive" --lang Tamil
-paattu mix rename "Tamil mix" "Kollywood"
+paattu mix rename "Night drive" "Kollywood"
 paattu mix move "Night drive" 1         # its place among the buttons, from 1
 paattu mix remove Kollywood
 paattu mix fetch "Night drive"          # load songs for its playlists that don't have them yet
@@ -454,7 +458,9 @@ in `shelf.json` with their counts. When you remove a playlist or unfollow a
 profile, it also leaves every mix it was in. Starting a mix whose playlists
 have no songs loaded yet loads a few first. Playlists you picked one by one
 always load. *Load songs for N playlists* on the mix page loads the rest.
-A mix you delete stays deleted, even the first two.
+A mix you delete stays deleted. Libraries from before 0.12 started with a
+*Malayalam mix* and a *Tamil mix*; 0.12 takes those away unless you changed
+them.
 
 </details>
 
@@ -462,7 +468,7 @@ A mix you delete stays deleted, even the first two.
 <summary><b>Playing, Now Playing looks and the cover in 3D</b></summary>
 
 ```
-paattu play --mix "Malayalam mix"       # a shuffle button (see Mixes)
+paattu play --mix "Night drive"         # a shuffle button (see Mixes)
 paattu play --lang Malayalam            # shuffled mix of the saved Malayalam playlists
 paattu play PL… [--shuffle] [--index 3]
 paattu play --user @ARRahman
@@ -545,20 +551,40 @@ or not the bar is open. Pausing during the fade-out ends it.
 </details>
 
 <details>
-<summary><b>Songs kept on this device (the app)</b></summary>
+<summary><b>Songs kept on this device</b></summary>
 
-A song you actually listen to — half of it, or 30 seconds of a long one — is
-kept in a folder as you play it, so it plays later with no internet and no
-data. The library builds itself out of what you listen to, rather than
-out of what you remember to download.
+A song you play to the end (90% of it, or all but the last 20 seconds) is
+kept in a folder, so it plays later with no internet and no data. The library
+builds itself out of what you listen to, rather than out of what you remember
+to download. A song you skip the first time it plays isn't kept, and the
+radio and the playlists made for you leave it out from then on.
 
-- **Library › On this device** shows what's kept and how much room it takes,
-  plays or shuffles the lot, and takes a song off again.
+When a song won't play because the internet has gone, Paattu plays the songs
+kept here instead, shuffled (the app first tries the next kept song in the
+queue).
+
+- **Home › On this device** (the app) and **Home › On this computer**
+  (Omarchy) play or shuffle them and show the newest; *See all* opens the
+  list, which also takes a song off again.
 - A song's menu has **Keep on this device**, for one you want now whether or
   not you've played it. The same menu takes it off.
 - **Settings › On this device** turns the automatic keeping off, moves the
   folder, and sets the room allowed: **2 GB by default**, and past it the
   songs played *least recently* go first, so what you still listen to stays.
+  On Omarchy the *On this computer* page has the same switches.
+
+On Omarchy yt-dlp downloads them into `~/.local/share/paattu/offline`, and the
+engine plays the file in place of the stream:
+
+```
+paattu offline                          # what's kept, and the room it takes
+paattu offline keep current             # keep the song playing (or a link or id)
+paattu offline drop SONG
+paattu offline play [--shuffle]
+paattu config set offline.autoSave false
+paattu config set offline.limitMb 5120  # 0: no limit
+paattu config set offline.dir ~/Music/Paattu
+```
 
 The files are named `Singer - Song.m4a` (or `.webm` for Opus, `.flac`,
 `.mp3`), so the folder reads like a music collection to anything else that
@@ -579,7 +605,7 @@ Two things worth knowing:
 </details>
 
 <details>
-<summary><b>Updates from inside the app</b></summary>
+<summary><b>Updates</b></summary>
 
 **Settings › About › Check for updates** reads the [Releases](../../releases)
 on GitHub, shows what's new in the version it found, then downloads the right
@@ -593,10 +619,19 @@ file for this device, checks its SHA-256 against the release's
 | **Linux AppImage** | replaces the AppImage where it stands — open Paattu again to use the new one |
 | **Linux tarball** | saves the AppImage to Downloads and says where, since Paattu can't replace an installed folder safely |
 
-It looks for a newer version by itself about once a day and says so when
-there is one. A download that doesn't match its checksum is thrown away, and
+Each time the app starts it looks for a newer version by itself and, when
+there is one, asks whether to install it (*Not now* leaves it in Settings). A download that doesn't match its checksum is thrown away, and
 a release that publishes no checksum isn't installed at all — you can always
 get it from the releases page instead.
+
+On Omarchy the Paattu window asks the same way when it opens. *Update* pulls
+a `--dev` checkout and runs its `install.sh --dev`, or downloads the release
+and runs its `install.sh`; then *Restart the shell* loads the new window.
+
+```
+paattu update                           # is there a newer one?
+paattu update apply                     # install it
+```
 
 **The repository has to be public for the app to see its releases.** GitHub
 answers 404 to everybody else about a private one, so while it's private,
@@ -613,6 +648,8 @@ paattu radio stop                       # the radio's songs still to come go
 paattu made                             # Daily mix, Weekly discovery, Monthly top
 paattu made daily --play [--refresh]    # play today's (--refresh: a new one)
 paattu describe "Ilaiyaraaja melodies, rain songs, Premam" --play [--save NAME]
+paattu charts                           # the charts for your languages
+paattu charts top Malayalam --play      # top / searched / love, then the language
 paattu config set fade 3                # seconds a song fades out and the next in (0: off)
 paattu config set autoRadio false       # don't carry on when the queue runs out
 ```
@@ -624,7 +661,9 @@ leaves out what you played in the last six hours and songs you skipped more
 than once, and when one song's radio runs dry it carries on from a song it
 played. With **auto radio** on (the default), any queue that runs out
 carries on as a radio of its last song, unless repeat is on or you turned
-the radio off.
+the radio off. What you play shapes it: songs by the singers and composers,
+and from the films, you play to the end come first, ones you skip drop back,
+and a couple of your own favourites like the station's song join it.
 
 **Made for you** (on Home) comes from what you play: how long you listened
 (a play counts after half a song or 30 seconds), how often, how lately
@@ -635,6 +674,10 @@ songs, and what you skip.
 - **Weekly discovery**: only songs you haven't played, from the radios of
   the songs you like most. A new one every Monday.
 - **Monthly top**: what you played most in the last 30 days.
+- **Charts**: the week's *Top* (JioSaavn's weekly top 50 and, where it has
+  one, YouTube Music's top weekly videos, taken in turn), *Most searched* and
+  *Love songs* for each of your languages (Settings › Charts in the app).
+  Fetched again every 12 hours, without the songs you turned down.
 - **Describe a playlist**: "songs from Premam, rain songs and Ilaiyaraaja"
   looks up each part and takes their songs in turn, topped up from each
   part's radio.

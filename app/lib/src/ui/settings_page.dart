@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
+import '../charts.dart' show chartLanguages;
 import '../links.dart';
 import '../listenbrainz.dart';
 import '../log.dart';
@@ -322,6 +323,36 @@ class SettingsPage extends StatelessWidget {
                     settings.saveData = on;
                     jiosaavnSaveData = on;
                   },
+                ),
+              ],
+            ),
+            const SectionHeader('Charts'),
+            GlassGroup(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Home shows the week's charts in these languages", style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final language in chartLanguages)
+                            FilterChip(
+                              label: Text(language),
+                              selected: settings.chartLanguages.contains(language),
+                              onSelected: (on) => settings.chartLanguages = [
+                                for (final l in chartLanguages)
+                                  if (l == language ? on : settings.chartLanguages.contains(l)) l,
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -768,7 +799,7 @@ class _UpdateTile extends StatelessWidget {
   Future<void> _tap(BuildContext context) async {
     final updates = app.updates;
     if (updates.state == UpdateState.available && updates.available != null) {
-      await _offer(context, updates.available!);
+      await offerUpdate(context, app, updates.available!);
       return;
     }
     await updates.check();
@@ -776,50 +807,50 @@ class _UpdateTile extends StatelessWidget {
       case UpdateState.upToDate:
         app.toast('Paattu $appVersion is the newest');
       case UpdateState.available:
-        if (context.mounted) await _offer(context, updates.available!);
+        if (context.mounted) await offerUpdate(context, app, updates.available!);
       default:
         app.toast(updates.problem.isEmpty ? "Couldn't look for a newer version" : updates.problem);
     }
   }
+}
 
-  /// What's new, and whether to download and install it.
-  Future<void> _offer(BuildContext context, Release release) async {
-    final go = await showDialog<bool>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text('Paattu ${release.version}'),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 320),
-          child: SingleChildScrollView(
-            child: SelectableText(
-              release.notes.trim().isEmpty ? 'A newer version of Paattu.' : release.notes.trim(),
-              style: Theme.of(dialog).textTheme.bodyMedium?.copyWith(height: 1.5),
-            ),
+/// What's new, and whether to download and install it.
+Future<void> offerUpdate(BuildContext context, AppState app, Release release) async {
+  final go = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text('Paattu ${release.version}'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 320),
+        child: SingleChildScrollView(
+          child: SelectableText(
+            release.notes.trim().isEmpty ? 'A newer version of Paattu.' : release.notes.trim(),
+            style: Theme.of(dialog).textTheme.bodyMedium?.copyWith(height: 1.5),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Not now')),
-          FilledButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('Download and install')),
-        ],
       ),
-    );
-    if (go != true) return;
-    await app.updates.downloadAndInstall();
-    if (!context.mounted) return;
-    // Windows closes the app so the installer can replace it, and a phone hands
-    // the APK to its own installer: neither comes back here. Linux says what
-    // to do next.
-    switch (app.updates.state) {
-      case UpdateState.ready:
-      case UpdateState.failed:
-        final reason = app.updates.problem;
-        app.toast(
-          app.updates.state == UpdateState.ready
-              ? reason
-              : '${reason.isEmpty ? "Couldn't install it" : reason}. Get it from the releases page',
-        );
-      default:
-        break;
-    }
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialog, false), child: const Text('Not now')),
+        FilledButton(onPressed: () => Navigator.pop(dialog, true), child: const Text('Download and install')),
+      ],
+    ),
+  );
+  if (go != true) return;
+  await app.updates.downloadAndInstall();
+  if (!context.mounted) return;
+  // Windows closes the app so the installer can replace it, and a phone hands
+  // the APK to its own installer: neither comes back here. Linux says what
+  // to do next.
+  switch (app.updates.state) {
+    case UpdateState.ready:
+    case UpdateState.failed:
+      final reason = app.updates.problem;
+      app.toast(
+        app.updates.state == UpdateState.ready
+            ? reason
+            : '${reason.isEmpty ? "Couldn't install it" : reason}. Get it from the releases page',
+      );
+    default:
+      break;
   }
 }

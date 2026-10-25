@@ -46,6 +46,8 @@ var GLYPH_WEB = "\u{F059F}"         // md-web
 var GLYPH_SLEEP = "\u{F04B2}"       // md-sleep
 var GLYPH_RADIO = "\u{F0439}"       // md-radio
 var GLYPH_MADE = "\u{F0674}"        // md-creation
+var GLYPH_CHART = "\u{F0128}"       // md-chart_line
+var GLYPH_UPDATE = "\u{F06B0}"      // md-update
 
 var LANGUAGES = ["Malayalam", "Tamil"]
 var STYLES = ["vinyl", "card", "minimal"]
@@ -371,6 +373,66 @@ var MADE = [
   { kind: "weekly", title: "Weekly discovery", blurb: "Songs new to you, like what you played lately", glyph: "\u{F0A33}" },  // md-calendar_week
   { kind: "monthly", title: "Monthly top", blurb: "What you played most in the last 30 days", glyph: "\u{F0E17}" }  // md-calendar_month
 ]
+// The charts: what's played most this week, by language (`paattu charts`;
+// keep in step with paattu/charts.py).
+var CHART_LANGUAGES = ["Malayalam", "Tamil", "Hindi", "Telugu", "Kannada", "Punjabi"]
+var CHART_KINDS = [
+  { kind: "top", title: "Top this week", glyph: GLYPH_CHART },
+  { kind: "searched", title: "Most searched", glyph: GLYPH_SEARCH },
+  { kind: "love", title: "Love songs", glyph: GLYPH_HEART }
+]
+// A tile for each kind of chart in each of your languages that has charts
+// (title the kind, blurb the language, name both).
+function chartTiles(languages) {
+  var langs = (languages || []).filter(function(l) { return CHART_LANGUAGES.indexOf(l) >= 0 })
+  if (!langs.length) langs = LANGUAGES
+  var out = []
+  langs.forEach(function(lang) {
+    CHART_KINDS.forEach(function(k) {
+      out.push({ kind: k.kind, language: lang, title: k.title, blurb: lang, name: k.title + " · " + lang, glyph: k.glyph })
+    })
+  })
+  return out
+}
+function chartArgs(kind, language, refresh) {
+  return ["charts", kind, language, "--play"].concat(refresh ? ["--refresh"] : [])
+}
+
+// ---------- songs kept on this computer (`paattu offline`; paattu/offline.py)
+// The kept songs, newest first, from the folder's paattu-offline.json.
+function offlineSongs(index) {
+  var songs = index && index.songs && typeof index.songs === "object" ? index.songs : {}
+  var out = []
+  for (var key in songs) {
+    var e = songs[key]
+    if (!e || !e.file) continue
+    out.push({ key: key, file: e.file, bytes: Number(e.bytes) || 0, saved: e.saved || "", plays: Number(e.plays) || 0,
+      codec: e.codec || "", kbps: e.kbps || 0, track: e.track || { id: "", title: e.file } })
+  }
+  out.sort(function(a, b) { return a.saved < b.saved ? 1 : a.saved > b.saved ? -1 : 0 })
+  return out
+}
+function offlineBytes(songs) {
+  return (songs || []).reduce(function(sum, s) { return sum + s.bytes }, 0)
+}
+// "2 GB" for offline.limitMb 2048, "500 MB" for 500
+function formatMegabytes(mb) {
+  var n = Number(mb) || 0
+  return n >= 1024 ? Math.round(n / 102.4) / 10 + " GB" : n + " MB"
+}
+// "4.1 MB", "1.2 GB"
+function formatBytes(bytes) {
+  var b = Number(bytes) || 0
+  if (b >= 1e9) return (b / 1e9).toFixed(1) + " GB"
+  if (b >= 1e6) return (b / 1e6).toFixed(1) + " MB"
+  return Math.round(b / 1e3) + " kB"
+}
+function offlinePlayArgs(shuffled, start) {
+  return ["offline", "play"].concat(shuffled ? ["--shuffle"] : []).concat(start ? ["--start=" + start] : [])
+}
+function offlineDropArgs(key) { return ["offline", "drop", "--", key] }
+function offlineKeepArgs(id) { return ["offline", "keep", "--", id] }
+
 // Start a radio of the song at path (a link the engine plays), or stop it.
 function radioArgs(on, path) { return on ? ["radio", "start", "--", path] : ["radio", "stop"] }
 function madeArgs(kind, refresh) { return ["made", kind, "--play"].concat(refresh ? ["--refresh"] : []) }
@@ -482,13 +544,9 @@ var GLYPH_DOWN = "\u{F0140}"        // md-chevron_down
 // The shuffle buttons, from shelf.json: {id, title, sources: [{type, id, title}],
 // playlists, count, waiting}. A shelf from before mixes gets the language
 // mixes they replaced.
-function mixesOf(shelf, languages) {
-  if (shelf && Array.isArray(shelf.mixes)) return shelf.mixes
-  var langs = languages && languages.length ? languages : LANGUAGES
-  return langs.map(function(lang) {
-    return { id: "mix-" + lang.toLowerCase(), title: lang + " mix",
-      sources: [{ type: "language", id: lang, title: lang }], playlists: 0, count: 0, waiting: 0 }
-  })
+// The mixes you made (a new library has none: you make them in Mixes).
+function mixesOf(shelf) {
+  return shelf && Array.isArray(shelf.mixes) ? shelf.mixes : []
 }
 
 function sourceKey(source) { return source.type + ":" + source.id }

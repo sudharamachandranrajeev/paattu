@@ -1,0 +1,209 @@
+{
+ "comment": "The charts: paattu/charts.py and app/lib/src/charts.dart both run these.",
+ "youtube": {
+  "contents": {
+   "singleColumnBrowseResultsRenderer": {
+    "tabs": [
+     {
+      "tabRenderer": {
+       "content": {
+        "sectionListRenderer": {
+         "contents": [
+          {
+           "musicCarouselShelfRenderer": {
+            "header": {
+             "musicCarouselShelfBasicHeaderRenderer": {
+              "title": {
+               "runs": [
+                {
+                 "text": "Video charts"
+                }
+               ]
+              }
+             }
+            },
+            "contents": [
+             {
+              "musicTwoRowItemRenderer": {
+               "title": {
+                "runs": [
+                 {
+                  "text": "Trending 20 India"
+                 }
+                ]
+               },
+               "navigationEndpoint": {
+                "browseEndpoint": {
+                 "browseId": "VLOLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40"
+                }
+               }
+              }
+             }
+            ]
+           }
+          },
+          {
+           "musicCarouselShelfRenderer": {
+            "header": {
+             "musicCarouselShelfBasicHeaderRenderer": {
+              "title": {
+               "runs": [
+                {
+                 "text": "Languages"
+                }
+               ]
+              }
+             }
+            },
+            "contents": [
+             {
+              "musicTwoRowItemRenderer": {
+               "title": {
+                "runs": [
+                 {
+                  "text": "Top Weekly Videos Telugu"
+                 }
+                ]
+               },
+               "navigationEndpoint": {
+                "browseEndpoint": {
+                 "browseId": "VLPL4fGSI1pDJn5ALuqpEj_YZ8mEyw9WN8jd"
+                }
+               }
+              }
+             },
+             {
+              "musicTwoRowItemRenderer": {
+               "title": {
+                "runs": [
+                 {
+                  "text": "Top Weekly Videos Tamil"
+                 }
+                ]
+               },
+               "navigationEndpoint": {
+                "browseEndpoint": {
+                 "browseId": "VLPL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk"
+                }
+               }
+              }
+             }
+            ]
+           }
+          }
+         ]
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ },
+ "youtubeCharts": {
+  "Trending 20 India": "OLAK5uy_lSTp1DIuzZBUyee3kDsXwPgP25WdfwB40",
+  "Top Weekly Videos Telugu": "PL4fGSI1pDJn5ALuqpEj_YZ8mEyw9WN8jd",
+  "Top Weekly Videos Tamil": "PL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk"
+ },
+ "saavn": [
+  {
+   "id": "1134705865",
+   "title": "Malayalam: India Superhits Top 50",
+   "type": "playlist",
+   "image": "https://c.saavncdn.com/editorial/Malayalam-IndiaSuperhitsTop50_20261023045305.jpg",
+   "perma_url": "https://www.jiosaavn.com/featured/malayalam-india-superhits-top-50/1e3vU4q7bbbExeh5N5JWFg__"
+  },
+  {
+   "id": "1134548194",
+   "title": "India Superhits Top 50",
+   "type": "playlist",
+   "perma_url": "https://www.jiosaavn.com/featured/india-superhits-top-50/VuJUPQ9ch77bB,U5Yp5iAA__"
+  },
+  {
+   "id": "1",
+   "title": "Most Searched Songs - Malayalam",
+   "type": "playlist",
+   "perma_url": "https://www.jiosaavn.com/featured/most-searched-songs-malayalam/aaa__"
+  },
+  {
+   "id": "2",
+   "title": "Most Streamed Love Songs: Malayalam",
+   "type": "playlist",
+   "perma_url": "https://www.jiosaavn.com/featured/most-streamed-love-songs-malayalam/bbb__"
+  }
+ ],
+ "sources": [
+  {
+   "kind": "top",
+   "language": "Malayalam",
+   "saavn": "https://www.jiosaavn.com/featured/malayalam-india-superhits-top-50/1e3vU4q7bbbExeh5N5JWFg__",
+   "youtube": null,
+   "art": "https://c.saavncdn.com/editorial/Malayalam-IndiaSuperhitsTop50_20261023045305.jpg"
+  },
+  {
+   "kind": "top",
+   "language": "Tamil",
+   "saavn": null,
+   "youtube": "PL4fGSI1pDJn4WX22qg1Po7qKOwOb4H6Sk",
+   "art": ""
+  },
+  {
+   "kind": "searched",
+   "language": "Malayalam",
+   "saavn": "https://www.jiosaavn.com/featured/most-searched-songs-malayalam/aaa__",
+   "youtube": null,
+   "art": ""
+  },
+  {
+   "kind": "love",
+   "language": "Telugu",
+   "saavn": null,
+   "youtube": null,
+   "art": ""
+  }
+ ],
+ "merge": {
+  "lists": [
+   [
+    {
+     "id": "j1",
+     "title": "Ponveyil",
+     "movie": "Lokah",
+     "duration": 200
+    },
+    {
+     "id": "j2",
+     "title": "Kiliye",
+     "movie": "ARM",
+     "duration": 210
+    },
+    {
+     "id": "j3",
+     "title": "Long jukebox",
+     "duration": 3600
+    }
+   ],
+   [
+    {
+     "id": "y1",
+     "title": "Kiliye",
+     "movie": "ARM",
+     "duration": 212
+    },
+    {
+     "id": "y2",
+     "title": "Thee Minnal",
+     "movie": "Minnal Murali",
+     "duration": 190
+    }
+   ]
+  ],
+  "avoid": [
+   "y2"
+  ],
+  "songs": [
+   "j1",
+   "y1"
+  ]
+ }
+}

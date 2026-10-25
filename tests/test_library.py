@@ -370,20 +370,36 @@ class MixTest(CliTest):
         args = cli.build_parser().parse_args(["play", "--mix=" + mix])
         return cli._queue_from_args(args, cli.Reporter(False))
 
-    def test_a_new_library_has_the_malayalam_and_tamil_mixes(self):
-        self.assertEqual(self.mixes(), [("Malayalam mix", [("language", "Malayalam")]),
-                                        ("Tamil mix", [("language", "Tamil")])])
+    def test_a_new_library_has_no_mixes(self):
+        self.assertEqual(self.mixes(), [])
+        self.run_cli("mix", "new", "Tamil mix", "--lang", "Tamil")
         data = library.load()
         self.assertEqual([p["id"] for p in library.mix_playlists(data, library.find_mix(data, "tamil"))],
                          ["PLtamil00000001"])
         tracks, start, source = self.queue("tamil")
-        self.assertEqual(source, {"type": "mix", "id": "mix-tamil", "title": "Tamil mix"})
-        # Libraries from before mixes get the same two.
+        self.assertEqual((source["type"], source["title"]), ("mix", "Tamil mix"))
+        # Libraries from before mixes don't get any either.
         with library.edit() as data:
             del data["mixes"]
-        self.assertEqual(len(library.load()["mixes"]), 2)
+        self.assertEqual(library.load()["mixes"], [])
+
+    def test_the_mixes_libraries_used_to_start_with_go_unless_changed(self):
+        def first(lang, *extra):
+            return {"id": "mix-" + lang.lower(), "title": lang + " mix",
+                    "sources": [{"type": "language", "id": lang}, *extra]}
+        with library.edit() as data:
+            data.pop("mixesVersion")
+            data["mixes"] = [first("Malayalam", {"type": "playlist", "id": "paattu-played-malayalam"}),
+                             first("Tamil", {"type": "language", "id": "Kannada"}),
+                             {"id": "mix-ab12", "title": "Mine", "sources": [{"type": "language", "id": "Malayalam"}]}]
+        self.assertEqual([m["title"] for m in library.load()["mixes"]], ["Tamil mix", "Mine"])
+        with library.edit() as data:
+            data["mixes"].insert(0, first("Malayalam"))  # made again by hand after: stays
+        self.assertEqual([m["title"] for m in library.load()["mixes"]], ["Malayalam mix", "Tamil mix", "Mine"])
 
     def test_make_change_and_order_mixes(self):
+        self.run_cli("mix", "new", "Malayalam mix", "--lang", "Malayalam")
+        self.run_cli("mix", "new", "Tamil mix", "--lang", "Tamil")
         self.run_cli("fav", "hvqnG6VjqV0")
         self.run_cli("mix", "new", "Road trip", "--user", "@saregamamalayalam", "--playlist", "favourites")
         self.run_cli("mix", "add", "road trip", "--lang", "tamil", "--playlist", "Hits of Sushin Shyam")
@@ -417,7 +433,7 @@ class MixTest(CliTest):
             self.queue("nothing")
         self.run_cli("mix", "add", "nothing", "--user", "@saregamamalayalam", "--lang", "Kannada")
         self.run_cli("user", "remove", "@saregamamalayalam", "--purge")
-        self.assertEqual(self.mixes()[2], ("Nothing", [("language", "Kannada")]))
+        self.assertEqual(self.mixes()[0], ("Nothing", [("language", "Kannada")]))
         with self.assertRaisesRegex(engine.EngineError, "no saved playlists in Kannada"):
             self.queue("nothing")
 

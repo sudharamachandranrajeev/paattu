@@ -8,7 +8,11 @@
 --    `paattu radio more` for songs like the one playing, when the radio is
 --    on or auto radio is (paattu decides).
 --  * Failover: a song that won't load is looked for on the other sites
---    (`paattu failover`) and the copy found plays in its place.
+--    (`paattu failover`) and the copy found plays in its place. With no
+--    internet, the songs kept on this computer play instead.
+--  * Kept songs: a song kept on this computer (`paattu offline`, the folder's
+--    paattu-offline.json) plays from its file in place of the link; the queue
+--    and the history still see the link.
 --  * Fades: a song fades out over its last few seconds and the next fades in
 --    (config.json "fade", 3 s by default; mpv plays one song at a time, so
 --    the two don't overlap).
@@ -26,7 +30,8 @@ local FADE_LABEL = "paattufade"
 local TICK = 0.1
 local LEAD = 0.3
 
-local settings = { fade = 3, autoRadio = true }
+local DATA = (os.getenv("XDG_DATA_HOME") or (os.getenv("HOME") .. "/.local/share")) .. "/paattu"
+local settings = { fade = 3, autoRadio = true, offlineDir = DATA .. "/offline" }
 
 local function read_settings()
     local f = io.open(CONFIG, "r")
@@ -38,6 +43,12 @@ local function read_settings()
     local fade = tonumber(parsed.fade)
     settings.fade = fade and math.max(0, math.min(12, fade)) or 3
     settings.autoRadio = parsed.autoRadio ~= false
+    local dir = type(parsed.offline) == "table" and parsed.offline.dir or ""
+    if type(dir) ~= "string" or dir == "" then
+        settings.offlineDir = DATA .. "/offline"
+    else
+        settings.offlineDir = dir:gsub("^~", os.getenv("HOME") or "~")
+    end
 end
 
 local function run(args, done)
@@ -80,6 +91,53 @@ local function note_play()
     run(args)
 end
 
+-- ---------------------------------------------------------------- kept songs
+
+local kept = { path = nil, mtime = nil, files = {} } -- link or "youtube:id" -> file
+
+local function youtube_id(url)
+    if not url:find("youtu", 1, true) then return nil end
+    return url:match("[?&]v=([%w_-]+)") or url:match("youtu%.be/([%w_-]+)") or url:match("/shorts/([%w_-]+)")
+end
+
+local function read_kept()
+    local path = settings.offlineDir .. "/paattu-offline.json"
+    local info = utils.file_info(path)
+    if not info then
+        kept = { path = path, mtime = nil, files = {} }
+        return
+    end
+    if kept.path == path and kept.mtime == info.mtime then return end
+    kept = { path = path, mtime = info.mtime, files = {} }
+    local f = io.open(path, "r")
+    if not f then return end
+    local parsed = utils.parse_json(f:read("*a") or "")
+    f:close()
+    if type(parsed) ~= "table" or type(parsed.songs) ~= "table" then return end
+    for key, entry in pairs(parsed.songs) do
+        if type(entry) == "table" and type(entry.file) == "string" and entry.file ~= "" then
+            local file = settings.offlineDir .. "/" .. entry.file
+            kept.files[key] = file
+            local track = type(entry.track) == "table" and entry.track or {}
+            if type(track.url) == "string" and track.url ~= "" then kept.files[track.url] = file end
+        end
+    end
+end
+
+-- Before yt-dlp looks at it (its hook runs at 10), so a kept song needs no network.
+mp.add_hook("on_load", 5, function()
+    local url = mp.get_property("stream-open-filename", "")
+    if not url:find("://", 1, true) then return end
+    read_settings()
+    read_kept()
+    local id = youtube_id(url)
+    local file = kept.files[url] or (id and kept.files["youtube:" .. id])
+    if file and utils.file_info(file) then
+        mp.set_property("stream-open-filename", file)
+        mp.msg.info("playing the copy kept on this computer: " .. file)
+    end
+end)
+
 -- ---------------------------------------------------------------- radio
 
 local extending = false
@@ -118,13 +176,20 @@ local function fail_over(entry_id)
         local found = ok and utils.parse_json(last_line(out) or "") or nil
         local index = entry_by_id(entry_id)
         if type(found) == "table" and found.url and index then
-            replaced[found.url] = true
-            local count = mp.get_property_number("playlist-count", 0)
-            mp.command_native({ name = "loadfile", url = found.url, flags = "append",
-                                options = { ["force-media-title"] = found.title or "" } })
-            mp.commandv("playlist-move", tostring(count), tostring(index + 1))
+            -- No internet: the kept songs (found and found.more) go in after it.
+            local songs = { { url = found.url, title = found.title } }
+            for _, more in ipairs(type(found.more) == "table" and found.more or {}) do
+                if type(more) == "table" and more.url then table.insert(songs, more) end
+            end
+            for n, item in ipairs(songs) do
+                replaced[item.url] = true
+                local count = mp.get_property_number("playlist-count", 0)
+                mp.command_native({ name = "loadfile", url = item.url, flags = "append",
+                                    options = { ["force-media-title"] = item.title or "" } })
+                mp.commandv("playlist-move", tostring(count), tostring(index + n))
+            end
             mp.commandv("playlist-play-index", tostring(index + 1))
-            mp.msg.info("failed over to " .. found.url)
+            mp.msg.info((found.offline and "no internet, playing kept songs from " or "failed over to ") .. found.url)
         end
         mp.set_property_bool("pause", was_paused or false)
     end)

@@ -17,6 +17,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:paattu/src/app_state.dart';
+import 'package:paattu/src/charts.dart';
 import 'package:paattu/src/history.dart';
 import 'package:paattu/src/library.dart';
 import 'package:paattu/src/listenbrainz.dart';
@@ -187,7 +188,8 @@ Future<AppState> _openApp(Directory root, String theme) async {
   player.queueTracks.add(queue);
   player.quality.add('AAC · 320 kbps');
   final updates = UpdateManager(currentVersion: sourceVersion, dir: Directory('${dir.path}/updates'));
-  return AppState(lib, settings, player, history, offline, updates, ListenBrainz(history, lib, settings));
+  return AppState(lib, settings, player, history, offline, updates, ListenBrainz(history, lib, settings),
+      Charts(history, File('${dir.path}/charts.json')));
 }
 
 // ------------------------------------------------------------- made-up music

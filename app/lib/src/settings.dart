@@ -347,6 +347,11 @@ class Settings extends ChangeNotifier {
 
   set updateOffered(Json? release) => _set('updateOffered', release);
 
+  /// The languages Home shows charts for (charts.dart).
+  List<String> get chartLanguages =>
+      _data['chartLanguages'] is List ? asStrings(_data['chartLanguages']) : const ['Malayalam', 'Tamil'];
+  set chartLanguages(List<String> languages) => _set('chartLanguages', languages);
+
   /// When the queue runs out, carry on with songs like the last one.
   bool get autoRadio => _data['autoRadio'] != false;
   set autoRadio(bool on) => _set('autoRadio', on);

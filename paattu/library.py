@@ -27,13 +27,15 @@ where songs found by a search land when you add them to the library.
 
 Mixes are the shuffle buttons (bar, desktop, Home). Each shuffles everything
 in its sources: a language (its saved playlists), a followed user (their
-saved playlists) or one playlist. A new library starts with a Malayalam and a
-Tamil mix; after that they're yours to rename, change, reorder or delete.
+saved playlists) or one playlist. A new library has none: they're yours to
+make, rename, change, reorder or delete. (Libraries from before 0.12 had a
+Malayalam and a Tamil mix built in; drop_first_mixes takes those out unless
+they were changed.)
 
-Songs listened to (anywhere: a search, the radio, a link) go to the front of
-their language's own "played" playlist, which is in that language's mix, so
-the Malayalam and Tamil mixes take in what you play. The playlist keeps the
-last PLAYED_KEEP; deleting it stops it being made again.
+Songs played to the end (history.fully_played, anywhere: a search, the radio,
+a link) go to the front of their language's own "played" playlist, which
+joins that language's mix when there is one. The playlist keeps the last
+PLAYED_KEEP; deleting it stops it being made again.
 """
 
 import contextlib
@@ -55,7 +57,9 @@ SAVED_NAMES = ("saved songs", "saved", "saved-songs")
 OWN_PREFIX = "paattu-"
 MIX_PREFIX = "mix-"
 MIX_SOURCES = ("language", "user", "playlist")
-FIRST_MIXES = ("Malayalam", "Tamil")
+PLAYED_LANGUAGES = ("Malayalam", "Tamil")
+# Mixes 2: the built-in Malayalam and Tamil mixes are gone (drop_first_mixes).
+MIXES_VERSION = 2
 PLAYED_PREFIX = "paattu-played-"
 PLAYED_KEEP = 300
 
@@ -66,12 +70,23 @@ def now():
 
 def empty():
     return {"version": VERSION, "updated": now(), "users": {}, "playlists": {}, "tracks": {}, "removed": {},
-            "mixes": first_mixes()}
+            "mixes": [], "mixesVersion": MIXES_VERSION}
 
 
-def first_mixes():
-    return [{"id": MIX_PREFIX + lang.lower(), "title": lang + " mix", "sources": [{"type": "language", "id": lang}],
-             "created": now()} for lang in FIRST_MIXES]
+def drop_first_mixes(data):
+    """Take out the Malayalam and Tamil mixes libraries used to start with,
+    unless they were changed: one still holding only its own language and its
+    played playlist goes. Once per library (mixesVersion)."""
+    if (data.get("mixesVersion") or 1) >= MIXES_VERSION:
+        return
+    def untouched(mix):
+        for lang in PLAYED_LANGUAGES:
+            if mix.get("id") == MIX_PREFIX + lang.lower():
+                own = ({"type": "language", "id": lang}, {"type": "playlist", "id": PLAYED_PREFIX + lang.lower()})
+                return all({"type": s.get("type"), "id": s.get("id")} in own for s in mix.get("sources") or [])
+        return False
+    data["mixes"] = [m for m in data.get("mixes") or [] if not untouched(m)]
+    data["mixesVersion"] = MIXES_VERSION
 
 
 def load():
@@ -82,8 +97,8 @@ def load():
         return empty()
     for key in ("users", "playlists", "tracks", "removed"):
         data.setdefault(key, {})
-    # Libraries from before mixes get the two they used to have built in.
-    data.setdefault("mixes", first_mixes())
+    data.setdefault("mixes", [])
+    drop_first_mixes(data)
     return data
 
 
@@ -503,22 +518,23 @@ def played_language(data, track):
     from its names."""
     from .titles import guess_language
     own = (track.get("language") or "").title()
-    if own in FIRST_MIXES:
+    if own in PLAYED_LANGUAGES:
         return own
     votes = {}
     for playlist in data["playlists"].values():
         language = playlist.get("language")
-        if language in FIRST_MIXES and not playlist.get("local") and track.get("id") in (playlist.get("tracks") or []):
+        if language in PLAYED_LANGUAGES and not playlist.get("local") and track.get("id") in (playlist.get("tracks") or []):
             votes[language] = votes.get(language, 0) + 1
     if votes:
-        return max(FIRST_MIXES, key=lambda language: votes.get(language, 0))
+        return max(PLAYED_LANGUAGES, key=lambda language: votes.get(language, 0))
     credits = [str(c) for c in track.get("credits") or []]
     return guess_language(track.get("title", ""), track.get("movie", ""), track.get("channel", ""), *credits)
 
 
 def note_played(data, track):
-    """A song listened to goes to the front of its language's played playlist
-    (made the first time, and put in that language's mix). Returns the
+    """A song played to the end goes to the front of its language's played
+    playlist (made the first time, and put in that language's mix if there
+    is one). Returns the
     language, or "" when it has none or its played playlist was deleted."""
     tid = track.get("id") or ""
     language = played_language(data, track) if tid else ""

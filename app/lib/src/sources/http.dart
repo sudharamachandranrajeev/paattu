@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -50,6 +51,18 @@ Future<Object?> postJson(Uri uri, Object body, {Map<String, String>? headers}) a
       .timeout(_timeout);
   _check(response);
   return jsonDecode(utf8.decode(response.bodyBytes, allowMalformed: true));
+}
+
+/// Whether the internet can be reached: a connection to YouTube Music within
+/// a few seconds.
+Future<bool> reachable() async {
+  try {
+    final socket = await Socket.connect('music.youtube.com', 443, timeout: const Duration(seconds: 3));
+    socket.destroy();
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /// What the player streams for a song, and how good it is.

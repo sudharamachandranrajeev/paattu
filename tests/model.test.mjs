@@ -236,11 +236,11 @@ test("optimistic toggles settle once the files agree", () => {
   eq(M.settle(pending, k => false), { a: true })
 })
 
-test("mixes: from the shelf, or the language mixes they replaced", () => {
-  eq(M.mixesOf({ languages: {} }, ["Malayalam"]).map(m => [m.id, m.title, m.sources]),
-     [["mix-malayalam", "Malayalam mix", [{ type: "language", id: "Malayalam", title: "Malayalam" }]]])
+test("mixes: the ones you made, none to start with", () => {
+  eq(M.mixesOf({ languages: {} }), [])
   const shelf = { mixes: [], languages: { Malayalam: [{ id: "PL1" }], Other: [] }, mine: [] }
-  eq(M.mixesOf(shelf, ["Malayalam", "Tamil"]), [])  // all deleted stays deleted
+  eq(M.mixesOf(shelf), [])
+  eq(M.mixesOf({ mixes: [{ id: "mix-1" }] }), [{ id: "mix-1" }])
   const mix = { id: "mix-1", title: "Road trip", count: 1234, waiting: 0,
     sources: [{ type: "language", id: "Malayalam", title: "Malayalam" }, { type: "user", id: "UC1", title: "Saregama Malayalam" },
               { type: "playlist", id: M.FAVOURITES, title: "Favourites" }, { type: "playlist", id: "PL1", title: "Hits" }] }
@@ -383,4 +383,32 @@ test("the sleep chip goes 15, 30, 60, end of song, off", () => {
   assert.equal(M.sleepLabel({ mode: "time", at: now + 14 * 60 + 5 }, now), "Sleep · 15 min")
   assert.equal(M.sleepLabel({ mode: "time", at: now - 3 }, now), "Sleep · 1 min")
   assert.equal(M.sleepLabel({ mode: "end" }, now), "Sleep · end of song")
+})
+
+test("charts: each kind in each of your languages that has charts", () => {
+  eq(M.chartTiles(["Malayalam", "Kannada", "Sanskrit"]).map(t => [t.kind, t.language]),
+     [["top", "Malayalam"], ["searched", "Malayalam"], ["love", "Malayalam"],
+      ["top", "Kannada"], ["searched", "Kannada"], ["love", "Kannada"]])
+  eq(M.chartTiles([]).map(t => t.language), ["Malayalam", "Malayalam", "Malayalam", "Tamil", "Tamil", "Tamil"])
+  const tile = M.chartTiles(["Tamil"])[0]
+  eq([tile.title, tile.blurb, tile.name], ["Top this week", "Tamil", "Top this week · Tamil"])
+  assert.equal(M.formatMegabytes(2048), "2 GB")
+  assert.equal(M.formatMegabytes(1536), "1.5 GB")
+  assert.equal(M.formatMegabytes(500), "500 MB")
+  eq(M.chartArgs("top", "Tamil", true), ["charts", "top", "Tamil", "--play", "--refresh"])
+})
+
+test("songs kept on this computer, newest first", () => {
+  const index = { version: 1, songs: {
+    "youtube:a": { file: "A.webm", bytes: 4100000, saved: "2026-01-01T00:00:00Z", track: { id: "a", title: "Malare" } },
+    "youtube:b": { file: "B.m4a", bytes: 1000, saved: "2026-02-01T00:00:00Z", track: { id: "b", title: "Pularikalo" } },
+    "youtube:c": { bytes: 5 } } }
+  const songs = M.offlineSongs(index)
+  eq(songs.map(s => s.key), ["youtube:b", "youtube:a"])
+  assert.equal(M.offlineBytes(songs), 4101000)
+  assert.equal(M.formatBytes(4101000), "4.1 MB")
+  assert.equal(M.formatBytes(2.5e9), "2.5 GB")
+  assert.equal(M.formatBytes(1000), "1 kB")
+  eq(M.offlineSongs(null), [])
+  eq(M.offlineDropArgs("youtube:-a"), ["offline", "drop", "--", "youtube:-a"])
 })

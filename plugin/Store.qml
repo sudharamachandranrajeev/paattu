@@ -42,7 +42,8 @@ Item {
     coverColors: false,
     coverDepth: true,
     fade: 3,
-    autoRadio: true
+    autoRadio: true,
+    offline: { dir: "", limitMb: 2048, autoSave: true }
   })
   readonly property var desktop: config.desktop || defaults.desktop
   readonly property var languages: config.languages && config.languages.length ? config.languages : Model.LANGUAGES
@@ -65,7 +66,7 @@ Item {
   // Your own playlists (Favourites and Saved songs first) and the songs in Favourites.
   readonly property var mine: Model.ownPlaylists(shelf)
   // The shuffle buttons, in order.
-  readonly property var mixes: Model.mixesOf(shelf, languages)
+  readonly property var mixes: Model.mixesOf(shelf)
   readonly property var favourites: Model.favouriteSet(shelf)
   // Songs saved to the library (Saved songs), mostly from searches.
   readonly property var saved: Model.savedSet(shelf)
@@ -154,6 +155,24 @@ Item {
   onFullChanged: if (!full) {
     lib = ({ users: {}, playlists: {}, tracks: {} })
     found = ({})
+  }
+
+  // Songs kept on this computer (paattu/offline.py): the folder's own index.
+  readonly property string offlineDir: config.offline && config.offline.dir
+    ? String(config.offline.dir).replace(/^~/, home) : dataDir + "/offline"
+  property var offlineIndex: ({})
+  // The newer Paattu "Not now" was said to, for as long as the shell runs.
+  property string updateDismissed: ""
+  readonly property var offline: Model.offlineSongs(offlineIndex)
+
+  FileView {
+    id: offlineFile
+    path: root.full ? root.offlineDir + "/paattu-offline.json" : ""
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.offlineIndex = root.parse(text(), root.offlineIndex) || ({})
+    onLoadFailed: root.offlineIndex = ({})
   }
 
   FileView {
