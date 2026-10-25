@@ -1,10 +1,11 @@
-// Playlists made for you (made.dart) and playlists made from a description:
-// the cards on Home, and a page of their songs, ready to play or keep as a
-// playlist of your own.
+// Playlists made for you (made.dart), the charts (charts.dart) and playlists
+// made from a description: the cards on Home, and a page of their songs,
+// ready to play or keep as a playlist of your own.
 
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../charts.dart';
 import '../library.dart';
 import '../made.dart';
 import '../track.dart';
@@ -57,6 +58,63 @@ class MadeForYouShelf extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The week's charts for each language picked in Settings, as bright tiles.
+class ChartsShelf extends StatelessWidget {
+  const ChartsShelf({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final app = Paattu.of(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([app.charts, app.settings]),
+      builder: (context, _) {
+        final charts = [
+          for (final language in pickedChartLanguages(app.settings.chartLanguages))
+            for (final kind in chartKinds) (kind: kind, language: language),
+        ];
+        return SizedBox(
+          height: 180,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: charts.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) {
+              final (:kind, :language) = charts[i];
+              final kept = app.charts.kept(kind, language);
+              return _MadeTile(
+                index: i + 2,
+                icon: switch (kind) {
+                  'top' => Icons.trending_up,
+                  'searched' => Icons.manage_search,
+                  _ => Icons.favorite_border,
+                },
+                title: '${chartTitle(kind)} · $language',
+                detail: kept != null ? plural(kept.tracks.length, 'song') : 'Updated every week',
+                art: kept?.art ?? '',
+                onTap: () => openChart(context, kind, language),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+void openChart(BuildContext context, String kind, String language) {
+  final app = Paattu.of(context);
+  Navigator.of(context).push(MaterialPageRoute<void>(
+    builder: (_) => MadePage(
+      title: '${chartTitle(kind)} · $language',
+      blurb: chartBlurb(kind, language),
+      icon: Icons.trending_up,
+      name: '${chartTitle(kind)} · $language ${periodKey('weekly', DateTime.now())}',
+      load: (refresh) => app.charts.chart(kind, language, refresh: refresh),
+    ),
+  ));
 }
 
 class _MadeTile extends StatelessWidget {

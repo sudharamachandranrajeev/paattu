@@ -29,6 +29,16 @@ bool counted(Json play) {
   return heard >= (length > 0 ? min(30, length ~/ 2) : 30);
 }
 
+/// A song heard to its end: 90% of it, or all but its last 20 seconds (so a
+/// fade into the next song counts). With its length unknown, a play that
+/// counts. These are kept on the device and join the played playlists.
+bool fullyPlayed(Json play) {
+  final heard = toInt(play['heard']) ?? 0;
+  final length = toInt(play['length']) ?? 0;
+  if (length <= 0) return counted(play);
+  return heard >= max<num>(1, min(length * 0.9, length - 20));
+}
+
 int epochSeconds(DateTime t) => t.millisecondsSinceEpoch ~/ 1000;
 
 class History extends ChangeNotifier {
@@ -175,6 +185,64 @@ class History extends ChangeNotifier {
     }
   }
   return (score: score, ids: ids, count: count);
+}
+
+/// Songs skipped the first time they were played and not played to the end
+/// since: the radio, the playlists made for you and the charts leave them
+/// out. By id and by song.
+Set<String> turnedDown(List<Json> plays, {String Function(String id)? keyOf}) {
+  final first = <String, (String, bool)>{};
+  final finished = <String>{};
+  for (final play in plays) {
+    final id = asString(play['id']);
+    final key = keyOf?.call(id) ?? id;
+    first.putIfAbsent(key, () => (id, counted(play)));
+    if (fullyPlayed(play)) finished.add(key);
+  }
+  return {
+    for (final MapEntry(:key, value: (id, liked)) in first.entries)
+      if (!liked && !finished.contains(key)) ...{key, id},
+  };
+}
+
+/// What a song is liked for: its singers and composers and its film.
+List<String> features(Json song) => [
+      for (final credit in asStrings(song['credits']).take(4))
+        if (credit.trim().isNotEmpty) 'by:${credit.trim().toLowerCase()}',
+      if (asString(song['movie']).trim().isNotEmpty) 'film:${asString(song['movie']).trim().toLowerCase()}',
+    ];
+
+/// What you like, from what you played lately: for each singer, composer and
+/// film, the songs of theirs played to the end, less half for each one
+/// skipped (a play that counts but stopped short is worth a quarter), each
+/// worth less the older it is.
+Map<String, double> taste(List<Json> plays, Json? Function(String id) track,
+    {required DateTime now, int days = 90, double halfLife = 30}) {
+  final likes = <String, double>{};
+  final since = epochSeconds(now) - days * 86400;
+  for (final play in plays) {
+    final at = toInt(play['at']) ?? 0;
+    final song = at >= since ? track(asString(play['id'])) : null;
+    if (song == null) continue;
+    final worth = pow(0.5, (epochSeconds(now) - at) / 86400 / halfLife).toDouble();
+    final value = fullyPlayed(play) ? worth : counted(play) ? worth / 4 : -worth / 2;
+    for (final feature in features(song)) {
+      likes[feature] = (likes[feature] ?? 0) + value;
+    }
+  }
+  return likes;
+}
+
+/// How much [song] is like what you like, -2 to 2.
+double fit(Json song, Map<String, double> likes) =>
+    features(song).fold<double>(0, (sum, f) => sum + (likes[f] ?? 0)).clamp(-2.0, 2.0);
+
+/// [songs] (best first, as a radio gives them) with the ones like what you
+/// like moved up, by up to ten places, and the ones like what you skip down.
+List<Json> tasteOrder(List<Json> songs, Map<String, double> likes) {
+  final ranked = [for (var i = 0; i < songs.length; i++) (i - 5 * fit(songs[i], likes), i, songs[i])]
+    ..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+  return [for (final (_, _, song) in ranked) song];
 }
 
 /// Songs played (or skipped) since [since], by song and by id.

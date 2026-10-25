@@ -1,11 +1,17 @@
 // The radio: songs like a song, from YouTube Music's own radio for it, a
 // helping at a time as the queue runs out. Like Spotify's and YouTube's, it
-// leaves out what was played in the last few hours and songs skipped more
-// than once, and when one song's radio runs dry it carries on from a song it
-// played. paattu/radio.py does the same on the desktop.
+// leaves out what was played in the last few hours, songs skipped more than
+// once and songs turned down (skipped the first time), and when one song's
+// radio runs dry it carries on from a song it played. It plays to your taste
+// too: songs by the singers, composers and films you play to the end come
+// first (tasteOrder), and a few songs you love that share something with the
+// station are mixed in. paattu/radio.py does the same on the desktop.
+
+import 'dart:math';
 
 import 'history.dart';
 import 'links.dart';
+import 'made.dart' show topSongs;
 import 'sources/sources.dart' show sameSong;
 import 'sources/youtube_music.dart';
 import 'track.dart';
@@ -72,6 +78,25 @@ Set<String> skippedOften(List<Json> plays, DateTime now) {
   return {for (final e in skips.entries) if (e.value >= 2) e.key};
 }
 
+/// Up to [count] of the songs you like most (from topSongs) that share a
+/// singer, composer or film with [station], leaving out [avoid].
+List<Json> lovedLike(Json station, List<Json> top, Set<String> avoid, {int count = 2}) {
+  final wanted = features(station).toSet();
+  final picked = [for (final song in top) if (features(song).any(wanted.contains)) song];
+  return interleaveSongs([picked], avoid: {...avoid}, limit: count);
+}
+
+/// [songs] with the [loved] ones put in third and seventh (or at the end of
+/// a short helping).
+List<Json> withFavourites(List<Json> songs, List<Json> loved) {
+  final out = [...songs];
+  const at = [2, 6];
+  for (var i = 0; i < loved.length && i < at.length; i++) {
+    out.insert(min(at[i], out.length), loved[i]);
+  }
+  return out;
+}
+
 class SongRadio {
   SongRadio(this.history);
 
@@ -102,8 +127,10 @@ class SongRadio {
       for (final song in queue) ...{trackId(song), songIdentity(song)},
       ...heardSince(plays, now.subtract(const Duration(hours: 6)), keyOf: keyOf),
       ...skippedOften(plays, now),
+      ...turnedDown(plays, keyOf: keyOf),
     };
-    final out = <Json>[];
+    final likes = taste(plays, history.track, now: now);
+    var out = <Json>[];
     for (var tries = 0; out.length < count && tries < 4; tries++) {
       if (_video == null) {
         final from = _usedVideos.isEmpty ? station : _nextStation(out, queue);
@@ -115,10 +142,12 @@ class SongRadio {
       }
       final page = await musicRadio(_video!, more: _more);
       _more = page.more;
-      final fresh = interleaveSongs([page.songs], avoid: avoid, limit: count - out.length);
+      final fresh = interleaveSongs([tasteOrder(page.songs, likes)], avoid: avoid, limit: count - out.length);
       out.addAll(fresh);
       if (fresh.isEmpty || _more == null) _video = null;
     }
+    final top = [for (final t in topSongs(plays, history.track, now: now)) t.song];
+    out = withFavourites(out, lovedLike(station, top, avoid));
     for (final song in out) {
       _given
         ..add(trackId(song))

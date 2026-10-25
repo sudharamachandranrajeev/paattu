@@ -1,7 +1,7 @@
 {
   "comment": "Songs played join their language's played playlist and mix: paattu/library.py note_played and app/lib/src/library.dart notePlayed both run these.",
   "library": {
-    "version": 1, "users": {}, "tracks": {"a1": {"id": "a1", "title": "Athmave Poo"}}, "removed": {},
+    "version": 1, "mixesVersion": 2, "users": {}, "tracks": {"a1": {"id": "a1", "title": "Athmave Poo"}}, "removed": {},
     "playlists": {
       "PLml": {"id": "PLml", "title": "Romancham", "language": "Malayalam", "saved": true, "tracks": ["a1", "both"]},
       "PLta": {"id": "PLta", "title": "Tamil hits", "language": "Tamil", "saved": true, "tracks": ["t1", "both"]}

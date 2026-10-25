@@ -12,7 +12,7 @@ import re
 import time
 
 from . import library, ytmusic
-from .history import heard_since, skipped_often, song_identity, top_songs
+from .history import heard_since, skipped_often, song_identity, top_songs, turned_down
 from .radio import interleave_songs, youtube_id_for
 from .sources import SourceError
 
@@ -171,7 +171,8 @@ class MadeForYou:
         top = top_songs(plays, self._track, now, days=28 if kind == "weekly" else 30)
         favourites = library.playlist_tracks(self.data, library.FAVOURITES)
         mine = favourites + library.playlist_tracks(self.data, library.SAVED)
-        skipped = skipped_often(plays, now)
+        skipped = skipped_often(plays, now) | turned_down(
+            plays, lambda tid: song_identity(self._track(tid) or {"id": tid}))
         if kind == "monthly":
             most = sorted(top, key=lambda t: (-t[2], -t[1]))
             avoid = set(skipped)

@@ -21,11 +21,11 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:rxdart/rxdart.dart';
 
-import '../history.dart' show counted;
+import '../history.dart' show fullyPlayed;
 import '../log.dart';
 import '../offline.dart';
 import '../sound.dart';
-import '../sources/http.dart' show streamStatus;
+import '../sources/http.dart' show reachable, streamStatus;
 import '../sources/sources.dart';
 import '../titles.dart';
 import '../track.dart';
@@ -147,6 +147,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   /// Carry on with songs like the last one when the queue runs out.
   bool autoRadio = true;
+
+  /// Whether the internet can be reached (a test gives its own).
+  Future<bool> Function() online = reachable;
 
   /// Stopping by itself, after a while or at the end of the song (sleep_timer.dart).
   final sleep = SleepTimer();
@@ -443,6 +446,14 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         await _noteFailure(track, way, error, stack, stream);
         if (generation != _generation) return;
         _way++;
+        // With no internet the other ways and sites can't work either: go
+        // straight on to the songs kept on this device (_skipBroken).
+        if (_way == 1 && !await online()) {
+          if (generation != _generation) return;
+          _way = _ways.length;
+          _lookedElsewhere = true;
+          _firstReason = "there's no internet";
+        }
       }
     }
   }
@@ -730,13 +741,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  /// A song listened to properly is kept on this device, so it plays with no
-  /// internet next time. Quiet about it: one line a song would be noise, and
-  /// the Offline page shows what is kept.
+  /// A song played to the end is kept on this device, so it plays with no
+  /// internet next time; one skipped isn't. Quiet about it: one line a song
+  /// would be noise, and the Offline page shows what is kept.
   void _keepOffline(Json track, int heard, int? length) {
     final kept = offline;
     if (kept == null || !keepListened) return;
-    if (!counted({'heard': heard, 'length': length ?? 0})) return;
+    if (!fullyPlayed({'heard': heard, 'length': length ?? 0})) return;
     final key = _streamKey(track);
     if (kept.has(key)) return;
     // The player's own resolve, so a link already found is used again.
@@ -826,6 +837,8 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   Future<void> _skipBroken(Json track) async {
+    // No internet: the songs kept on this device still play.
+    if (!await online() && await _playKept(track)) return;
     _failures++;
     // A song picked on its own that won't play still gets its radio.
     if (_failures < 5) await _extendRadio();
@@ -847,6 +860,28 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       return;
     }
     await _playAt(next);
+  }
+
+  /// No internet: carry on with the songs kept on this device, the next of
+  /// them in the queue if there is one, else all of them shuffled. Whether
+  /// there was one to play.
+  Future<bool> _playKept(Json failed) async {
+    final kept = offline;
+    if (kept == null || kept.count == 0) return false;
+    problemLog.warn('no internet at ${_describe(failed)}: playing the songs kept on this device');
+    _failures = 0;
+    for (var i = _index + 1; i < _queue.length; i++) {
+      if (kept.has(_streamKey(_queue[i]))) {
+        messages.add('No internet: playing the next song kept on this device');
+        await _playAt(i);
+        return true;
+      }
+    }
+    final songs = [for (final entry in kept.songs) entry.track];
+    if (songs.length == 1 && kept.has(_streamKey(failed))) return false; // the one that failed
+    messages.add('No internet: playing the ${plural(songs.length, 'song')} kept on this device');
+    await playTracks(songs, shuffled: true);
+    return true;
   }
 
   void _deckFailed(_Deck deck, Object error) {

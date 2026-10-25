@@ -11,6 +11,7 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'src/app_state.dart';
+import 'src/charts.dart';
 import 'src/history.dart';
 import 'src/library.dart';
 import 'src/listenbrainz.dart';
@@ -23,6 +24,7 @@ import 'src/player/song_cache.dart';
 import 'src/radio.dart';
 import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
+import 'src/ui/settings_page.dart' show offerUpdate;
 import 'src/ui/shell.dart';
 import 'src/update.dart';
 import 'src/util.dart' show nowStamp;
@@ -106,8 +108,10 @@ Future<void> main() async {
     ..radioSongs = SongRadio(history).next
     ..onPlayed = ((track, heard, length) {
       history.played(track, heard, length: length);
-      // A song heard properly joins its language's mix.
-      if (counted({'heard': heard, 'length': length ?? 0}) && library.notePlayed(track).isNotEmpty) library.changed();
+      // A song played to the end joins its language's played playlist.
+      if (fullyPlayed({'heard': heard, 'length': length ?? 0}) && library.notePlayed(track).isNotEmpty) {
+        library.changed();
+      }
       if (scrobbles({'heard': heard, 'length': length ?? 0})) fire(listenBrainz.sync());
     });
   void playback() {
@@ -138,7 +142,12 @@ Future<void> main() async {
       ..state = isNewerVersion(updates.available!.version, appVersion) ? UpdateState.available : UpdateState.idle;
   }
 
-  final app = AppState(library, settings, player, history, offline, updates, listenBrainz);
+  final charts = Charts(
+    history,
+    File('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}charts.json'),
+  );
+  fire(charts.load());
+  final app = AppState(library, settings, player, history, offline, updates, listenBrainz, charts);
   runApp(PaattuApp(state: app));
   fire(listenBrainz.sync());
   fire(_lookForUpdates(app));
@@ -158,20 +167,26 @@ Future<void> _androidBackground(Settings settings) async {
   await androidAskBatteryExempt();
 }
 
-/// Look for a newer Paattu about once a day, quietly, and offer it when there
-/// is one (update.dart). What it finds is kept in settings, so the next start
-/// can say it without asking GitHub again.
+/// Look for a newer Paattu each time the app starts, quietly, and ask whether
+/// to install it when there is one (update.dart). What it finds is kept in
+/// settings, so Settings can say it without asking GitHub again.
 Future<void> _lookForUpdates(AppState app) async {
   final settings = app.settings;
-  final last = DateTime.tryParse(settings.updateChecked);
-  if (last != null && DateTime.now().difference(last).inHours < 20) return;
   settings.updateChecked = nowStamp();
   await app.updates.check(quiet: true);
   final release = app.updates.available;
   settings.updateOffered = release?.toJson();
-  if (release != null) {
-    app.toast('Paattu ${release.version} is out — Settings has the update');
+  if (release == null) return;
+  // The first page may still be on its way.
+  for (var i = 0; i < 50 && app.navigator.currentState?.overlay == null; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
   }
+  final context = app.navigator.currentState?.overlay?.context;
+  if (context == null || !context.mounted) {
+    app.toast('Paattu ${release.version} is out — Settings has the update');
+    return;
+  }
+  await offerUpdate(context, app, release);
 }
 
 /// On Android the player runs in a media service (notification, lock screen,

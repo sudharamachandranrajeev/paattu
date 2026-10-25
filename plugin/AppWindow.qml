@@ -25,7 +25,7 @@ FloatingWindow {
   readonly property string fontFamily: Style.font.family
   property int artRevision: 0
 
-  // Navigation: home | playing | language | mixes | mix | users | user | playlist | queue | settings | search
+  // Navigation: home | playing | language | mixes | mix | users | user | playlist | queue | offline | settings | search
   // | collection (an album, singer or playlist from a search; arg: the result)
   // ("add" opens users with the link box focused; "pick" opens the
   // add-to-playlist picker for the song playing)
@@ -274,6 +274,49 @@ FloatingWindow {
 
   function playLanguage(language) {
     quick.run(["play", "--lang", language, "--shuffle"], "Starting the " + language + " mix…", function(ok) { if (ok) cacheCurrentArt() })
+  }
+
+  // ---------- charts and the songs kept on this computer ----------
+  function playChart(kind, language, title, refresh) {
+    jobs.run(Model.chartArgs(kind, language, refresh), "Getting " + title + "…", function(ok, e) {
+      if (ok) cacheCurrentArt()
+      else showToast(e.message)
+    })
+  }
+  function playOffline(shuffled, start) {
+    quick.run(Model.offlinePlayArgs(shuffled, start), "Playing the songs on this computer…", function(ok, e) {
+      if (!ok) showToast(e.message)
+    })
+  }
+  function keepOffline(id, title) {
+    jobs.run(Model.offlineKeepArgs(id), "Keeping " + (title || "the song") + "…", function(ok, e) {
+      showToast(ok ? (title || "The song") + " is on this computer" : e.message)
+    })
+  }
+  function dropOffline(key, title) {
+    quick.run(Model.offlineDropArgs(key), "", function(ok, e) {
+      showToast(ok ? "Took " + (title || "the song") + " off this computer" : e.message)
+    })
+  }
+
+  // ---------- a newer Paattu (`paattu update`), looked for each time the window opens ----------
+  property var updateOffer: null
+  property string updateState: ""  // "" | installing | installed
+  Jobs { id: updateJobs }
+  Component.onCompleted: updateJobs.run(["update", "check"], "", function(ok, e) {
+    if (ok && e.available && store.updateDismissed !== e.latest) updateOffer = e
+  })
+  function installUpdate() {
+    updateState = "installing"
+    jobs.run(["update", "apply"], "Updating Paattu…", function(ok, e) {
+      updateState = ok ? "installed" : ""
+      if (!ok) showToast(e.message)
+    })
+  }
+  function dismissUpdate() {
+    if (updateOffer) store.updateDismissed = updateOffer.latest
+    updateOffer = null
+    updateState = ""
   }
 
   // ---------- mixes (the shuffle buttons) ----------
@@ -547,6 +590,7 @@ FloatingWindow {
             { view: "playlist", arg: Model.SAVED, glyph: Model.GLYPH_SAVED, label: "Saved songs" },
             { view: "users", arg: null, glyph: Model.GLYPH_USER, label: "YouTube users" },
             { view: "queue", arg: null, glyph: Model.GLYPH_QUEUE, label: "Queue" },
+            { view: "offline", arg: null, glyph: Model.GLYPH_DOWNLOAD, label: "On this computer" },
             { view: "sound", arg: null, glyph: Model.GLYPH_EQUALIZER, label: "Sound" },
             { view: "settings", arg: null, glyph: Model.GLYPH_PALETTE, label: "Look & settings" }
           ]
@@ -765,6 +809,7 @@ FloatingWindow {
           : win.view === "collection" ? collectionPage
           : win.view === "mixes" ? mixesPage
           : win.view === "mix" ? mixPage
+          : win.view === "offline" ? offlinePage
           : homePage
       }
     }
@@ -776,6 +821,92 @@ FloatingWindow {
       anchors.bottom: parent.bottom
       anchors.margins: 12
       app: win
+    }
+
+    // A newer Paattu: what's new, and whether to install it.
+    Glass {
+      id: updateCard
+      pal: win.pal
+      visible: win.updateOffer !== null
+      z: 5
+      anchors.right: parent.right
+      anchors.top: parent.top
+      anchors.margins: 16
+      width: Math.min(420, main.width - 40)
+      height: updateColumn.implicitHeight + 32
+      radius: 22
+      // Solid, so the page under it doesn't show through.
+      color: Qt.tint(win.pal.surface, Qt.rgba(win.pal.accent.r, win.pal.accent.g, win.pal.accent.b, 0.08))
+
+      Column {
+        id: updateColumn
+        x: 18
+        y: 16
+        width: parent.width - 36
+        spacing: 8
+        Text {
+          width: parent.width
+          textFormat: Text.PlainText
+          text: Model.GLYPH_UPDATE + "  " + (win.updateState === "installed"
+            ? "Paattu " + (win.updateOffer ? win.updateOffer.latest : "") + " is installed"
+            : "Paattu " + (win.updateOffer ? win.updateOffer.latest : "") + " is out")
+          color: win.pal.foreground
+          font.family: win.fontFamily
+          font.pixelSize: 15
+          font.bold: true
+        }
+        Text {
+          width: parent.width
+          textFormat: Text.PlainText
+          text: win.updateState === "installed"
+            ? "Restart the shell to load the new window. The player picks up its changes when it next starts."
+            : win.updateState === "installing" ? (win.jobs.message || "Updating…")
+            : (win.updateOffer && win.updateOffer.notes ? win.updateOffer.notes : "A newer version of Paattu.")
+              + "\n\nThis is " + (win.updateOffer ? win.updateOffer.current : "") + "."
+          color: win.pal.muted
+          font.family: win.fontFamily
+          font.pixelSize: 12
+          wrapMode: Text.WordWrap
+          maximumLineCount: 12
+          elide: Text.ElideRight
+        }
+        Flow {
+          width: parent.width
+          spacing: 8
+          topPadding: 4
+          Chip {
+            visible: win.updateState === ""
+            text: "Update"
+            glyph: Model.GLYPH_DOWNLOAD
+            textColor: win.pal.foreground
+            accent: win.pal.accent
+            selected: true
+            fontSize: 13
+            fontFamily: win.fontFamily
+            onClicked: win.installUpdate()
+          }
+          Chip {
+            visible: win.updateState === "installed"
+            text: "Restart the shell"
+            glyph: Model.GLYPH_REFRESH
+            textColor: win.pal.foreground
+            accent: win.pal.accent
+            selected: true
+            fontSize: 13
+            fontFamily: win.fontFamily
+            onClicked: Quickshell.execDetached(["omarchy", "restart", "shell"])
+          }
+          Chip {
+            visible: win.updateState !== "installing"
+            text: win.updateState === "installed" ? "Later" : "Not now"
+            textColor: win.pal.foreground
+            accent: win.pal.accent
+            fontSize: 13
+            fontFamily: win.fontFamily
+            onClicked: win.dismissUpdate()
+          }
+        }
+      }
     }
 
     Rectangle {
@@ -859,4 +990,5 @@ FloatingWindow {
   Component { id: collectionPage; CollectionPage { app: win; item: win.view === "collection" && win.arg ? win.arg : ({}) } }
   Component { id: mixesPage; MixesPage { app: win } }
   Component { id: mixPage; MixPage { app: win; mixId: win.view === "mix" ? win.arg : "" } }
+  Component { id: offlinePage; OfflinePage { app: win } }
 }

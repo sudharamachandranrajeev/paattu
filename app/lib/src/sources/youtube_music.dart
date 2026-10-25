@@ -11,6 +11,7 @@ import 'jiosaavn.dart' show filmAndTitle;
 const _client = {'clientName': 'WEB_REMIX', 'clientVersion': '1.20250101.01.00', 'hl': 'en', 'gl': 'IN'};
 final _searchApi = Uri.parse('https://music.youtube.com/youtubei/v1/search?prettyPrint=false');
 final _nextApi = Uri.parse('https://music.youtube.com/youtubei/v1/next?prettyPrint=false');
+final _browseApi = Uri.parse('https://music.youtube.com/youtubei/v1/browse?prettyPrint=false');
 const _headers = {'Origin': 'https://music.youtube.com', 'Referer': 'https://music.youtube.com/'};
 
 /// The search's "Songs" filter.
@@ -42,6 +43,30 @@ Future<RadioPage> musicRadio(String videoId, {String? more}) async {
     body['playlistId'] = 'RDAMVM$videoId';
   }
   return radioPage(await postJson(_nextApi, body, headers: _headers));
+}
+
+/// The playlists on YouTube Music's charts page for India, title -> playlist id.
+Future<Map<String, String>> musicCharts() async => youtubeCharts(await postJson(
+    _browseApi,
+    {
+      'context': const {'client': _client},
+      'browseId': 'FEmusic_charts',
+      'formData': const {
+        'selectedValues': ['IN'],
+      },
+    },
+    headers: _headers));
+
+/// title -> playlist id for the playlists in a charts page (charts.py's
+/// youtube_charts).
+Map<String, String> youtubeCharts(Object? response) {
+  final out = <String, String>{};
+  for (final item in _all(response, 'musicTwoRowItemRenderer')) {
+    final title = _runs(item['title']).map((r) => r.text).join();
+    final id = asString(asJson(asJson(item['navigationEndpoint'])['browseEndpoint'])['browseId']);
+    if (title.isNotEmpty && id.startsWith('VL')) out[title] = id.substring(2);
+  }
+  return out;
 }
 
 /// The songs in a search response.

@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.12.0 — Recommendations that learn, charts, and music with no internet
+
+Which file: the same as before (`Paattu-0.12.0-android.apk`,
+`Paattu-0.12.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`; from
+now on the Paattu window offers each update itself.
+
+- **No mixes to start with.** A new library has no *Malayalam mix* or *Tamil
+  mix*; *Make a mix* makes your own. The two a library used to start with are
+  taken away unless you changed them. Mixes you made stay.
+- **Only songs played to the end count as yours.** A song joins *Played in
+  Malayalam / Tamil* and is kept on the device once you've heard 90% of it
+  (or all but its last 20 seconds). A song you skip the first time it plays
+  isn't kept, and the radio and the playlists made for you leave it out.
+- **The radio learns what you like.** Songs by the singers and composers, and
+  from the films, you play to the end come first; ones you skip drop back;
+  and a couple of your favourites like the station's song join it.
+- **Charts.** Home has the week's *Top* (JioSaavn's weekly top 50 with
+  YouTube Music's top weekly videos where it has them), *Most searched* and
+  *Love songs* for Malayalam, Tamil, Hindi, Telugu, Kannada and Punjabi.
+  Settings › Charts picks the languages in the app; on Omarchy they follow
+  your languages (`paattu charts`).
+- **Music with no internet.** When a song won't play because the internet
+  has gone, the songs kept on the device play instead.
+- **Home › On this device** (*On this computer* on Omarchy) plays or
+  shuffles the kept songs, shows the newest and opens the full list.
+- **Kept songs on Omarchy.** Songs you play to the end are downloaded into
+  `~/.local/share/paattu/offline` (2 GB, least recently played go first) and
+  play from there; the *On this computer* page and `paattu offline` manage
+  them. The folder's index is the app's, so it can be copied between them.
+- **Updates ask at start.** The app looks for a newer Paattu each time it
+  starts and asks whether to install it. The Omarchy window does the same
+  when it opens (`paattu update`, `paattu update apply`).
+
 ## 0.11.2 — Sidebar fits short windows (Omarchy)
 
 - On a short Omarchy app window the sidebar menu no longer runs under the

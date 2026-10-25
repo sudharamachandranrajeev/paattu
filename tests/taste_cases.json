@@ -1,0 +1,307 @@
+{
+ "comment": "What you play shapes what comes next: paattu/history.py + radio.py and app/lib/src/history.dart + radio.dart both run these.",
+ "fullyPlayed": [
+  {
+   "play": {
+    "heard": 216,
+    "length": 240
+   },
+   "full": true
+  },
+  {
+   "play": {
+    "heard": 215,
+    "length": 240
+   },
+   "full": false
+  },
+  {
+   "play": {
+    "heard": 40,
+    "length": 60
+   },
+   "full": true
+  },
+  {
+   "play": {
+    "heard": 39,
+    "length": 60
+   },
+   "full": false
+  },
+  {
+   "play": {
+    "heard": 280,
+    "length": 300
+   },
+   "full": true
+  },
+  {
+   "play": {
+    "heard": 10,
+    "length": 12
+   },
+   "full": true
+  },
+  {
+   "play": {
+    "heard": 30
+   },
+   "full": true
+  },
+  {
+   "play": {
+    "heard": 29
+   },
+   "full": false
+  }
+ ],
+ "tracks": {
+  "a": {
+   "id": "a",
+   "title": "Malare",
+   "movie": "Premam",
+   "credits": [
+    "Vijay Yesudas",
+    "Rajesh Murugesan"
+   ]
+  },
+  "b": {
+   "id": "b",
+   "title": "Aluva Puzha",
+   "movie": "Premam",
+   "credits": [
+    "Vineeth Sreenivasan"
+   ]
+  },
+  "c": {
+   "id": "c",
+   "title": "Kalippu",
+   "movie": "Premam",
+   "credits": [
+    "Murali Gopy"
+   ]
+  },
+  "d": {
+   "id": "d",
+   "title": "Why This Kolaveri Di",
+   "movie": "3",
+   "credits": [
+    "Dhanush",
+    "Anirudh Ravichander"
+   ]
+  },
+  "d2": {
+   "id": "d2",
+   "title": "Why This Kolaveri Di",
+   "movie": "3",
+   "credits": [
+    "Dhanush"
+   ]
+  },
+  "e": {
+   "id": "e",
+   "title": "Pularikalo",
+   "movie": "Thattathin Marayathu",
+   "credits": [
+    "Vineeth Sreenivasan"
+   ]
+  }
+ },
+ "now": 1000000000,
+ "plays": [
+  {
+   "id": "a",
+   "at": 999000000,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "b",
+   "at": 999100000,
+   "heard": 5,
+   "length": 250
+  },
+  {
+   "id": "c",
+   "at": 999200000,
+   "heard": 10,
+   "length": 200
+  },
+  {
+   "id": "c",
+   "at": 999300000,
+   "heard": 195,
+   "length": 200
+  },
+  {
+   "id": "d",
+   "at": 999400000,
+   "heard": 100,
+   "length": 240
+  },
+  {
+   "id": "d2",
+   "at": 999500000,
+   "heard": 3,
+   "length": 240
+  },
+  {
+   "id": "e",
+   "at": 999600000,
+   "heard": 240,
+   "length": 240
+  },
+  {
+   "id": "e",
+   "at": 999700000,
+   "heard": 2,
+   "length": 240
+  }
+ ],
+ "turnedDown": [
+  "b"
+ ],
+ "likes": {
+  "by:vijay yesudas": 1,
+  "by:vineeth sreenivasan": 0.5,
+  "film:premam": 2
+ },
+ "order": {
+  "songs": [
+   {
+    "id": "s1",
+    "title": "One",
+    "credits": [
+     "Someone"
+    ]
+   },
+   {
+    "id": "s2",
+    "title": "Two",
+    "credits": [
+     "Someone"
+    ]
+   },
+   {
+    "id": "s3",
+    "title": "Three",
+    "credits": [
+     "Someone"
+    ]
+   },
+   {
+    "id": "s4",
+    "title": "Four",
+    "credits": [
+     "Vineeth Sreenivasan"
+    ]
+   },
+   {
+    "id": "s5",
+    "title": "Five",
+    "credits": [
+     "Someone"
+    ]
+   },
+   {
+    "id": "s6",
+    "title": "Six",
+    "movie": "Premam",
+    "credits": [
+     "Vijay Yesudas"
+    ]
+   },
+   {
+    "id": "s7",
+    "title": "Seven",
+    "credits": [
+     "Someone"
+    ]
+   }
+  ],
+  "skipping": {
+   "by:someone": -0.3
+  },
+  "liked": [
+   "s6",
+   "s1",
+   "s4",
+   "s2",
+   "s3",
+   "s5",
+   "s7"
+  ],
+  "skipped": [
+   "s1",
+   "s2",
+   "s4",
+   "s3",
+   "s6",
+   "s5",
+   "s7"
+  ]
+ },
+ "loved": {
+  "station": {
+   "id": "x",
+   "title": "Station",
+   "movie": "Premam",
+   "credits": [
+    "Someone"
+   ]
+  },
+  "top": [
+   "a",
+   "d",
+   "c",
+   "e"
+  ],
+  "avoid": [
+   "c"
+  ],
+  "picked": [
+   "a"
+  ],
+  "helping": [
+   "r1",
+   "r2",
+   "r3",
+   "r4",
+   "r5",
+   "r6",
+   "r7",
+   "r8"
+  ],
+  "withLoved": [
+   "r1",
+   "r2",
+   "a",
+   "r3",
+   "r4",
+   "r5",
+   "r6",
+   "r7",
+   "r8"
+  ],
+  "short": [
+   "r1"
+  ],
+  "shortWithLoved": [
+   "r1",
+   "a"
+  ]
+ },
+ "turnedDownComment": "b was skipped on its first play; c was too but was played to the end after; d's first play counted (d2 is the same song); e was loved before its skip.",
+ "taste": {
+  "by:anirudh ravichander": 0.21294,
+  "by:dhanush": -0.224482,
+  "by:murali gopy": 0.425583,
+  "by:rajesh murugesan": 0.765353,
+  "by:vijay yesudas": 0.765353,
+  "by:vineeth sreenivasan": 0.044053,
+  "film:3": -0.224482,
+  "film:premam": 0.797888,
+  "film:thattathin marayathu": 0.437101
+ }
+}

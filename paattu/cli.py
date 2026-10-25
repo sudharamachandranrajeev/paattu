@@ -13,10 +13,12 @@ import subprocess
 import sys
 import time
 
-from . import (__version__, art, browse, cliamp, config, depth, engine, history, library, listenbrainz, made, paths,
-               radio, rhythm, seeds, sound, sources, youtube)
+from . import (__version__, art, browse, charts, cliamp, config, depth, engine, history, library, listenbrainz, made,
+               offline, paths, radio, rhythm, seeds, sound, sources, update, youtube)
 from .depth import DepthError
 from .listenbrainz import ListenBrainzError
+from .offline import OfflineError
+from .update import UpdateError
 from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
@@ -1192,10 +1194,16 @@ def cmd_played(args, out):
             track.update(url=args.url, site=sources.site_of(args.url))
     with history.editing() as h:
         h.played(track, args.heard, length=args.length or None)
-    # A song heard properly joins its language's mix.
-    if history.counted({"heard": args.heard, "length": args.length or track.get("duration") or 0}):
+    # A song played to the end joins its language's played playlist and is
+    # kept on this computer; one played from here counts as used.
+    play = {"heard": args.heard, "length": args.length or track.get("duration") or 0}
+    if history.fully_played(play):
         with library.edit() as data:
             library.note_played(data, track)
+        if offline.settings()["autoSave"] and not offline.file_of(track):
+            offline.keep_soon(track)
+    if history.counted(play):
+        offline.note_played(track)
     # Sent to ListenBrainz, and the other devices' plays read back.
     if listenbrainz.account():
         try:
@@ -1210,7 +1218,7 @@ def _listenbrainz_sync():
     like the ones played here. Returns how many plays came in."""
     found = listenbrainz.account()
     added = listenbrainz.sync(found["token"], found["user"])
-    heard = [song for play, song in added if history.counted(play)]
+    heard = [song for play, song in added if history.fully_played(play)]
     if heard:
         with library.edit() as data:
             for song in heard:
@@ -1296,6 +1304,39 @@ def cmd_made(args, out):
         print(_result_line(n, t))
 
 
+def _chart_summary(kind, language):
+    entry = charts.kept(kind, language) or {}
+    songs = entry.get("tracks") or []
+    return {"kind": kind, "language": language, "title": "%s · %s" % (charts.TITLES[kind], language),
+            "blurb": charts.BLURBS[kind] % language, "count": len(songs),
+            "art": entry.get("art") or next((s.get("art") for s in songs if s.get("art")), "")}
+
+
+def cmd_charts(args, out):
+    """What's played most this week, by language (paattu/charts.py)."""
+    languages = charts.languages(config.load().get("languages"))
+    if not args.kind:
+        rows = [_chart_summary(kind, lang) for lang in languages for kind in charts.KINDS]
+        out.data(rows, "\n".join("%-34s %s" % (r["title"], _plural(r["count"], "song") if r["count"] else "fetched when you open it")
+                                 for r in rows))
+        return
+    language = (args.language or languages[0]).title()
+    if language not in charts.LANGUAGES:
+        raise ValueError("no charts for %s (there are %s)" % (language, ", ".join(charts.LANGUAGES)))
+    out.progress("Getting the %s chart…" % language)
+    songs = charts.chart(args.kind, language, history.History.load(), refresh=args.refresh)
+    sources.remember(songs)
+    summary = _chart_summary(args.kind, language)
+    if args.play:
+        _play_made(songs, {"type": "chart", "id": charts.key(args.kind, language), "title": summary["title"]}, out)
+    if out.as_json:
+        out.data({"event": "done", "ok": True, **summary, "count": len(songs), "tracks": songs})
+        return
+    print("%s: %s" % (summary["title"], summary["blurb"]))
+    for n, t in enumerate(songs, 1):
+        print(_result_line(n, t))
+
+
 def cmd_describe(args, out):
     text = " ".join(args.text)
     out.progress("Finding songs for %s…" % text)
@@ -1323,6 +1364,9 @@ def cmd_failover(args, out):
     if not track:
         song, _, movie = (args.title or "").partition(" · ")
         track = {"id": tid, "title": song, "movie": movie, "url": args.url, "site": sources.site_of(args.url)}
+    if not offline.reachable():
+        _play_kept_instead(track, out)
+        return
     found = sources.alternates_for(track)
     if not found:
         raise SourceError("no other site has %s" % (track.get("title") or "that song"))
@@ -1331,6 +1375,105 @@ def cmd_failover(args, out):
     out.data({"event": "done", "ok": True, "url": sources.track_url(best), "title": engine.display_title(best),
               "site": sources.track_site(best)},
              sources.track_url(best))
+
+
+def _play_kept_instead(track, out):
+    """No internet: the songs kept on this computer, shuffled, for the engine's
+    script to play after the one that wouldn't."""
+    kept = [t for t in offline.tracks(shuffled=True) if offline.key(t) != offline.key(track)]
+    if not kept:
+        raise SourceError("there's no internet, and no songs are kept on this computer")
+    message = "No internet: playing the %s kept on this computer" % _plural(len(kept), "song")
+    if shutil.which("notify-send"):
+        subprocess.Popen(["notify-send", "-a", "Paattu", "Paattu", message], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    first, rest = kept[0], kept[1:]
+    out.data({"event": "done", "ok": True, "offline": True, "message": message, "url": sources.track_url(first),
+              "title": engine.display_title(first),
+              "more": [{"url": sources.track_url(t), "title": engine.display_title(t)} for t in rest]},
+             message)
+
+
+def _offline_row(entry):
+    track = entry.get("track") or {}
+    return {"key": entry["key"], "id": track.get("id", ""), "title": track.get("title") or entry["file"],
+            "file": entry["file"], "bytes": entry.get("bytes") or 0, "saved": entry.get("saved") or "",
+            "plays": entry.get("plays") or 0, "codec": entry.get("codec") or "", "kbps": entry.get("kbps"),
+            "track": track}
+
+
+def cmd_offline(args, out):
+    """Songs kept on this computer, to play with no internet (paattu/offline.py)."""
+    if args.action == "keep":
+        if not args.target:
+            raise ValueError("usage: paattu offline keep SONG (a link or id, or current)")
+        data = library.load()
+        if args.target == "current":
+            track = _playing_track(data, out)
+            if not track:
+                raise EngineError("nothing is playing")
+        else:
+            tid = sources.track_id(args.target) or args.target
+            track = _known(data, tid)
+            if not track:
+                song, _, movie = (args.title or "").partition(" · ")
+                track = {"id": tid, "title": song or tid, "movie": movie, "credits": [], "kind": "song"}
+                if sources.is_link(args.target) and not sources.is_youtube(args.target):
+                    track.update(url=args.target, site=sources.site_of(args.target))
+        if not args.quiet:
+            out.progress("Keeping %s…" % (track.get("title") or track["id"]))
+        entry = offline.keep(track)
+        if not args.quiet:
+            out.done("%s is on this computer" % (track.get("title") or track["id"]), song=_offline_row(
+                {**entry, "key": offline.key(track)}))
+        return
+    if args.action == "drop":
+        if not args.target:
+            raise ValueError("usage: paattu offline drop SONG (its key, link or id)")
+        kept = offline.read()
+        k = args.target if args.target in kept else next(
+            (key for key, e in kept.items() if (e.get("track") or {}).get("id") == (sources.track_id(args.target) or args.target)),
+            None)
+        entry = offline.remove(k) if k else None
+        if not entry:
+            raise ValueError("%s isn't kept on this computer" % args.target)
+        out.done("Took %s off this computer" % ((entry.get("track") or {}).get("title") or entry["file"]))
+        return
+    if args.action == "clear":
+        gone = [offline.remove(e["key"]) for e in offline.songs()]
+        out.done("Took %s off this computer" % _plural(len(gone), "song"))
+        return
+    if args.action == "play":
+        tracks = offline.tracks(shuffled=args.shuffle and not args.start)
+        if not tracks:
+            raise EngineError("no songs are kept on this computer yet")
+        with engine.Engine() as e:
+            engine.load(e, tracks, start=args.start, shuffle=args.shuffle and args.start > 0,
+                        source={"type": "offline", "id": "offline", "title": "On this computer"})
+        out.done("Playing the %s kept on this computer" % _plural(len(tracks), "song"), count=len(tracks))
+        return
+    conf = config.load()
+    rows = [_offline_row(e) for e in offline.songs()]
+    total = sum(r["bytes"] for r in rows)
+    status = {**offline.settings(conf), "folder": str(offline.folder(conf)), "count": len(rows), "bytes": total}
+    out.data({"event": "done", "ok": True, **status, "songs": rows},
+             "%s kept, %s, in %s%s" % (_plural(len(rows), "song"), _megabytes(total), status["folder"],
+                                       "".join("\n  " + r["title"] + "  (" + r["file"] + ")" for r in rows)))
+
+
+def cmd_update(args, out):
+    """A newer Paattu: whether there is one, and installing it."""
+    if args.action == "apply":
+        out.progress("Updating Paattu…")
+        version = update.apply(lambda message: out.progress(message))
+        out.done("Paattu %s is installed. Restart the shell to load the new window: omarchy restart shell" % version,
+                 version=version)
+        return
+    found = update.check()
+    text = ("Paattu %s is out (this is %s)%s" % (found["latest"], found["current"],
+                                                  "\n\n" + found["notes"] if found["notes"] else "")
+            if found["available"] else "Paattu %s is the newest" % found["current"])
+    out.data({"event": "done", "ok": True, **found}, text)
 
 
 def cmd_engine(args, out):
@@ -2014,6 +2157,24 @@ def build_parser():
     a.add_argument("--refresh", action="store_true", help="make a new one now")
     a.add_argument("--play", action="store_true")
     a.set_defaults(func=cmd_made)
+    a = sub.add_parser("charts", help="what's played most this week, by language (none: what's there)")
+    a.add_argument("kind", nargs="?", choices=charts.KINDS)
+    a.add_argument("language", nargs="?", help="Malayalam, Tamil, Hindi, Telugu, Kannada or Punjabi")
+    a.add_argument("--refresh", action="store_true", help="fetch it again now")
+    a.add_argument("--play", action="store_true")
+    a.set_defaults(func=cmd_charts)
+    a = sub.add_parser("offline", help="songs kept on this computer, to play with no internet: "
+                                       "list | keep SONG | drop SONG | play | clear")
+    a.add_argument("action", nargs="?", default="list", choices=("list", "keep", "drop", "play", "clear"))
+    a.add_argument("target", nargs="?", help="the song: a link or id (current: the one playing)")
+    a.add_argument("--title", help="what the engine called it")
+    a.add_argument("--shuffle", action="store_true")
+    a.add_argument("--start", type=int, default=0, help="play: the song to start at (0 is the newest)")
+    a.add_argument("--quiet", action="store_true", help="say nothing (the engine keeps songs this way)")
+    a.set_defaults(func=cmd_offline)
+    a = sub.add_parser("update", help="a newer Paattu: check | apply")
+    a.add_argument("action", nargs="?", default="check", choices=("check", "apply"))
+    a.set_defaults(func=cmd_update)
     a = sub.add_parser("describe", help='a playlist from a description: "Ilaiyaraaja melodies, rain songs, Premam"')
     a.add_argument("text", nargs="+")
     a.add_argument("--play", action="store_true")
@@ -2094,7 +2255,8 @@ def main(argv=None):
         return 2
     try:
         args.func(args, out)
-    except (YouTubeError, EngineError, SourceError, DepthError, ListenBrainzError, ValueError, KeyError) as e:
+    except (YouTubeError, EngineError, SourceError, DepthError, ListenBrainzError, OfflineError, UpdateError,
+            ValueError, KeyError) as e:
         out.error(str(e).strip("'"))
         return 1
     except KeyboardInterrupt:

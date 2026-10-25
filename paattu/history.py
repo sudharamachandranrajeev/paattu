@@ -35,6 +35,17 @@ def counted(play):
     return heard >= (min(30, length // 2) if length > 0 else 30)
 
 
+def fully_played(play):
+    """A song heard to its end: 90% of it, or all but its last 20 seconds (so
+    a fade into the next song counts). With its length unknown, a play that
+    counts. These are kept on the device and join the played playlists."""
+    heard = int(play.get("heard") or 0)
+    length = int(play.get("length") or 0)
+    if length <= 0:
+        return counted(play)
+    return heard >= max(1, min(length * 0.9, length - 20))
+
+
 def song_identity(track):
     """The key a song is known by across uploads, or its id when it has no title."""
     key = song_key(track)
@@ -193,6 +204,64 @@ def skipped_often(plays, now):
             continue
         skips[play.get("id")] = skips.get(play.get("id"), 0) + 1
     return {tid for tid, n in skips.items() if n >= 2}
+
+
+def turned_down(plays, key_of=None):
+    """Songs skipped the first time they were played and not played to the
+    end since: the radio, the playlists made for you and the charts leave
+    them out. By id and by song."""
+    first, finished = {}, set()
+    for play in plays:
+        tid = play.get("id") or ""
+        key = key_of(tid) if key_of else tid
+        first.setdefault(key, (tid, counted(play)))
+        if fully_played(play):
+            finished.add(key)
+    out = set()
+    for key, (tid, liked) in first.items():
+        if not liked and key not in finished:
+            out.update((key, tid))
+    return out
+
+
+def features(song):
+    """What a song is liked for: its singers and composers and its film."""
+    out = ["by:" + str(c).strip().lower() for c in (song.get("credits") or [])[:4] if str(c).strip()]
+    movie = (song.get("movie") or "").strip().lower()
+    if movie:
+        out.append("film:" + movie)
+    return out
+
+
+def taste(plays, track, now, days=90, half_life=30):
+    """What you like, from what you played lately: for each singer, composer
+    and film, the songs of theirs played to the end, less half for each one
+    skipped (a play that counts but stopped short is worth a quarter), each
+    worth less the older it is. track(id) gives the song."""
+    likes = {}
+    since = now - days * 86400
+    for play in plays:
+        at = int(play.get("at") or 0)
+        song = track(play.get("id") or "") if at >= since else None
+        if not song:
+            continue
+        worth = 0.5 ** ((now - at) / 86400 / half_life)
+        value = worth if fully_played(play) else worth / 4 if counted(play) else -worth / 2
+        for feature in features(song):
+            likes[feature] = likes.get(feature, 0) + value
+    return likes
+
+
+def fit(song, likes):
+    """How much song is like what you like, -2 to 2."""
+    return max(-2.0, min(2.0, sum(likes.get(f, 0) for f in features(song))))
+
+
+def taste_order(songs, likes):
+    """songs (best first, as a radio gives them) with the ones like what you
+    like moved up, by up to ten places, and the ones like what you skip down."""
+    ranked = sorted(enumerate(songs), key=lambda e: (e[0] - 5 * fit(e[1], likes), e[0]))
+    return [song for _, song in ranked]
 
 
 def top_songs(plays, track, now, days=30, half_life=7):

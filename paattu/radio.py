@@ -1,8 +1,11 @@
 """The radio: songs like a song, from YouTube Music's own radio for it, a
 helping at a time as the queue runs out. Like Spotify's and YouTube's, it
-leaves out what was played in the last few hours and songs skipped more than
-once, and when one song's radio runs dry it carries on from a song it played.
-The app's radio.dart does the same.
+leaves out what was played in the last few hours, songs skipped more than
+once and songs turned down (skipped the first time), and when one song's
+radio runs dry it carries on from a song it played. It plays to your taste
+too: songs by the singers, composers and films you play to the end come
+first (history.taste_order), and a few songs you love that share something
+with the station are mixed in. The app's radio.dart does the same.
 
 The engine's mpv script (engine/paattu.lua) asks for more with
 `paattu radio more` when two songs or fewer are left; where the radio is up
@@ -17,7 +20,8 @@ import tempfile
 import time
 
 from . import paths, ytmusic
-from .history import heard_since, skipped_often, song_identity
+from .history import (features, heard_since, skipped_often, song_identity, taste, taste_order, top_songs,
+                      turned_down)
 from .sources import is_video_id, same_song, track_site
 
 STATE = paths.RUNTIME / "radio.json"
@@ -97,6 +101,8 @@ class SongRadio:
             avoid.update((song.get("id") or "", song_identity(song)))
         avoid |= heard_since(plays, now - 6 * 3600, key_of)
         avoid |= skipped_often(plays, now)
+        avoid |= turned_down(plays, key_of)
+        likes = taste(plays, self.history.track, now)
         out = []
         for _ in range(4):
             if len(out) >= count:
@@ -110,10 +116,11 @@ class SongRadio:
                 state["used"].append(video)
             songs, more = ytmusic.radio(state["video"], more=state["more"])
             state["more"] = more
-            fresh = interleave_songs([songs], avoid, count - len(out))
+            fresh = interleave_songs([taste_order(songs, likes)], avoid, count - len(out))
             out += fresh
             if not fresh or not more:
                 state["video"] = None
+        out = with_favourites(out, loved_like(station, top_songs(plays, self.history.track, now), avoid))
         for song in out:
             state["given"] += [song["id"], song_identity(song)]
         del state["given"][:-2000]
@@ -126,6 +133,24 @@ class SongRadio:
             if track_site(song) == "youtube" and is_video_id(tid) and tid not in self.state["used"]:
                 return song
         return None
+
+
+def loved_like(station, top, avoid, count=2):
+    """Up to count of the songs you like most ([(song, score, plays)] from
+    history.top_songs) that share a singer, composer or film with station,
+    leaving out avoid."""
+    wanted = set(features(station))
+    picked = [song for song, _, _ in top if wanted & set(features(song))]
+    return interleave_songs([picked], set(avoid), count)
+
+
+def with_favourites(songs, loved):
+    """songs with the loved ones put in third and seventh (or at the end of a
+    short helping)."""
+    out = list(songs)
+    for at, song in zip((2, 6), loved):
+        out.insert(min(at, len(out)), song)
+    return out
 
 
 @contextlib.contextmanager

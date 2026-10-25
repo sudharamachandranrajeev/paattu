@@ -50,6 +50,10 @@ DEFAULTS = {
     "fade": 3,
     # When the queue runs out, carry on with songs like the last one (paattu radio).
     "autoRadio": True,
+    # Songs kept on this computer to play with no internet (paattu offline): the
+    # folder ("" for ~/.local/share/paattu/offline), the room they may take, and
+    # whether a song played to the end is kept by itself.
+    "offline": {"dir": "", "limitMb": 2048, "autoSave": True},
 }
 
 STYLES = ("vinyl", "card", "minimal")
@@ -117,8 +121,12 @@ def validate(key, value):
         raise ValueError("videoBlur is 0 to 100")
     if key == "fade" and not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 12):
         raise ValueError("fade is 0 to 12 seconds")
-    if key == "autoRadio" and not isinstance(value, bool):
-        raise ValueError("autoRadio is true or false")
+    if key in ("autoRadio", "offline.autoSave") and not isinstance(value, bool):
+        raise ValueError(key + " is true or false")
+    if key == "offline.limitMb" and not (isinstance(value, int) and not isinstance(value, bool) and value >= 0):
+        raise ValueError("offline.limitMb is a number of megabytes (0 for no limit)")
+    if key == "offline.dir" and not isinstance(value, str):
+        raise ValueError("offline.dir is a folder")
     if key == "search.sites" and not (isinstance(value, list) and value and all(s in SITES for s in value)):
         raise ValueError("search.sites is a list of: " + ", ".join(SITES))
 

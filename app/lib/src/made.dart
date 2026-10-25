@@ -171,7 +171,10 @@ class MadeForYou {
     final top = topSongs(plays, _track, now: now, days: kind == 'weekly' ? 28 : 30);
     final favourites = library.playlistTracks(favouritesId);
     final mine = [...favourites, ...library.playlistTracks(savedId)];
-    final skipped = skippedOften(plays, now);
+    final skipped = {
+      ...skippedOften(plays, now),
+      ...turnedDown(plays, keyOf: (id) => songIdentity(_track(id) ?? {'id': id})),
+    };
     switch (kind) {
       case 'monthly':
         final most = [...top]..sort((a, b) => b.count != a.count ? b.count.compareTo(a.count) : b.score.compareTo(a.score));

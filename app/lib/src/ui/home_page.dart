@@ -1,16 +1,18 @@
-// Home: a big card that shuffles your first mix, the playlists made for you
-// and the mixes as bright tiles, a few of your favourites, your playlists and the saved YouTube playlists
+// Home: a big card that shuffles your first mix, the playlists made for you,
+// the week's charts and the mixes as bright tiles, the songs kept offline, a few of your favourites, your playlists and the saved YouTube playlists
 // by language.
 
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../library.dart';
+import '../offline.dart' show formatBytes;
 import '../util.dart';
 import 'glass.dart';
 import 'library_page.dart';
 import 'made_page.dart';
 import 'mix_editor.dart';
+import 'offline_page.dart';
 import 'playlist_page.dart';
 import 'widgets.dart';
 
@@ -52,6 +54,8 @@ class HomePage extends StatelessWidget {
               _Hero(app: app, onSearch: onSearch),
               const SectionHeader('Made for you'),
               const MadeForYouShelf(),
+              const SectionHeader('Charts'),
+              const ChartsShelf(),
               const SectionHeader('Mixes'),
               _Mixes(app: app),
               if (empty)
@@ -74,6 +78,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               if (favourites.isNotEmpty) _Favourites(app: app, tracks: favourites),
+              _Offline(app: app),
               if (own.isNotEmpty) ...[
                 const SectionHeader('Your playlists'),
                 _Shelf(playlists: own),
@@ -434,6 +439,89 @@ class _Favourites extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The songs kept on this device: play or shuffle them, a few of the
+/// newest, and the page that manages them.
+class _Offline extends StatelessWidget {
+  const _Offline({required this.app});
+  final AppState app;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: app.offline,
+        builder: (context, _) {
+          final offline = app.offline;
+          if (!offline.ready) return const SizedBox();
+          final theme = Theme.of(context);
+          final songs = [for (final entry in offline.songs) entry.track];
+          void manage() => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const OfflinePage()));
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SectionHeader(
+                'On this device',
+                action: TextButton(onPressed: manage, child: Text(songs.isEmpty ? 'Manage' : 'See all')),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Glass(
+                  radius: 28,
+                  padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.download_for_offline_outlined, color: theme.colorScheme.primary, size: 30),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              songs.isEmpty ? 'No songs kept yet' : '${plural(songs.length, 'song')} · ${formatBytes(offline.totalBytes)}',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              songs.isEmpty
+                                  ? 'Songs you play to the end are kept here, to play with no internet'
+                                  : 'They play with no internet, and take over when it goes',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (songs.isNotEmpty) ...[
+                        IconButton(
+                          tooltip: 'Shuffle the songs on this device',
+                          icon: const Icon(Icons.shuffle),
+                          onPressed: () => fire(app.player.playTracks(songs, shuffled: true)),
+                        ),
+                        IconButton.filled(
+                          tooltip: 'Play the songs on this device',
+                          icon: const Icon(Icons.play_arrow),
+                          onPressed: () => fire(app.player.playTracks(songs)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (songs.isNotEmpty)
+                NowPlayingBuilder(
+                  builder: (context, playingId) => Column(
+                    children: [
+                      for (var i = 0; i < songs.length && i < 3; i++)
+                        TrackTile(
+                          track: songs[i],
+                          playingId: playingId,
+                          onTap: () => fire(app.player.playTracks(songs, start: i)),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      );
 }
 
 class _Shelf extends StatelessWidget {

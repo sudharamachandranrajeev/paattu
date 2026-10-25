@@ -255,6 +255,14 @@ Future<List<Json>> suggestJioSaavn(String query) async {
   return out;
 }
 
+/// JioSaavn's charts for [language]: its editors' weekly Top 50, most
+/// searched and so on, as {title, perma_url, image} (asked in that language,
+/// as the site's own language picker does).
+Future<List<Json>> jiosaavnCharts(String language) async => asList(await getJson(
+      _api.replace(queryParameters: _call('content.getCharts', {})),
+      headers: {'Cookie': 'L=${language.toLowerCase()}'},
+    )).map(asJson).toList();
+
 /// The songs behind a JioSaavn song, album or playlist link.
 Future<List<Json>> resolveJioSaavn(String url) async {
   final parts = Uri.parse(url).pathSegments.where((p) => p.isNotEmpty).toList();
