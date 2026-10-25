@@ -1,7 +1,125 @@
-# Paattu — പാട്ട് · பாட்டு
+<h1 align="center">
+  <br>
+  <a href="https://github.com/sudharamachandranrajeev/paattu"><img src="share/paattu.svg" alt="Paattu" width="140"></a>
+  <br>
+  Paattu — പാട്ട് · பாட்டு
+  <br>
+</h1>
 
-Malayalam & Tamil music from public YouTube playlists, plus search across
-JioSaavn, YouTube and SoundCloud. *Paattu* means "song" in both languages.
+<h4 align="center">Malayalam &amp; Tamil music from YouTube, JioSaavn and SoundCloud: an app for Android, Windows and Linux, and a bar player, desktop widget and app window for <a href="https://omarchy.org">Omarchy</a>.</h4>
+
+<p align="center">
+  <a href="https://github.com/sudharamachandranrajeev/paattu/releases"><img src="https://img.shields.io/github/v/release/sudharamachandranrajeev/paattu?include_prereleases&color=f0405a" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/sudharamachandranrajeev/paattu?color=f7942e" alt="License"></a>
+  <img src="https://img.shields.io/badge/platforms-Android%20%7C%20Windows%20%7C%20Linux%20%7C%20Omarchy-555" alt="Platforms">
+  <img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter" alt="Flutter">
+  <img src="https://img.shields.io/badge/engine-mpv%20%2B%20yt--dlp-6b2fa0" alt="mpv + yt-dlp">
+</p>
+
+<p align="center">
+  <a href="#key-features">Key Features</a> •
+  <a href="#how-to-use">How To Use</a> •
+  <a href="#download">Download</a> •
+  <a href="#feature-guide">Feature Guide</a> •
+  <a href="#development">Development</a> •
+  <a href="#credits">Credits</a> •
+  <a href="#license">License</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Paattu on Omarchy and on a phone" width="100%">
+</p>
+
+*Paattu* means "song" in both Malayalam and Tamil. It plays the public playlists of the YouTube
+profiles you follow, and searches JioSaavn, YouTube and SoundCloud for anything else. The apps and
+the Linux command share one library format: export it from one (Settings → Export the library, or
+`~/.local/share/paattu/library.json`) and import it in another.
+
+## Key Features
+
+* **YouTube profiles and playlists** – paste a profile (a label, a composer, a friend) and every
+  public playlist on it becomes a Paattu playlist; paste a playlist link for just that one.
+* **Search everywhere** – JioSaavn (film albums, AAC up to 320 kbps), YouTube (Opus) and SoundCloud,
+  with Songs / Albums / Artists / Playlists tabs, endless results and suggestions while you type, or
+  paste a link to any site yt-dlp can play.
+* **Favourites, Saved songs and your own playlists** – from every now-playing view; sync and
+  refresh never touch them.
+* **Mixes** – your own shuffle buttons made of languages, profiles and playlists; songs you listen
+  to join *Played in Malayalam / Tamil*, so the mixes grow as you listen.
+* **Radio and playlists made for you** – song radio from YouTube Music, auto radio when the queue
+  runs out, Daily mix, Weekly discovery, Monthly top, and playlists from a description.
+* **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
+  (cover, video first, full picture, record), colours from the cover, and the cover in 3D with its
+  subject lifted out and moving with the song's rhythm.
+* **Sound** – a ten-band equaliser with presets (Melody, Kuthu, Bass boost, Late night…), preamp,
+  bass, treble, balance and pitch-keeping speed, on every platform.
+* **Fades and crossfades** – songs fade into each other; the app readies the next song 25 s early
+  and downloads the next two in pieces.
+* **Sleep timer** – minutes or *end of this song*, with an 8-second fade-out.
+* **Songs kept on this device** – songs you actually listen to are kept for playing offline
+  (2 GB by default, least recently played go first).
+* **Plays follow you (ListenBrainz)** – scrobbles carry your history between the phone, the
+  desktop app and Omarchy, so made-for-you playlists follow you.
+* **No ads, no third-party proxies** – streams come straight from the sites; Paattu never loads
+  YouTube's player page and never scrapes mp3 download sites.
+* **Omarchy-native** – a bar widget with a panel, a desktop widget on workspace 1 (vinyl, card or
+  minimal), an app window, media keys and the lock screen through MPRIS, seven themes
+  (Spicetify-style JSON files), and a `paattu` command for everything.
+* **Updates from inside the app** – checked against each release's `SHA256SUMS.txt` before
+  installing.
+
+## Screenshots
+
+The screenshots show a made-up library (songs, films and singers that don't exist) with drawn
+covers.
+
+**The app** (Android, Windows, Linux):
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-home-dark.png" width="200"><br><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/app-now-playing-dark.png" width="200"><br><sub>Now Playing, upcoming songs on the arc</sub></td>
+    <td align="center"><img src="docs/screenshots/app-playlist-dark.png" width="200"><br><sub>Your playlist</sub></td>
+    <td align="center"><img src="docs/screenshots/app-library-dark.png" width="200"><br><sub>Library</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-sound-dark.png" width="200"><br><sub>Sound: equaliser and tone</sub></td>
+    <td align="center"><img src="docs/screenshots/app-settings-dark.png" width="200"><br><sub>Settings: the themes</sub></td>
+    <td align="center"><img src="docs/screenshots/app-home-light.png" width="200"><br><sub>Home (Kasavu, light)</sub></td>
+    <td align="center"><img src="docs/screenshots/app-now-playing-light.png" width="200"><br><sub>Now Playing (Kasavu)</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/app-home-desktop.png" width="420"><br><sub>Home on a desktop window</sub></td>
+    <td align="center"><img src="docs/screenshots/app-now-playing-desktop.png" width="420"><br><sub>Now Playing on a desktop window</sub></td>
+  </tr>
+</table>
+
+**On Omarchy** (the app window and the desktop widget):
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/omarchy-home.png" width="420"><br><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/omarchy-now-playing.png" width="420"><br><sub>Now playing and up next</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/omarchy-playlist.png" width="420"><br><sub>A playlist</sub></td>
+    <td align="center"><img src="docs/screenshots/omarchy-sound.png" width="420"><br><sub>Sound</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/omarchy-mixes.png" width="420"><br><sub>Mixes</sub></td>
+    <td align="center">
+      <img src="docs/screenshots/omarchy-desktop-card.png" width="150">
+      <img src="docs/screenshots/omarchy-desktop-vinyl.png" width="250"><br>
+      <img src="docs/screenshots/omarchy-desktop-minimal.png" width="250"><br>
+      <sub>Desktop widget: card, vinyl, minimal</sub>
+    </td>
+  </tr>
+</table>
+
+## How To Use
 
 | Where | What you get | Install |
 |---|---|---|
@@ -10,63 +128,81 @@ JioSaavn, YouTube and SoundCloud. *Paattu* means "song" in both languages.
 | **Android** | the Paattu app, with lock-screen and notification controls | `Paattu-…-android.apk` from [Releases](../../releases) |
 | **Linux desktop app** | the same app as Windows / Android | `Paattu-…-linux-x86_64.AppImage` or the tarball from [Releases](../../releases) |
 
-The apps and the Linux command share the library format: export it from
-one (Settings → Export the library, or `~/.local/share/paattu/library.json`)
-and import it in another.
-
 ### Linux: the command and the Omarchy plugin
 
+You'll need [Git](https://git-scm.com); `install.sh` brings the rest.
+
+```bash
+# Clone this repository
+$ git clone https://github.com/sudharamachandranrajeev/paattu.git
+
+# Go into the repository
+$ cd paattu
+
+# Install (asks once for sudo to install mpv and python)
+$ ./install.sh
+
+# What's installed
+$ ./install.sh --check
+
+# Only with OpenSnitch: let mpv / yt-dlp reach the music sites
+$ sudo ~/.local/lib/paattu/install.sh --firewall
+
+# Remove it (--purge also removes your library)
+$ ./install.sh --uninstall
 ```
-git clone https://github.com/sudharamachandranrajeev/paattu.git
-cd paattu
-./install.sh                    # asks once for sudo to install mpv and python
-./install.sh --check            # what's installed
-sudo ~/.local/lib/paattu/install.sh --firewall   # only with OpenSnitch: let mpv / yt-dlp reach the music sites
-./install.sh --uninstall        # remove it (--purge also removes your library)
-```
 
-`install.sh` works on Arch (and Omarchy, Manjaro, EndeavourOS, CachyOS),
-Debian, Ubuntu (and Mint, Pop!_OS), Fedora, openSUSE, Void and Alpine. It
-installs **mpv** (and mpv-mpris for media keys) and **python3** with your
-package manager, a current **yt-dlp** (from pacman on Arch, otherwise the
-official release into `~/.local/bin`, since distro packages are usually too
-old for YouTube) and **deno** (yt-dlp needs a JavaScript runtime for
-YouTube), then the program into `~/.local/lib/paattu`, the `paattu` command,
-and an mpv engine service for systemd users. Nothing else runs as root.
-`--yes` answers its questions; `--dev` links your checkout instead of
-copying it (for working on Paattu; the bar plugin is still a copy, so run it
-again after `git pull`). Without systemd, `paattu` starts mpv itself.
+`install.sh` works on Arch (and Omarchy, Manjaro, EndeavourOS, CachyOS), Debian, Ubuntu (and Mint,
+Pop!_OS), Fedora, openSUSE, Void and Alpine. It installs **mpv** (and mpv-mpris for media keys) and
+**python3** with your package manager, a current **yt-dlp** (from pacman on Arch, otherwise the
+official release into `~/.local/bin`, since distro packages are usually too old for YouTube) and
+**deno** (yt-dlp needs a JavaScript runtime for YouTube), then the program into
+`~/.local/lib/paattu`, the `paattu` command, and an mpv engine service for systemd users. Nothing
+else runs as root. `--yes` answers its questions; `--dev` links your checkout instead of copying it
+(for working on Paattu; the bar plugin is still a copy, so run it again after `git pull`). Without
+systemd, `paattu` starts mpv itself.
 
-On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the
-widget on workspace 1, or Super+Space → Paattu. Elsewhere, use the command:
-`paattu search malare`, `paattu play --mix "Malayalam mix"`, `paattu --help`.
+On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the widget on workspace 1, or
+Super+Space → Paattu. Elsewhere, use the command: `paattu search malare`,
+`paattu play --mix "Malayalam mix"`, `paattu --help`.
 
-### Windows and Android
+### The apps
 
-Download from [Releases](../../releases). The Windows installer is not code
-signed yet, so SmartScreen says "Windows protected your PC": choose **More
-info → Run anyway**. On Android, allow your browser or file manager to
-install unknown apps when asked. On Linux, the AppImage brings its own mpv
-and uses your desktop's GTK 3 (`chmod +x` it and run it); the tarball also
-needs mpv's library, libmpv.so.2 (`mpv` on Arch, `libmpv2` on Debian 12+ /
-Ubuntu 24.04+, `mpv-libs` on Fedora; on older systems use the AppImage).
+The apps search and play by themselves (no yt-dlp or mpv to install): JioSaavn songs at 320 kbps
+AAC, YouTube's best audio (Opus), SoundCloud, and direct links to audio files. They have the same
+library as the Linux command: Home with your mixes and shelves, Search, Library (your playlists,
+YouTube profiles and playlists), Favourites, a queue and a now-playing screen, and the Paattu
+themes.
 
-The apps search and play by themselves (no yt-dlp or mpv to install):
-JioSaavn songs at 320 kbps AAC, YouTube's best audio (Opus), SoundCloud,
-and direct links to audio files. They have the same library as the Linux
-command: Home with your mixes and shelves, Search, Library (your playlists,
-YouTube profiles and playlists), Favourites, a queue and a now-playing
-screen, and the Paattu themes.
+Songs come from YouTube unless **Settings → Music from** says JioSaavn, SoundCloud or every site. A
+song that won't play is tried another way, then as the same song on the other sites (best sound
+first); if nothing works, the app says why in plain words and plays the next one. When something
+goes wrong, **Settings → Problem log → Save the problem log** writes what the app tried and what
+failed to a text file: attach it to an [issue](../../issues).
 
-Songs come from YouTube unless **Settings → Music from** says JioSaavn,
-SoundCloud or every site. A song that won't play is tried another way, then
-as the same song on the other sites (best sound first); if nothing works,
-the app says why in plain words and plays the next one. When something goes
-wrong, **Settings → Problem log → Save the problem log** writes what the app
-tried and what failed to a text file: attach it to an
-[issue](../../issues).
+## Download
 
-## How it works
+Download from [Releases](../../releases); each release also has `SHA256SUMS.txt`.
+
+* **Windows** – `Paattu-…-windows-x64-setup.exe` (Inno Setup) or `…-windows-x64-portable.zip`. The
+  installer is not code signed yet, so SmartScreen says "Windows protected your PC": choose **More
+  info → Run anyway**.
+* **Android** – `Paattu-…-android.apk`. Allow your browser or file manager to install unknown apps
+  when asked.
+* **Linux** – the AppImage brings its own mpv and uses your desktop's GTK 3 (`chmod +x` it and run
+  it). The tarball (`…-linux-x64.tar.gz`) also needs mpv's library, libmpv.so.2 (`mpv` on Arch,
+  `libmpv2` on Debian 12+ / Ubuntu 24.04+, `mpv-libs` on Fedora; on older systems use the AppImage).
+* **Omarchy / any Linux, the command** – `./install.sh` from a clone (see [How To Use](#how-to-use)).
+
+Once installed, the app finds new versions itself (see *Updates from inside the app* below).
+
+## Feature Guide
+
+Everything below works the same in the app (Android, Windows, Linux) and on Omarchy unless it says
+otherwise; the `paattu` commands are for Linux.
+
+<details>
+<summary><b>How it works (Linux / Omarchy)</b></summary>
 
 | Piece | What it is |
 |---|---|
@@ -88,9 +224,12 @@ Choices, and why:
   (the default browser) where Shields blocks the page's ads.
 - **mpv as the engine.** mpv + yt-dlp is the most reliable YouTube audio path,
   and mpv-mpris makes media keys, the Omarchy OSD and the lock screen work
-  for free. cliamp keeps its own role (below).
+  for free. cliamp keeps its own role (see *cliamp* below).
 
-## Feature 1: YouTube profiles and their public playlists
+</details>
+
+<details>
+<summary><b>YouTube profiles and their public playlists</b></summary>
 
 Paste a YouTube profile (a label, a composer, a friend) and **every public
 playlist on it** becomes a playlist in Paattu. Paste a playlist link and just
@@ -112,7 +251,7 @@ play them. *Load songs for N playlists* on the profile page, or
 `paattu user fetch @handle`, fetches them all at once. Profiles added this
 way stay whole: `user sync` adds their new playlists too.
 
-### Removing things
+**Removing things**
 
 - **A playlist:** the trash button on its row (profile page) or *Remove from
   app* on the playlist page. Click twice to confirm. It stays out of the app,
@@ -140,7 +279,7 @@ The optional starter library's profiles come with four saved playlists each.
 Video titles from the labels (`Song - Video Song | Movie | Composer | Label`)
 are cleaned into song, movie and credits by `paattu/titles.py`.
 
-### The optional starter library
+**The optional starter library**
 
 A new library is empty: add the profiles and playlists you want. If you'd
 rather start with a ready-made South Indian library, `paattu seed` follows
@@ -160,7 +299,10 @@ brought and their cached cover art. Profiles and playlists you added, your
 own playlists, Favourites and mixes stay. `paattu art --prune` clears cached
 art for anything no longer in the library.
 
-## Favourites and your own playlists
+</details>
+
+<details>
+<summary><b>Favourites and your own playlists</b></summary>
 
 Songs you want to keep go in **Favourites** or in playlists you make. Sync
 and refresh never touch them, so a song stays there even after the YouTube
@@ -200,7 +342,10 @@ Your playlists live in `library.json` next to the saved ones (`local: true`,
 ids `paattu-…`; Favourites is `paattu-favourites`) and appear in `shelf.json`
 under `mine` for the bar and the desktop widget.
 
-## Search: new songs from YouTube, JioSaavn, SoundCloud or a link
+</details>
+
+<details>
+<summary><b>Search: new songs from YouTube, JioSaavn, SoundCloud or a link</b></summary>
 
 The search box at the top of the app and of the bar panel (press `/` in
 either) looks beyond your library. Type a song, a film or a singer and press
@@ -262,7 +407,10 @@ into `library.json`. Search settings are in `paattu config`:
 `search.sites` (`["youtube"]`, or any of jiosaavn, youtube, soundcloud) and
 `search.limit`.
 
-## Mixes (the shuffle buttons)
+</details>
+
+<details>
+<summary><b>Mixes (the shuffle buttons)</b></summary>
 
 The shuffle buttons on the bar panel, the desktop widget and Home are
 **mixes**, and you choose what goes in them. A new library starts with
@@ -308,7 +456,10 @@ have no songs loaded yet loads a few first. Playlists you picked one by one
 always load. *Load songs for N playlists* on the mix page loads the rest.
 A mix you delete stays deleted, even the first two.
 
-## Playing
+</details>
+
+<details>
+<summary><b>Playing, Now Playing looks and the cover in 3D</b></summary>
 
 ```
 paattu play --mix "Malayalam mix"       # a shuffle button (see Mixes)
@@ -353,12 +504,16 @@ U²-Net's small model (`models/u2netp.onnx`, with ONNX Runtime) on Windows,
 Linux and Omarchy. On Omarchy, `paattu depth` runs it through
 [uv](https://docs.astral.sh/uv/), which fetches ONNX Runtime, NumPy and
 Pillow (and Python 3.12 if needed) the first time: about 35 MB to download,
-about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's cut-out is kept in `~/.cache/paattu/depth/`.
+about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's
+cut-out is kept in `~/.cache/paattu/depth/`.
 
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
 
-### Sleep timer
+</details>
+
+<details>
+<summary><b>Sleep timer</b></summary>
 
 The moon button on Now Playing stops the music by itself:
 
@@ -387,7 +542,10 @@ paattu sleep         # what's set
 The engine script (`engine/paattu.lua`) keeps the timer, so it runs whether
 or not the bar is open. Pausing during the fade-out ends it.
 
-## Songs kept on this device
+</details>
+
+<details>
+<summary><b>Songs kept on this device (the app)</b></summary>
 
 A song you actually listen to — half of it, or 30 seconds of a long one — is
 kept in a folder as you play it, so it plays later with no internet and no
@@ -418,7 +576,10 @@ Two things worth knowing:
   offline. If a kept file turns out to be broken, Paattu forgets it and
   streams the song instead, rather than failing on it.
 
-## Updates from inside the app
+</details>
+
+<details>
+<summary><b>Updates from inside the app</b></summary>
 
 **Settings › About › Check for updates** reads the [Releases](../../releases)
 on GitHub, shows what's new in the version it found, then downloads the right
@@ -441,7 +602,10 @@ get it from the releases page instead.
 answers 404 to everybody else about a private one, so while it's private,
 *Check for updates* reports that it couldn't reach the releases.
 
-## Radio and playlists made for you
+</details>
+
+<details>
+<summary><b>Radio and playlists made for you</b></summary>
 
 ```
 paattu radio start [SONG]               # songs like SONG (or the one playing), without end
@@ -483,7 +647,10 @@ download in pieces while one plays, so a slow stream doesn't stop the music.
 On Omarchy mpv plays one song at a time, so the fade out and the fade in
 come one after the other rather than overlapping.
 
-## Sync plays between devices (ListenBrainz)
+</details>
+
+<details>
+<summary><b>Sync plays between devices (ListenBrainz)</b></summary>
 
 ```
 paattu listenbrainz login     # asks for your user token (listenbrainz.org/settings)
@@ -501,7 +668,10 @@ listening history on ListenBrainz is public. Playlists and favourites don't
 sync this way (ListenBrainz playlists need MusicBrainz IDs); use the library
 export and import for them.
 
-## Sound: equaliser, tone, balance and speed
+</details>
+
+<details>
+<summary><b>Sound: equaliser, tone, balance and speed</b></summary>
 
 A ten-band equaliser (31 Hz to 16 kHz, ±12 dB) with presets (Melody, Kuthu,
 Bass boost, Rock, Late night and more, plus your own), a preamp, bass and
@@ -534,7 +704,10 @@ audio filter the Windows libmpv has; the desktop engine and the Windows /
 Linux app build the same chain from the same numbers
 (`tests/sound_cases.json`).
 
-## Customising (Spicetify-style)
+</details>
+
+<details>
+<summary><b>Customising (Spicetify-style themes, desktop widget, bar)</b></summary>
 
 Everything is a file that applies live, and everything can be set from the
 command line:
@@ -566,7 +739,10 @@ paattu config set coverDepth false      # a flat cover in Now Playing
   Click opens the panel, middle-click plays/pauses (or starts the first mix),
   right-click skips. In the panel, 1–9 start your mixes.
 
-## cliamp
+</details>
+
+<details>
+<summary><b>cliamp</b></summary>
 
 cliamp (Super+Shift+Alt+M) is a good terminal player and it was evaluated
 as the engine. Its daemon mode, v2 IPC, EQ and spectrum stream are all
@@ -584,7 +760,10 @@ presets (mpv `af` equalizer), the spectrum visualizer (cava), Radio Browser
 stations (cliamp's history already has Anbu FM Malayalam, BIG 92.7, Big FM
 Tamil), and synced lyrics (LRCLIB).
 
-## Firewall (OpenSnitch)
+</details>
+
+<details>
+<summary><b>Firewall (OpenSnitch)</b></summary>
 
 OpenSnitch asks before a new program connects, and an unanswered prompt
 becomes a permanent block after 30 seconds. `sudo ./install.sh --firewall`
@@ -595,7 +774,10 @@ first time. It also offers to remove the old rule that blocks cliamp.
 `paattu play` warns (desktop notification) when the rule is missing. If you
 added the rule before search existed, run it again to add the new sites.
 
-## Roadmap (one feature at a time)
+</details>
+
+<details>
+<summary><b>Roadmap (one feature at a time)</b></summary>
 
 1. ✅ YouTube profiles (all their playlists) and playlist links; remove /
    restore playlists and songs; South Indian library
@@ -622,13 +804,30 @@ added the rule before search existed, run it again to add the new sites.
 14. The kept songs on the `paattu` command and the Omarchy plugin, so the
     desktop player has them too
 
+</details>
+
 ## Development
 
+```bash
+# The Python CLI and the plugin's Model.js
+$ python3 -m unittest discover -s tests     # titles, library, search, seeds, cliamp export, config
+$ node --test tests/*.test.mjs              # the plugin's Model.js
+
+# Use this checkout as the installed program
+$ ./install.sh --dev
+
+# The app (Flutter 3.47)
+$ cd app && flutter pub get && flutter test && flutter run
+
+# README screenshots: the app (real fonts, a made-up library, drawn covers) ...
+$ cd app && PAATTU_SHOTS=/tmp/shots flutter test test/screenshots_test.dart
+
+# ... and the Omarchy plugin, drawn offscreen with a private silent mpv
+$ tools/omarchy-screenshots/run.sh /tmp/shots-omarchy
 ```
-python3 -m unittest discover -s tests     # titles, library, search, seeds, cliamp export, config
-node --test tests/*.test.mjs              # the plugin's Model.js
-./install.sh --dev                        # use this checkout as the installed program
-```
+
+<details>
+<summary><b>The app's code, CI and releases</b></summary>
 
 The app is in `app/` (Flutter, Dart): `lib/src/` has the library model
 (a port of `paattu/library.py`), title cleaning (`titles.py`), the sources
@@ -645,11 +844,8 @@ Android's half of it is the `installApk` method channel in `MainActivity.kt`,
 which hands the APK to the system's installer through a FileProvider).
 `app/test/` runs the same title, track-id and subject-mask cases as `tests/`,
 plus the sleep timer, the offline library and the updater's version and
-checksum reading. With Flutter installed:
-
-```
-cd app && flutter pub get && flutter test && flutter run
-```
+checksum reading. `app/test/screenshots_test.dart` renders the README's app
+screenshots and is skipped unless `PAATTU_SHOTS` names an output folder.
 
 GitHub Actions does the rest: `ci.yml` runs every test, shellcheck, and
 `install.sh` on Debian, Ubuntu, Fedora, Arch and openSUSE containers;
@@ -663,7 +859,10 @@ publishes them as a release. The Android signing key is in the repository secret
 The shell plugin hot-reloads, except `Home.qml` (the always-loaded desktop
 widget / window host), which needs `omarchy restart shell`.
 
-Five rules learned the hard way:
+</details>
+
+<details>
+<summary><b>Five rules learned the hard way</b></summary>
 
 - **Never bind `layer.enabled` to an Image's status** (`Cover.qml`). When a
   window first gets the screen's scale (1.5× here), Qt walks the item tree
@@ -690,3 +889,29 @@ Five rules learned the hard way:
 
 Track ids for other sites are made in two places, `sources.track_id` and
 `Model.trackId`; `tests/track_ids.json` holds the cases both suites check.
+
+</details>
+
+## Credits
+
+This software uses the following open source packages and services:
+
+- [mpv](https://mpv.io), [mpv-mpris](https://github.com/hoyon/mpv-mpris), [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Deno](https://deno.com) – the Linux engine
+- [Quickshell](https://quickshell.org) and [Omarchy](https://omarchy.org) – the bar, desktop widget and app window
+- [Flutter](https://flutter.dev), [just_audio](https://pub.dev/packages/just_audio), [audio_service](https://pub.dev/packages/audio_service) (+ [audio_service_win](https://pub.dev/packages/audio_service_win)), [audio_session](https://pub.dev/packages/audio_session), [media_kit](https://github.com/media-kit/media-kit) (+ just_audio_media_kit, media_kit_video), [video_player](https://pub.dev/packages/video_player), [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), [rxdart](https://pub.dev/packages/rxdart), [file_picker](https://pub.dev/packages/file_picker), [sensors_plus](https://pub.dev/packages/sensors_plus), [package_info_plus](https://pub.dev/packages/package_info_plus) – the app
+- [ML Kit subject segmentation](https://pub.dev/packages/google_mlkit_subject_segmentation), [ONNX Runtime](https://onnxruntime.ai) (+ flutter_onnxruntime) and [U²-Net](https://github.com/xuebinqin/U-2-Net)'s small model, run through [uv](https://docs.astral.sh/uv/) on Omarchy – the cover in 3D
+- [Poppins](https://fonts.google.com/specimen/Poppins) (SIL Open Font License) – the app's font
+- [JioSaavn](https://www.jiosaavn.com), [YouTube](https://www.youtube.com) / YouTube Music, [SoundCloud](https://soundcloud.com) – where the music comes from; [ListenBrainz](https://listenbrainz.org) – plays across devices
+- [Inno Setup](https://jrsoftware.org/isinfo.php) and [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy) – the Windows installer and the AppImage
+
+## Related
+
+* [Chithram](https://github.com/sudharamachandranrajeev/chithram) – the sibling video app: YouTube, IPTV and more, Android TV first
+
+## License
+
+MIT – see [LICENSE](LICENSE).
+
+---
+
+> GitHub [@sudharamachandranrajeev](https://github.com/sudharamachandranrajeev)
