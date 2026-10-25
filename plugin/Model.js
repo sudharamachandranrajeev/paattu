@@ -916,32 +916,38 @@ var GLYPH_EQUALIZER = "\u{F0EA2}"   // md-equalizer
 // The same numbers as paattu/sound.py (tests/sound_cases.json checks both):
 // FFmpeg peaking filters in one lavfi graph, which the Sound page moves live
 // with `af-command paattu g <dB> equalizer@<name>` while a control is dragged.
-var SOUND_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+// The ISO 2/3-octave centres. The sliders are the levels wanted there; the
+// filters' own gains are worked out to give them (soundBandGains), as
+// sound.band_gains does.
+var SOUND_BANDS = [25, 40, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 16000]
+var SOUND_WIDTH = 0.8
+// Settings from before 0.14: ten bands, one octave wide.
+var SOUND_OLD_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 var SOUND_LIMIT = 12
 var SOUND_SPEED = [0.5, 2]
 var SOUND_RATE = 48000
 var SOUND_PRESETS = [
-  { id: "flat", name: "Flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
-  { id: "melody", name: "Melody", bands: [-2, -1.5, -1, 0.5, 2, 3.5, 3.5, 2, 0.5, -0.5] },
-  { id: "kuthu", name: "Kuthu", bands: [6, 5, 3, 1, 0, 0, 1, 2, 2, 1] },
-  { id: "bass", name: "Bass boost", bands: [6, 5, 4.5, 2.5, 0.5, 0, 0, 0, 0, 0] },
-  { id: "treble", name: "Treble boost", bands: [0, 0, 0, 0, 0, 0.5, 2, 3.5, 5, 6] },
-  { id: "classical", name: "Classical", bands: [0, 0, 0, 0, 0, 0, -3, -3, -3, -4.5] },
-  { id: "rock", name: "Rock", bands: [5, 3, -2, -3.5, -1.5, 1.5, 3.5, 4.5, 4.5, 4.5] },
-  { id: "pop", name: "Pop", bands: [-1, 2.5, 4, 4.5, 3, 0, -1.5, -1.5, -1, -1] },
-  { id: "dance", name: "Dance", bands: [6, 4.5, 1.5, 0, 0, -3, -4, -4, 0, 0] },
-  { id: "jazz", name: "Jazz", bands: [3, 2, 1, 2, -1.5, -1.5, 0, 1, 2, 3] },
-  { id: "acoustic", name: "Acoustic", bands: [4, 4, 3, 1, 1.5, 1.5, 3, 3.5, 3, 2] },
-  { id: "loudness", name: "Loudness", bands: [5, 4, 2, 0, -1, -1, 0, 2, 4, 5] },
-  { id: "headphones", name: "Headphones", bands: [3, 2, 1, 0, -0.5, 0, 1, 2, 2.5, 3] },
-  { id: "night", name: "Late night", bands: [-1, -1, 0, 1, 1.5, 1, 0, -1, -2, -3] }
+  { id: "flat", name: "Flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  { id: "melody", name: "Melody", bands: [-1.5, -2, -2, -1, -0.5, 1, 2, 3, 4.5, 4, 3.5, 3, 1, 0.5, -0.5] },
+  { id: "kuthu", name: "Kuthu", bands: [5, 6, 6.5, 4.5, 3, 2, 0.5, 0.5, 0.5, 1, 1.5, 2.5, 2.5, 2, 1] },
+  { id: "bass", name: "Bass boost", bands: [5, 6, 7, 5.5, 4.5, 3.5, 1.5, 0.5, 0, 0, 0, 0, 0, 0, 0] },
+  { id: "treble", name: "Treble boost", bands: [0, 0, 0, 0, 0, 0, 0, 0.5, 1, 2, 3.5, 5.5, 6, 7, 6.5] },
+  { id: "classical", name: "Classical", bands: [0, 0, 0, 0, 0, 0, 0, 0, -0.5, -2.5, -3.5, -4.5, -4, -4.5, -5] },
+  { id: "rock", name: "Rock", bands: [4, 4, 3.5, -0.5, -2.5, -4, -2, -0.5, 2, 3.5, 4.5, 6.5, 6, 6, 5] },
+  { id: "pop", name: "Pop", bands: [-0.5, 0.5, 3.5, 4, 4.5, 6, 4, 2.5, 0.5, -1, -1.5, -2, -1.5, -1.5, -1] },
+  { id: "dance", name: "Dance", bands: [5, 5.5, 6, 3, 1.5, 0.5, -0.5, -1.5, -4, -4.5, -4.5, -5, -1.5, -0.5, 0] },
+  { id: "jazz", name: "Jazz", bands: [2.5, 3, 3, 1.5, 1.5, 2, -0.5, -1.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3, 3] },
+  { id: "acoustic", name: "Acoustic", bands: [3.5, 4.5, 5.5, 4, 3, 2, 2, 2, 2.5, 3, 4, 5, 4, 3.5, 2.5] },
+  { id: "loudness", name: "Loudness", bands: [4, 5, 5.5, 3, 2, 0.5, -0.5, -1, -1, 0, 1, 3, 4.5, 5.5, 5.5] },
+  { id: "headphones", name: "Headphones", bands: [2.5, 3, 2.5, 1.5, 1, 0, 0, 0, 0, 1, 1.5, 3, 3, 3.5, 3.5] },
+  { id: "night", name: "Late night", bands: [-1, -1, -1, -0.5, 0.5, 1.5, 1.5, 1.5, 1, 0, -0.5, -1.5, -2.5, -3, -3] }
 ]
-var SOUND_DEFAULTS = { on: false, preset: "flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], preamp: 0, bass: 0,
+var SOUND_DEFAULTS = { on: false, preset: "flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], preamp: 0, bass: 0,
   treble: 0, balance: 0, noclip: true, speed: 1, presets: {} }
 
 // The filters that shape the sound: {name, f (Hz), t ("o": w in octaves, "q"), w}.
 // ("pre", "left" and "right" are flat gains, so they don't change the shape.)
-var SOUND_SHAPE = SOUND_BANDS.map(function(f, i) { return { name: "b" + i, f: f, t: "o", w: 1 } })
+var SOUND_SHAPE = SOUND_BANDS.map(function(f, i) { return { name: "b" + i, f: f, t: "o", w: SOUND_WIDTH } })
   .concat([{ name: "bass", f: 60, t: "o", w: 3 }, { name: "treble", f: 10000, t: "o", w: 2 }])
 
 // To 0.1 dB, halves up (as Python's tenth).
@@ -962,10 +968,19 @@ function soundNumber(value, low, high, fallback) {
   return isNaN(x) ? (fallback === undefined ? 0 : fallback) : Math.min(high, Math.max(low, x))
 }
 
+// Fifteen band levels in range; ten (from before 0.14) become the levels
+// their old filters gave at the new centres (sound.bands_of).
 function soundBandsOf(values) {
+  values = Array.isArray(values) ? values : []
+  if (values.length === SOUND_OLD_BANDS.length) {
+    var old = SOUND_OLD_BANDS.map(function(f, i) {
+      return { f: f, t: "o", w: 1, g: soundNumber(values[i], -SOUND_LIMIT, SOUND_LIMIT) }
+    })
+    values = SOUND_BANDS.map(function(f) { return soundResponse(old, f) })
+  }
   var out = []
   for (var i = 0; i < SOUND_BANDS.length; i++)
-    out.push(soundTenth(soundNumber(values && i < values.length ? values[i] : 0, -SOUND_LIMIT, SOUND_LIMIT)))
+    out.push(soundTenth(soundNumber(i < values.length ? values[i] : 0, -SOUND_LIMIT, SOUND_LIMIT)))
   return out
 }
 
@@ -973,6 +988,13 @@ function soundBandsOf(values) {
 function soundNormalize(settings) {
   var s = settings && typeof settings === "object" ? settings : {}
   var get = function(key) { return s[key] === undefined ? SOUND_DEFAULTS[key] : s[key] }
+  var bands = soundBandsOf(get("bands"))
+  // A built-in preset from before 0.14 is that preset in fifteen bands
+  // (which are its old levels to the half dB).
+  var builtIn = SOUND_PRESETS.filter(function(p) { return p.id === get("preset") })[0]
+  if (builtIn && Array.isArray(get("bands")) && get("bands").length === SOUND_OLD_BANDS.length
+      && JSON.stringify(bands.map(function(b) { return Math.floor(b * 2 + 0.5) / 2 })) === JSON.stringify(builtIn.bands))
+    bands = builtIn.bands.slice()
   var presets = {}
   var saved = get("presets") || {}
   for (var name in saved)
@@ -980,7 +1002,7 @@ function soundNormalize(settings) {
   return {
     on: get("on") === true,
     preset: typeof get("preset") === "string" ? get("preset") : "",
-    bands: soundBandsOf(Array.isArray(get("bands")) ? get("bands") : []),
+    bands: bands,
     preamp: soundTenth(soundNumber(get("preamp"), -SOUND_LIMIT, SOUND_LIMIT)),
     bass: soundTenth(soundNumber(get("bass"), -SOUND_LIMIT, SOUND_LIMIT)),
     treble: soundTenth(soundNumber(get("treble"), -SOUND_LIMIT, SOUND_LIMIT)),
@@ -995,10 +1017,73 @@ function soundSame(a, b) {
   return JSON.stringify(soundNormalize(a)) === JSON.stringify(soundNormalize(b))
 }
 
+// Where the curve is matched to the sliders: each centre, and halfway between
+// two (their average there), which counts half: [{f, i, j, w}].
+var SOUND_FIT = SOUND_BANDS.map(function(f, i) { return { f: f, i: i, j: i, w: 1 } }).concat(
+  SOUND_BANDS.slice(0, -1).map(function(f, i) { return { f: Math.sqrt(f * SOUND_BANDS[i + 1]), i: i, j: i + 1, w: 0.5 } }))
+
+// x with a·x = y (Gaussian elimination with partial pivoting).
+function soundSolve(a, y) {
+  var n = y.length
+  var m = a.map(function(row, i) { return row.concat([y[i]]) })
+  for (var c = 0; c < n; c++) {
+    var p = c
+    for (var r = c + 1; r < n; r++) if (Math.abs(m[r][c]) > Math.abs(m[p][c])) p = r
+    var swap = m[c]; m[c] = m[p]; m[p] = swap
+    for (r = 0; r < n; r++) {
+      if (r === c || !m[r][c]) continue
+      var k = m[r][c] / m[c][c]
+      for (var j = c; j <= n; j++) m[r][j] -= k * m[c][j]
+    }
+  }
+  return m.map(function(row, i) { return row[n] / row[i] })
+}
+
+// The band filters' gains (dB) that put the curve at the bands' levels: the
+// interaction at the fit points, solved by least squares twice, the second
+// time measured at the first gains (Välimäki and Liski's accurate cascade).
+var soundGainsSeen = { key: "", gains: null }
+function soundBandGains(bands) {
+  var key = bands.join(",")
+  if (soundGainsSeen.key === key) return soundGainsSeen.gains
+  var n = SOUND_BANDS.length
+  var g = bands.some(function(b) { return b }) ? null : bands.map(function() { return 0 })
+  if (!g) {
+    var want = SOUND_FIT.map(function(p) { return (bands[p.i] + bands[p.j]) / 2 })
+    g = bands.map(function() { return 12 })
+    for (var pass = 0; pass < 2; pass++) {
+      var at = g.map(function(x) { return Math.abs(x) >= 0.5 ? x : 12 })
+      var a = SOUND_FIT.map(function(p) {
+        return SOUND_SHAPE.slice(0, n).map(function(f, m) {
+          return soundResponse([{ f: f.f, t: f.t, w: f.w, g: at[m] }], p.f) / at[m]
+        })
+      })
+      var normal = [], right = []
+      for (var i = 0; i < n; i++) {
+        var row = []
+        for (var j = 0; j < n; j++) {
+          var sum = 0
+          for (var k = 0; k < a.length; k++) sum += SOUND_FIT[k].w * a[k][i] * a[k][j]
+          row.push(sum)
+        }
+        normal.push(row)
+        var r = 0
+        for (k = 0; k < a.length; k++) r += SOUND_FIT[k].w * a[k][i] * want[k]
+        right.push(r)
+      }
+      g = soundSolve(normal, right)
+    }
+    g = g.map(function(x) { return Math.min(30, Math.max(-30, x)) })
+  }
+  soundGainsSeen = { key: key, gains: g }
+  return g
+}
+
 // The shape filters with their gains: [{f, t, w, g}].
 function soundCurve(s) {
+  var bandGains = soundBandGains(s.bands)
   return SOUND_SHAPE.map(function(p, i) {
-    return { f: p.f, t: p.t, w: p.w, g: i < SOUND_BANDS.length ? s.bands[i] : s[p.name] }
+    return { f: p.f, t: p.t, w: p.w, g: i < SOUND_BANDS.length ? bandGains[i] : s[p.name] }
   })
 }
 
@@ -1044,7 +1129,8 @@ function soundPeak(s) {
 function soundGains(settings) {
   var s = soundNormalize(settings)
   var out = { pre: soundTenth(Math.max(-30, s.preamp - (s.noclip ? soundPeak(s) : 0))) }
-  for (var i = 0; i < s.bands.length; i++) out["b" + i] = s.bands[i]
+  var bandGains = soundBandGains(s.bands)
+  for (var i = 0; i < bandGains.length; i++) out["b" + i] = soundTenth(bandGains[i])
   out.bass = s.bass
   out.treble = s.treble
   out.left = s.balance > 0 ? soundTenth(20 * Math.log10(Math.max(0.01, 1 - s.balance))) : 0
@@ -1076,7 +1162,7 @@ function soundMatchingPreset(s) {
   return ""
 }
 
-// "31", "1k", "16k".
+// "25", "1k", "1.6k", "16k".
 function soundBandLabel(f) { return f >= 1000 ? f / 1000 + "k" : String(f) }
 
 // "+2.5", "-3", "0".

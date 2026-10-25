@@ -1799,7 +1799,7 @@ def cmd_config(args, out):
 
 
 def _sound_band(key):
-    """A band by number (1-10) or frequency (125, 1k, 16000)."""
+    """A band by number (1-15) or frequency (100, 1k, 1.6k, 16000)."""
     text = key.strip().lower()
     if text.isdigit() and 1 <= int(text) <= len(sound.BANDS):
         return int(text) - 1
@@ -1815,7 +1815,7 @@ def _sound_band(key):
 
 
 def _hz(f):
-    return "%dk" % (f // 1000) if f >= 1000 else str(f)
+    return "%gk" % (f / 1000) if f >= 1000 else str(f)
 
 
 def _find_preset(name, s):
@@ -2270,8 +2270,8 @@ def build_parser():
     a.add_argument("action", nargs="?", default="show",
                    choices=("show", "on", "off", "preset", "presets", "set", "save", "delete", "reset"))
     a.add_argument("name", nargs="*", help="a preset (preset, save, delete)")
-    a.add_argument("--bands", help="all ten bands in dB, e.g. --bands=-2,-1,0,1,2,3,3,2,1,0")
-    a.add_argument("--band", action="append", metavar="BAND=DB", help="one band by number (1-10) or Hz (1k), e.g. 1k=+2")
+    a.add_argument("--bands", help="all fifteen bands in dB, 25 Hz to 16 kHz, e.g. --bands=0,0,-1,-1,0,1,2,3,4,4,3,3,1,0,0")
+    a.add_argument("--band", action="append", metavar="BAND=DB", help="one band by number (1-15) or Hz (1.6k), e.g. 1k=+2")
     a.add_argument("--preamp", type=float, metavar="DB")
     a.add_argument("--bass", type=float, metavar="DB")
     a.add_argument("--treble", type=float, metavar="DB")

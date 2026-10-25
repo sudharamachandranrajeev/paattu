@@ -1,12 +1,14 @@
-// Sound: a ten-band equaliser drawn over its curve, presets (yours too),
-// and knobs for the preamp, bass, treble, balance and speed. Moving a
-// control plays it straight away; letting go keeps it.
+// Sound: a fifteen-band equaliser drawn over its curve, presets (yours
+// too), and knobs for the preamp, bass, treble, balance and speed. Moving a
+// control plays it straight away; letting go keeps it. Fine steps (or Shift
+// on a keyboard) move the bands in tenths of a dB, slowly, from where they are.
 
 import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_state.dart';
 import '../sound.dart';
@@ -26,6 +28,7 @@ class SoundPage extends StatefulWidget {
 class _SoundPageState extends State<SoundPage> {
   late final AppState _app = Paattu.of(context);
   late Sound _sound = _app.settings.sound;
+  bool _fine = false;
 
   /// A control moving: heard now, kept when it's let go. Shaping the sound
   /// while the equaliser is off turns it on.
@@ -99,6 +102,7 @@ class _SoundPageState extends State<SoundPage> {
                             child: _BandSlider(
                               label: bandLabel(soundBands[i]),
                               value: s.bands[i],
+                              fine: _fine,
                               onChanged: (v) => _move(s.withBands([...s.bands]..[i] = v)),
                               onChangeEnd: (v) => _keep(_sound.withBands([..._sound.bands]..[i] = v)),
                             ),
@@ -109,6 +113,23 @@ class _SoundPageState extends State<SoundPage> {
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              FilterChip(
+                avatar: const Icon(Icons.tune, size: 18),
+                label: const Text('Fine steps'),
+                tooltip: 'Move the bands in tenths of a dB, slowly, from where they are (or hold Shift)',
+                selected: _fine,
+                onSelected: (on) => setState(() => _fine = on),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('15 bands, 25 Hz to 16 kHz. Double-tap a band for 0.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+              ),
+            ],
           ),
           const SectionHeader('Presets'),
           Wrap(
@@ -240,7 +261,8 @@ class _CurvePainter extends CustomPainter {
     final shape = sound.curve.where((g) => g.$2 != 0).toList();
     final line = Path();
     for (var x = 0.0; x <= size.width; x += 2) {
-      final f = 31.25 * pow(2, (x - column / 2) / column);
+      // A column is 2/3 octave, the first centred on 25 Hz.
+      final f = 25 * pow(2, (x - column / 2) / column * 2 / 3);
       final y = yOf(shape.isEmpty ? 0 : soundResponse(shape, f.toDouble()));
       if (x == 0) {
         line.moveTo(x, y);
@@ -302,9 +324,18 @@ mixin _Wheel<T extends StatefulWidget> on State<T> {
 }
 
 class _BandSlider extends StatefulWidget {
-  const _BandSlider({required this.label, required this.value, required this.onChanged, required this.onChangeEnd});
+  const _BandSlider({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    required this.onChangeEnd,
+    this.fine = false,
+  });
   final String label;
   final double value;
+
+  /// Tenths of a dB, a quarter as fast, from where it is (also with Shift held).
+  final bool fine;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeEnd;
 
@@ -315,19 +346,27 @@ class _BandSlider extends StatefulWidget {
 class _BandSliderState extends State<_BandSlider> with _Wheel {
   bool _dragging = false;
 
+  /// Where a fine drag started, and the value then.
+  double _fromDy = 0, _fromValue = 0;
+
+  bool get _fine => widget.fine || HardwareKeyboard.instance.isShiftPressed;
+
   @override
   double get value => widget.value;
   @override
-  double get step => 0.5;
+  double get step => _fine ? 0.1 : 0.5;
   @override
-  double snap(double v) => _snap(v, -soundLimit, soundLimit, step);
+  double snap(double v) => tenth(_snap(v, -soundLimit, soundLimit, step));
   @override
   void moved(double v) => widget.onChanged(v);
   @override
   void committed(double v) => widget.onChangeEnd(v);
 
-  double _at(double dy, double height) =>
-      snap(soundLimit - (dy - _trackInset) / max(1, height - 2 * _trackInset) * 2 * soundLimit);
+  double _at(double dy, double height) {
+    final perPixel = 2 * soundLimit / max(1, height - 2 * _trackInset);
+    if (_fine) return snap(_fromValue - (dy - _fromDy) * perPixel / 4);
+    return snap(soundLimit - (dy - _trackInset) * perPixel);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -350,6 +389,8 @@ class _BandSliderState extends State<_BandSlider> with _Wheel {
             dragStartBehavior: DragStartBehavior.down,
             onVerticalDragStart: (d) {
               setState(() => _dragging = true);
+              _fromDy = d.localPosition.dy;
+              _fromValue = widget.value;
               moved(_at(d.localPosition.dy, box.maxHeight));
             },
             onVerticalDragUpdate: (d) {
@@ -366,12 +407,15 @@ class _BandSliderState extends State<_BandSlider> with _Wheel {
               children: [
                 SizedBox(
                   height: _labelHeight,
-                  child: Center(
-                    child: FittedBox(
-                      child: Text(text,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: _dragging ? scheme.primary : scheme.onSurface,
-                              fontWeight: _dragging ? FontWeight.w700 : FontWeight.w500)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Center(
+                      child: FittedBox(
+                        child: Text(text,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                                color: _dragging ? scheme.primary : scheme.onSurface,
+                                fontWeight: _dragging ? FontWeight.w700 : FontWeight.w500)),
+                      ),
                     ),
                   ),
                 ),
@@ -385,9 +429,13 @@ class _BandSliderState extends State<_BandSlider> with _Wheel {
                 const SizedBox(height: _trackInset - _labelHeight),
                 SizedBox(
                   height: _labelHeight,
-                  child: Center(
-                    child: FittedBox(
-                      child: Text(widget.label, style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  child: Padding(
+                    // A gap, so neighbouring labels on a narrow phone don't run together.
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Center(
+                      child: FittedBox(
+                        child: Text(widget.label, style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+                      ),
                     ),
                   ),
                 ),

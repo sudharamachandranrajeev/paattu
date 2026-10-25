@@ -1,8 +1,8 @@
 import QtQuick
 
 // A vertical equaliser slider: its value on top, the band underneath. Drag
-// or scroll to move it, double-click to put it back to `origin`. `moved`
-// follows the pointer; `committed` is the value to keep.
+// or scroll to move it (holding Shift, in fine steps), double-click to put it
+// back to `origin`. `moved` follows the pointer; `committed` is the value to keep.
 Item {
   id: root
 
@@ -11,6 +11,7 @@ Item {
   property real to: 12
   property real origin: 0
   property real step: 0.5
+  property real fineStep: 0.1
   property string valueText: ""
   property string label: ""
   property color textColor: "#ffffff"
@@ -28,7 +29,10 @@ Item {
   implicitWidth: 44
   implicitHeight: 220
 
-  function snap(v) { return Math.max(from, Math.min(to, Math.round(v / step) * step)) }
+  function snap(v, fine) {
+    var by = fine ? fineStep : step
+    return Math.max(from, Math.min(to, Math.round(v / by) * by))
+  }
   function yOf(v) { return (to - v) / (to - from) * track.height }
 
   Text {
@@ -98,12 +102,24 @@ Item {
     cursorShape: Qt.PointingHandCursor
     // The release that ends a double-click keeps the reset.
     property bool reset: false
-    function at(y) { return root.snap(root.to - (y - track.y) / Math.max(1, track.height) * (root.to - root.from)) }
-    onPressed: function(e) { root.moved(at(e.y)) }
-    onPositionChanged: function(e) { if (pressed) root.moved(at(e.y)) }
+    // With Shift held, the slider moves a tenth as fast from where it was
+    // taken, in fine steps.
+    property real fromY: 0
+    property real fromValue: 0
+    function at(e) {
+      var per = (root.to - root.from) / Math.max(1, track.height)
+      if (e.modifiers & Qt.ShiftModifier) return root.snap(fromValue - (e.y - fromY) * per / 10, true)
+      return root.snap(root.to - (e.y - track.y) * per)
+    }
+    onPressed: function(e) {
+      fromY = e.y
+      fromValue = root.value
+      root.moved(at(e))
+    }
+    onPositionChanged: function(e) { if (pressed) root.moved(at(e)) }
     onReleased: function(e) {
       if (reset) reset = false
-      else root.committed(at(e.y))
+      else root.committed(at(e))
     }
     onDoubleClicked: {
       reset = true
@@ -111,7 +127,11 @@ Item {
       root.committed(root.origin)
     }
     onWheel: function(w) {
-      root.moved(root.snap(root.value + (w.angleDelta.y > 0 ? root.step : -root.step)))
+      var fine = (w.modifiers & Qt.ShiftModifier) !== 0
+      var by = fine ? root.fineStep : root.step
+      // (Shift turns some mice's wheel sideways.)
+      var delta = w.angleDelta.y || w.angleDelta.x
+      root.moved(root.snap(root.value + (delta > 0 ? by : -by), fine))
       wheelTimer.restart()
     }
   }

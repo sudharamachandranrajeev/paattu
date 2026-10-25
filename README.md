@@ -58,7 +58,7 @@ the Linux command share one library format: export it from one (Settings → Exp
   cover's colours moving through it, with how it sounds in English letters under it (Malayalam,
   Tamil, Hindi, Telugu, Kannada); all the words in place of Up next, and a bar with the film, year,
   singers, language and plays.
-* **Sound** – a ten-band equaliser with presets (Melody, Kuthu, Bass boost, Late night…), preamp,
+* **Sound** – a fifteen-band equaliser (ISO 2/3-octave, each slider the level you get there) with presets (Melody, Kuthu, Bass boost, Late night…), preamp,
   bass, treble, balance and pitch-keeping speed, on every platform.
 * **Fades and crossfades** – songs fade into each other; the app readies the next song 25 s early
   and downloads the next two in pieces.
@@ -753,11 +753,26 @@ export and import for them.
 <details>
 <summary><b>Sound: equaliser, tone, balance and speed</b></summary>
 
-A ten-band equaliser (31 Hz to 16 kHz, ±12 dB) with presets (Melody, Kuthu,
-Bass boost, Rock, Late night and more, plus your own), a preamp, bass and
-treble, left / right balance, and speed that keeps the pitch. "Keep loud
-songs from clipping" (on by default) lowers the preamp by the biggest
-boost, so a bass boost doesn't distort.
+A fifteen-band equaliser (the ISO 2/3-octave bands: 25, 40, 63, 100, 160,
+250, 400, 630 Hz, 1, 1.6, 2.5, 4, 6.3, 10 and 16 kHz, ±12 dB) with presets
+(Melody, Kuthu, Bass boost, Rock, Late night and more, plus your own), a
+preamp, bass and treble, left / right balance, and speed that keeps the
+pitch. "Keep loud songs from clipping" (on by default) lowers the preamp by
+the biggest boost, so a bass boost doesn't distort.
+
+Each slider is the level the sound gets at its band, to within about half a
+dB. Neighbouring band filters overlap, so setting each filter to its slider
+would pile up (fifteen bands at +12 dB would give about +22 dB) and one band
+would lift its neighbours. Paattu works out the filters' own gains instead:
+it measures how each filter reaches the band centres and the points between,
+and solves for the gains by least squares, twice (Välimäki and Liski's
+*accurate cascade graphic equaliser*). The curve drawn behind the sliders is
+what you hear. For fine tuning, hold Shift (or turn on *Fine steps* in the
+app): the slider moves in tenths of a dB, a quarter as fast, from where it is.
+
+Settings from before 0.14 had ten bands. They become the fifteen levels
+those ten filters gave, so the sound stays as it was; the built-in presets
+were carried over the same way.
 
 - **Omarchy**: the Sound page in the Paattu window (the equaliser button on
   the now-playing bar opens it). Drag a slider or knob, scroll over it, or
@@ -765,14 +780,14 @@ boost, so a bass boost doesn't distort.
 - **Windows and the Linux app**: Settings → Sound, or the equaliser button
   on Now playing. Same controls and presets.
 - **Android**: the same page, played through the phone's own equaliser
-  (usually five bands, so the curve is matched at those) and loudness
-  enhancer. There's no balance on Android.
+  and loudness enhancer. That equaliser usually has five bands, so the
+  fifteen-band curve is matched at those five. There's no balance on Android.
 
 ```
 paattu sound                              # what's on
 paattu sound presets
 paattu sound preset melody                # turns the equaliser on
-paattu sound set --band 1k=+2 --band 31=-1 --bass 3 --treble -1
+paattu sound set --band 1k=+2 --band 1.6k=+1.5 --band 25=-1 --bass 3 --treble -1
 paattu sound set --preamp -2 --balance -0.2 --speed 1.25 --noclip on
 paattu sound save "Car"                   # keep the bands as your preset
 paattu sound delete "Car"
@@ -840,8 +855,7 @@ paattu export cliamp      # every saved playlist → ~/.config/cliamp/playlists/
 ```
 
 cliamp then plays the same Malayalam / Tamil library with its Winamp EQ and
-visualizer. Features worth bringing over next, natively: the 10-band EQ
-presets (mpv `af` equalizer), the spectrum visualizer (cava), Radio Browser
+visualizer. Features worth bringing over next, natively: the spectrum visualizer (cava), Radio Browser
 stations (cliamp's history already has Anbu FM Malayalam, BIG 92.7, Big FM
 Tamil), and synced lyrics (LRCLIB).
 
@@ -873,7 +887,7 @@ added the rule before search existed, run it again to add the new sites.
    or keep a song from any link; Saved songs; stream quality on now playing
 5. ✅ Albums, artists and playlists in search, endless results, suggestions
    while typing; faster YouTube in the app
-6. ✅ Sound: a ten-band equaliser with presets, preamp, bass, treble,
+6. ✅ Sound: a fifteen-band equaliser with presets, preamp, bass, treble,
    balance and speed, on Omarchy, Windows, Linux and Android
 7. ✅ A new look, and the song's video softly blurred behind Now playing
 8. ✅ Song radio, auto radio, Daily / Weekly / Monthly playlists, playlists

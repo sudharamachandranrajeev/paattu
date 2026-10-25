@@ -20,9 +20,9 @@ void main() {
   });
 
   test('a band peaks at its frequency; a tiny Q is a flat gain', () {
-    final band = [(soundFilters[6], 6.0)]; // 1 kHz
+    final band = [(soundFilters[9], 6.0)]; // 1 kHz
     expect(soundResponse(band, 1000), closeTo(6.0, 0.01));
-    expect(soundResponse(band, 62), lessThan(0.3));
+    expect(soundResponse(band, 100), lessThan(0.3));
     final pre = [(soundFilters[0], -6.0)];
     for (final f in [25.0, 100.0, 1000.0, 8000.0, 18000.0]) {
       expect(soundResponse(pre, f), closeTo(-6.0, 0.05));
@@ -30,17 +30,46 @@ void main() {
   });
 
   test('noclip lowers the preamp by the peak', () {
-    const s = Sound(on: true, bands: [0, 0, 0, 0, 0, 6, 0, 0, 0, 0]);
-    expect(s.gains['pre'], -6.0);
+    const s = Sound(on: true, bands: [0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0]);
+    expect(s.gains['pre'], closeTo(-6.0, 0.2));
     expect(s.copyWith(noclip: false).gains['pre'], 0.0);
-    expect(const Sound(on: true, bands: [-3, -3, -3, -3, -3, -3, -3, -3, -3, -3]).gains['pre'], 0.0);
+    expect(Sound(on: true, bands: List.filled(15, -3)).gains['pre'], 0.0);
+  });
+
+  test('the curve lands on the sliders', () {
+    for (final bands in [
+      List<double>.filled(15, 12),
+      [for (var i = 0; i < 15; i++) i.isOdd ? 12.0 : -12.0],
+      [for (var i = 0; i < 15; i++) i == 7 ? 12.0 : 0.0],
+      builtInPresets[1].bands,
+    ]) {
+      final shape = Sound(bands: bands).curve;
+      for (var i = 0; i < 15; i++) {
+        expect(soundResponse(shape, soundBands[i].toDouble()), closeTo(bands[i], 0.5), reason: '$bands at ${soundBands[i]}');
+      }
+    }
+  });
+
+  test('ten bands from before 0.14 become fifteen', () {
+    const old = <double>[4, 3, 1, 0, -1, 0, 1.5, 2, 3, 3];
+    final shape = [for (var i = 0; i < 10; i++) (SoundFilter('', oldSoundBands[i], 1), old[i])];
+    final s = Sound.fromJson({'bands': old, 'preset': 'rock', 'presets': {'Car': old}});
+    expect(s.bands.length, 15);
+    for (var i = 0; i < 15; i++) {
+      expect(s.bands[i], closeTo(soundResponse(shape, soundBands[i].toDouble()), 0.051));
+    }
+    expect(s.saved['Car'], s.bands);
+    final rock = Sound.fromJson({'preset': 'rock', 'bands': [5, 3, -2, -3.5, -1.5, 1.5, 3.5, 4.5, 4.5, 4.5]});
+    expect(rock.bands, builtInPresets[6].bands);
+    expect(rock.matchingPreset, 'rock');
   });
 
   test('numbers and words', () {
     expect([2.5, 3.0, -0.0, -0.04, 1.25, -2.25].map(soundFmt), ['2.5', '3', '0', '0', '1.3', '-2.2']);
     expect([2.5, -3.0, 0.0].map(soundDb), ['+2.5', '-3', '0']);
-    expect(soundBands.map(bandLabel).toList(), ['31', '62', '125', '250', '500', '1k', '2k', '4k', '8k', '16k']);
-    expect(const Sound(bands: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]).graph, '');
+    expect(soundBands.map(bandLabel).toList(),
+        ['25', '40', '63', '100', '160', '250', '400', '630', '1k', '1.6k', '2.5k', '4k', '6.3k', '10k', '16k']);
+    expect(Sound(bands: List.filled(15, 5)).graph, '');
     expect(Sound.fromJson({'on': true, 'preset': 'melody', 'bass': 2, 'speed': 1.25}).summary,
         'On · Melody · bass +2 dB · 1.25×');
     expect(Sound.fromJson({'preset': '', 'balance': -0.3}).summary, 'Off · Custom · balance 30% left');
@@ -48,7 +77,7 @@ void main() {
 
   test('presets: pick, follow the bands, save and delete', () {
     var s = const Sound().withPreset('melody');
-    expect((s.on, s.preset, s.bands[5]), (true, 'melody', 3.5));
+    expect((s.on, s.preset, s.bands[8]), (true, 'melody', 4.5));
     s = s.withBands([...s.bands]..[0] = 1);
     expect(s.preset, '');
     s = s.savedAs(' Car ');
@@ -64,13 +93,13 @@ void main() {
     expect(s.reset().bands, everyElement(0.0));
   });
 
-  test('a dragged band moves only its filter and the preamp', () {
+  test('a dragged band moves its filter, its neighbours and the preamp', () {
     const before = Sound(on: true);
-    final after = before.copyWith(bands: [0, 0, 0, 6, 0, 0, 0, 0, 0, 0]);
-    expect(after.movesFrom(before), [
-      ['af-command', 'paattu', 'g', '-6', 'equalizer@pre'],
-      ['af-command', 'paattu', 'g', '6', 'equalizer@b3'],
-    ]);
+    final after = before.copyWith(bands: [0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    final moved = after.movesFrom(before).map((c) => c[4]).toList();
+    expect(moved.first, 'equalizer@pre');
+    expect(moved, containsAll(['equalizer@b2', 'equalizer@b3', 'equalizer@b4']));
+    expect(moved, isNot(contains('equalizer@b10')));
     expect(after.movesFrom(after), isEmpty);
   });
 
@@ -84,9 +113,9 @@ void main() {
     expect(loudness, 0.0);
     final (_, louder) = Sound.fromJson({'on': true, 'preamp': 4}).phone(centres, -15, 15);
     expect(louder, 4.0);
-    final (clamped, _) = Sound.fromJson({'on': true, 'noclip': false, 'bands': List.filled(10, 12)}).phone(centres, -15, 15);
+    final (clamped, _) = Sound.fromJson({'on': true, 'noclip': false, 'bands': List.filled(15, 12)}).phone(centres, -15, 15);
     expect(clamped, everyElement(lessThanOrEqualTo(15)));
-    final (off, quiet) = const Sound(bands: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6]).phone(centres, -15, 15);
+    final (off, quiet) = Sound(bands: List.filled(15, 6)).phone(centres, -15, 15);
     expect(off, List.filled(5, 0.0));
     expect(quiet, 0.0);
   });
