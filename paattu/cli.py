@@ -14,7 +14,7 @@ import sys
 import time
 
 from . import (__version__, art, browse, charts, cliamp, config, depth, engine, history, library, listenbrainz, lyrics,
-               made, offline, paths, radio, rhythm, seeds, sound, sources, titles, update, youtube)
+               made, offline, paths, radio, rhythm, seeds, sound, sources, stats, titles, update, youtube)
 from .depth import DepthError
 from .listenbrainz import ListenBrainzError
 from .offline import OfflineError
@@ -1323,6 +1323,30 @@ def _play_made(songs, source, out):
     _spawn_art([t["id"] for t in songs[:8]])
 
 
+def cmd_stats(args, out):
+    """Your music in numbers (stats.py), for the last --days or all of it."""
+    data = library.load()
+    h = history.History.load()
+    numbers = stats.music_stats(h.signals, h.track, time.time(), args.days,
+                                library.playlist_tracks(data, library.FAVOURITES))
+    numbers["quirks"] = stats.quirks(numbers)
+    if args.json:
+        out.data(numbers)
+        return
+    n = numbers
+    print("%s · %s · %s listened · %s · %s" % (
+        _plural(n["plays"], "play"), _plural(n["skips"], "skip"), _plural(n["minutes"], "minute"),
+        _plural(n["songs"], "song"), _plural(n["artists"], "artist")))
+    for title, why in n["quirks"]:
+        print("  %s: %s" % (title, why))
+    for heading, rows in (("Most played", n["top_songs"]), ("Singers and composers", n["top_artists"]),
+                          ("Films", n["top_films"])):
+        if rows:
+            print("\n" + heading)
+            for i, (name, count) in enumerate(rows, 1):
+                print("  %d. %s (%d)" % (i, name, count))
+
+
 def cmd_made(args, out):
     import datetime
     if not args.kind:
@@ -2259,6 +2283,9 @@ def build_parser():
                                             "login | logout | sync | status")
     a.add_argument("action", nargs="?", default="status", choices=("login", "logout", "sync", "status"))
     a.set_defaults(func=cmd_listenbrainz)
+    a = sub.add_parser("stats", help="your music in numbers, and the titles it earned you")
+    a.add_argument("--days", type=int, help="only the last DAYS days (default: all)")
+    a.set_defaults(func=cmd_stats)
     a = sub.add_parser("made", help="playlists made for you: daily, weekly or monthly (none: what's there)")
     a.add_argument("kind", nargs="?", choices=made.KINDS)
     a.add_argument("--refresh", action="store_true", help="make a new one now")

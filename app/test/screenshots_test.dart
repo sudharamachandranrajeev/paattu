@@ -29,6 +29,7 @@ import 'package:paattu/src/settings.dart';
 import 'package:paattu/src/ui/now_playing.dart';
 import 'package:paattu/src/ui/shell.dart';
 import 'package:paattu/src/ui/sound_page.dart';
+import 'package:paattu/src/ui/stats_page.dart';
 import 'package:paattu/src/update.dart';
 import 'package:paattu/src/util.dart';
 
@@ -105,6 +106,10 @@ void main() {
         await shot('playlist-$mode');
         app.navigator.currentState!.push(MaterialPageRoute<void>(builder: (_) => const SoundPage()));
         await shot('sound-$mode');
+        app.navigator.currentState!.pop();
+        await settle();
+        app.navigator.currentState!.push(MaterialPageRoute<void>(builder: (_) => const StatsPage()));
+        await shot('stats-$mode');
         app.navigator.currentState!.pop();
         await settle();
         await tap(find.byTooltip('Settings'));
@@ -344,7 +349,16 @@ Json _history(Json library) {
       };
   return {
     'version': 1,
-    'plays': <dynamic>[],
+    // A week of listening for Your music in numbers, the first songs most.
+    'plays': [
+      for (var i = 0; i < 90; i++)
+        {
+          'id': ids[(random.nextInt(ids.length) * random.nextInt(ids.length)) ~/ ids.length],
+          'at': now.millisecondsSinceEpoch ~/ 1000 - (89 - i) * 6700,
+          'heard': i % 6 == 0 ? 12 : 240,
+          'length': 240,
+        },
+    ],
     'tracks': library['tracks'],
     'made': {for (final kind in madeKinds) kind: made(kind)},
   };

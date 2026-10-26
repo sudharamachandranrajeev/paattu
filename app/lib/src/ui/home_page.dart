@@ -14,6 +14,7 @@ import 'made_page.dart';
 import 'mix_editor.dart';
 import 'offline_page.dart';
 import 'playlist_page.dart';
+import 'stats_page.dart';
 import 'widgets.dart';
 
 class HomePage extends StatelessWidget {
@@ -54,6 +55,19 @@ class HomePage extends StatelessWidget {
               _Hero(app: app, onSearch: onSearch),
               const SectionHeader('Made for you'),
               const MadeForYouShelf(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: Glass(
+                  onTap: () =>
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const StatsPage())),
+                  child: const ListTile(
+                    leading: Icon(Icons.insights),
+                    title: Text('Your music in numbers'),
+                    subtitle: Text('What you play most, when, the titles you earned, and you beside everyone else'),
+                    trailing: Icon(Icons.chevron_right),
+                  ),
+                ),
+              ),
               const SectionHeader('Charts'),
               const ChartsShelf(),
               const SectionHeader('Mixes'),

@@ -1,0 +1,458 @@
+{
+ "comment": "paattu/stats.py and app/lib/src/stats.dart both run these; hours are UTC here.",
+ "now": 1000000000,
+ "tracks": {
+  "a": {
+   "id": "a",
+   "title": "Malare",
+   "movie": "Premam",
+   "credits": [
+    "Vijay Yesudas",
+    "Rajesh Murugesan"
+   ],
+   "language": "malayalam",
+   "rawTitle": "Malare Love Song"
+  },
+  "b": {
+   "id": "b",
+   "title": "Kalippu",
+   "movie": "Premam",
+   "credits": [
+    "Murali Gopy",
+    "Rajesh Murugesan"
+   ],
+   "rawTitle": "Kalippu Kuthu Dance"
+  },
+  "c": {
+   "id": "c",
+   "title": "Uyire",
+   "movie": "Bombay",
+   "credits": [
+    "A R Rahman"
+   ],
+   "language": "Tamil",
+   "rawTitle": "Uyire Sad Melody"
+  }
+ },
+ "plays": [
+  {
+   "id": "c",
+   "at": 982720000,
+   "heard": 250,
+   "length": 250
+  },
+  {
+   "id": "b",
+   "at": 997091200,
+   "heard": 200,
+   "length": 210
+  },
+  {
+   "id": "b",
+   "at": 997264000,
+   "heard": 200,
+   "length": 210
+  },
+  {
+   "id": "b",
+   "at": 997436800,
+   "heard": 200,
+   "length": 210
+  },
+  {
+   "id": "a",
+   "at": 998354800,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998441200,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998527600,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998614000,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998700400,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998786800,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998873200,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "a",
+   "at": 998959600,
+   "heard": 230,
+   "length": 240
+  },
+  {
+   "id": "c",
+   "at": 999618400,
+   "heard": 10,
+   "length": 250
+  },
+  {
+   "id": "c",
+   "at": 999704800,
+   "heard": 12,
+   "length": 250
+  },
+  {
+   "id": "zz",
+   "at": 999740800,
+   "heard": 100,
+   "length": 120
+  },
+  {
+   "id": "b",
+   "at": 999827200,
+   "heard": 0,
+   "removed": true
+  },
+  {
+   "id": "b",
+   "at": 999827201,
+   "heard": 0,
+   "removed": true
+  },
+  {
+   "id": "b",
+   "at": 999827202,
+   "heard": 0,
+   "removed": true
+  }
+ ],
+ "favourites": [
+  {
+   "id": "a2",
+   "title": "Malare",
+   "movie": "Premam"
+  }
+ ],
+ "runs": [
+  {
+   "days": null,
+   "stats": {
+    "plays": 13,
+    "skips": 2,
+    "removed": 3,
+    "minutes": 46,
+    "songs": 4,
+    "artists": 4,
+    "streak": 8,
+    "favourite_plays": 8,
+    "hours": [
+     8,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "top_songs": [
+     [
+      "Malare",
+      8
+     ],
+     [
+      "Kalippu",
+      3
+     ],
+     [
+      "Uyire",
+      1
+     ],
+     [
+      "zz",
+      1
+     ]
+    ],
+    "top_artists": [
+     [
+      "Rajesh Murugesan",
+      11
+     ],
+     [
+      "Vijay Yesudas",
+      8
+     ],
+     [
+      "Murali Gopy",
+      3
+     ],
+     [
+      "A R Rahman",
+      1
+     ]
+    ],
+    "top_films": [
+     [
+      "Premam",
+      11
+     ],
+     [
+      "Bombay",
+      1
+     ]
+    ],
+    "themes": {
+     "calm": 1,
+     "sad": 1,
+     "dance": 3,
+     "love": 8
+    },
+    "languages": {
+     "Tamil": 1,
+     "Malayalam": 8
+    }
+   },
+   "quirks": [
+    [
+     "Stuck on repeat",
+     "Malare, 8 times. It should start paying rent"
+    ],
+    [
+     "Rajesh Murugesan superfan",
+     "in 85% of your songs"
+    ],
+    [
+     "Hopeless romantic",
+     "62% love songs"
+    ],
+    [
+     "Midnight philosopher",
+     "you play most around 12 AM"
+    ],
+    [
+     "Loyal to the favourites",
+     "62% of your plays"
+    ],
+    [
+     "Unbroken",
+     "music 8 days in a row"
+    ],
+    [
+     "Picky DJ",
+     "took 3 songs out of the radio"
+    ]
+   ]
+  },
+  {
+   "days": 90,
+   "stats": {
+    "plays": 12,
+    "skips": 2,
+    "removed": 3,
+    "minutes": 42,
+    "songs": 3,
+    "artists": 3,
+    "streak": 8,
+    "favourite_plays": 8,
+    "hours": [
+     8,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     3,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "top_songs": [
+     [
+      "Malare",
+      8
+     ],
+     [
+      "Kalippu",
+      3
+     ],
+     [
+      "zz",
+      1
+     ]
+    ],
+    "top_artists": [
+     [
+      "Rajesh Murugesan",
+      11
+     ],
+     [
+      "Vijay Yesudas",
+      8
+     ],
+     [
+      "Murali Gopy",
+      3
+     ]
+    ],
+    "top_films": [
+     [
+      "Premam",
+      11
+     ]
+    ],
+    "themes": {
+     "dance": 3,
+     "love": 8
+    },
+    "languages": {
+     "Malayalam": 8
+    }
+   },
+   "quirks": [
+    [
+     "Stuck on repeat",
+     "Malare, 8 times. It should start paying rent"
+    ],
+    [
+     "Rajesh Murugesan superfan",
+     "in 92% of your songs"
+    ],
+    [
+     "Hopeless romantic",
+     "67% love songs"
+    ],
+    [
+     "Midnight philosopher",
+     "you play most around 12 AM"
+    ],
+    [
+     "Creature of habit",
+     "3 songs, 12 plays"
+    ],
+    [
+     "Loyal to the favourites",
+     "67% of your plays"
+    ],
+    [
+     "Unbroken",
+     "music 8 days in a row"
+    ],
+    [
+     "Picky DJ",
+     "took 3 songs out of the radio"
+    ]
+   ]
+  },
+  {
+   "days": 7,
+   "stats": {
+    "plays": 1,
+    "skips": 2,
+    "removed": 3,
+    "minutes": 2,
+    "songs": 1,
+    "artists": 0,
+    "streak": 1,
+    "favourite_plays": 0,
+    "hours": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "top_songs": [
+     [
+      "zz",
+      1
+     ]
+    ],
+    "top_artists": [],
+    "top_films": [],
+    "themes": {},
+    "languages": {}
+   },
+   "quirks": [
+    [
+     "Midnight philosopher",
+     "you play most around 1 AM"
+    ],
+    [
+     "Itchy skip finger",
+     "skipped 67% of songs within half a minute"
+    ],
+    [
+     "Picky DJ",
+     "took 3 songs out of the radio"
+    ]
+   ]
+  }
+ ]
+}

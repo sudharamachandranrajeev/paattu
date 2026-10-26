@@ -611,6 +611,7 @@ FloatingWindow {
             { view: "users", arg: null, glyph: Model.GLYPH_USER, label: "YouTube users" },
             { view: "queue", arg: null, glyph: Model.GLYPH_QUEUE, label: "Queue" },
             { view: "offline", arg: null, glyph: Model.GLYPH_DOWNLOAD, label: "On this computer" },
+            { view: "stats", arg: null, glyph: Model.GLYPH_TROPHY, label: "Your numbers" },
             { view: "sound", arg: null, glyph: Model.GLYPH_EQUALIZER, label: "Sound" },
             { view: "settings", arg: null, glyph: Model.GLYPH_PALETTE, label: "Look & settings" }
           ]
@@ -830,6 +831,7 @@ FloatingWindow {
           : win.view === "mixes" ? mixesPage
           : win.view === "mix" ? mixPage
           : win.view === "offline" ? offlinePage
+          : win.view === "stats" ? statsPage
           : homePage
       }
     }
@@ -1011,4 +1013,5 @@ FloatingWindow {
   Component { id: mixesPage; MixesPage { app: win } }
   Component { id: mixPage; MixPage { app: win; mixId: win.view === "mix" ? win.arg : "" } }
   Component { id: offlinePage; OfflinePage { app: win } }
+  Component { id: statsPage; StatsPage { app: win } }
 }

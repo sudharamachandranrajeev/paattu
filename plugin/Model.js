@@ -48,6 +48,7 @@ var GLYPH_RADIO = "\u{F0439}"       // md-radio
 var GLYPH_MADE = "\u{F0674}"        // md-creation
 var GLYPH_CHART = "\u{F0128}"       // md-chart_line
 var GLYPH_UPDATE = "\u{F06B0}"      // md-update
+var GLYPH_TROPHY = "\u{F0538}"      // md-trophy
 
 var LANGUAGES = ["Malayalam", "Tamil"]
 var STYLES = ["vinyl", "card", "minimal"]
