@@ -1,9 +1,11 @@
 package dev.paattu.paattu
 
 import android.Manifest
+import android.app.UiModeManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
@@ -34,6 +36,18 @@ class MainActivity : AudioServiceActivity() {
     // so it goes through a FileProvider (res/xml/file_paths.xml).
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // A TV (lib/src/device.dart): its UI mode, or a box that says it has
+        // the TV launcher.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.paattu.paattu/device")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "isTv") {
+                    val mode = (getSystemService(Context.UI_MODE_SERVICE) as UiModeManager).currentModeType
+                    result.success(mode == Configuration.UI_MODE_TYPE_TELEVISION ||
+                        packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))
+                } else {
+                    result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.paattu.paattu/power")
             .setMethodCallHandler { call, result ->
                 when (call.method) {

@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
+import 'device.dart';
 import 'log.dart';
 import 'sources/http.dart' show browserAgent, httpClient;
 import 'util.dart';
@@ -73,11 +74,14 @@ class Release {
   final Map<String, ReleaseAsset> assets;
 
   /// The file to install on this device, if the release has one for it.
-  ReleaseAsset? installerFor(String os) {
-    final suffix = installerSuffix(os);
-    if (suffix == null) return null;
-    for (final asset in assets.values) {
-      if (asset.name.endsWith(suffix)) return asset;
+  /// A TV takes the TV's build, or (in a release from before there was one)
+  /// the phone's.
+  ReleaseAsset? installerFor(String os, {bool tv = false}) {
+    for (final suffix in [if (tv) installerSuffix(os, tv: true), installerSuffix(os)]) {
+      if (suffix == null) continue;
+      for (final asset in assets.values) {
+        if (asset.name.endsWith(suffix)) return asset;
+      }
     }
     return null;
   }
@@ -113,10 +117,11 @@ class Release {
       );
 }
 
-/// What the installer for [os] is called: 'android', 'windows' or 'linux'.
-/// Null for one Paattu can't install for (a phone's other OS, the web).
-String? installerSuffix(String os) => switch (os) {
-      'android' => '-android.apk',
+/// What the installer for [os] is called: 'android', 'windows' or 'linux'
+/// ([tv]: Android TV's). Null for one Paattu can't install for (a phone's
+/// other OS, the web).
+String? installerSuffix(String os, {bool tv = false}) => switch (os) {
+      'android' => tv ? '-android-tv.apk' : '-android.apk',
       'windows' => '-windows-x64-setup.exe',
       'linux' => '.AppImage',
       _ => null,
@@ -211,7 +216,7 @@ class UpdateManager extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (release.installerFor(platform) == null) {
+    if (release.installerFor(platform, tv: onTv) == null) {
       state = UpdateState.failed;
       problem = 'the new version has no file for this device';
       notifyListeners();
@@ -226,7 +231,7 @@ class UpdateManager extends ChangeNotifier {
   /// Download the new version, check it, and install it.
   Future<bool> downloadAndInstall() async {
     final release = available;
-    final asset = release?.installerFor(platform);
+    final asset = release?.installerFor(platform, tv: onTv);
     if (release == null || asset == null) {
       state = UpdateState.failed;
       problem = 'nothing to install';

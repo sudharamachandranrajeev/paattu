@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../charts.dart' show chartLanguages;
+import '../device.dart';
 import '../links.dart';
 import '../listenbrainz.dart';
 import '../log.dart';
@@ -841,7 +842,7 @@ class _UpdateTile extends StatelessWidget {
             updates.state == UpdateState.downloading ||
             updates.state == UpdateState.installing ||
             updates.state == UpdateState.checking;
-        final asset = release?.installerFor(updates.platform);
+        final asset = release?.installerFor(updates.platform, tv: onTv);
         final (title, subtitle) = switch (updates.state) {
           UpdateState.checking => ('Looking for a newer version…', ''),
           UpdateState.upToDate => ('Paattu $appVersion is the newest', ''),

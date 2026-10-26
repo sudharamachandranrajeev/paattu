@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import '../device.dart';
 import '../log.dart';
 import '../sources/http.dart';
 import 'download.dart';
@@ -15,8 +16,8 @@ class SongCache {
 
   final Directory dir;
 
-  /// Songs kept; older ones are deleted.
-  static const keep = 8;
+  /// Songs kept; older ones are deleted. Fewer on a TV.
+  static int get keep => onTv ? 3 : 8;
 
   /// Bigger songs (an hour-long jukebox) aren't downloaded.
   static const maxBytes = 60 << 20;

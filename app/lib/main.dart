@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'src/app_state.dart';
 import 'src/charts.dart';
+import 'src/device.dart';
 import 'src/history.dart';
 import 'src/library.dart';
 import 'src/listenbrainz.dart';
@@ -60,6 +61,14 @@ Future<void> main() async {
     }
   }
 
+  // Before the settings, whose defaults are smaller on a TV.
+  await detectDevice();
+  if (onTv) {
+    // Covers and art: 40 MB in place of 100.
+    PaintingBinding.instance.imageCache
+      ..maximumSizeBytes = 40 << 20
+      ..maximumSize = 300;
+  }
   final dir = await getApplicationSupportDirectory();
   // Before the log's header, so it says what this build really is.
   await readAppVersion();

@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'device.dart';
 import 'links.dart';
 import 'sound.dart';
 import 'ui/glass.dart';
@@ -362,7 +363,8 @@ class Settings extends ChangeNotifier {
   set crossfade(int seconds) => _set('crossfade', seconds.clamp(0, 12));
 
   /// Keep the songs listened to on this device, so they play with no internet.
-  bool get offlineAutoSave => _data['offlineAutoSave'] != false;
+  /// Off unless asked on a TV, which has little storage.
+  bool get offlineAutoSave => _data['offlineAutoSave'] as bool? ?? !onTv;
   set offlineAutoSave(bool on) => _set('offlineAutoSave', on);
 
   /// Where the kept songs go: empty for the app's own folder. Only the desktop
@@ -371,8 +373,9 @@ class Settings extends ChangeNotifier {
   String get offlineDir => asString(_data['offlineDir']);
   set offlineDir(String path) => _set('offlineDir', path);
 
-  /// Space allowed for kept songs, in MB (0 for no limit).
-  int get offlineLimitMb => (toInt(_data['offlineLimitMb']) ?? 2048).clamp(0, 1 << 20);
+  /// Space allowed for kept songs, in MB (0 for no limit): 2 GB, or 512 MB
+  /// on a TV.
+  int get offlineLimitMb => (toInt(_data['offlineLimitMb']) ?? (onTv ? 512 : 2048)).clamp(0, 1 << 20);
   set offlineLimitMb(int mb) => _set('offlineLimitMb', mb.clamp(0, 1 << 20));
 
   /// Whether Android has been asked once to leave Paattu out of battery

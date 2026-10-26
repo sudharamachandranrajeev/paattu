@@ -77,8 +77,11 @@ jobs:
             --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/Paattu-${{ needs.version.outputs.version }}-android.apk
-          # The same APK runs on Android TV (the TV home screen, the remote);
-          # under its own name so a TV owner finds it.
+          # Android TV: the same app, built only for ARM (every TV and TV
+          # box), so it is smaller to download and store. It knows it is on
+          # a TV (lib/src/device.dart) and keeps less there.
+          flutter build apk --release --target-platform android-arm,android-arm64 \
+            --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/Paattu-${{ needs.version.outputs.version }}-android-tv.apk
       - uses: actions/upload-artifact@v4
         with:

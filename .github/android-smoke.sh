@@ -6,7 +6,8 @@ set -euo pipefail
 
 out=${1:-smoke}
 mkdir -p "$out"
-apk=$(ls dist/*.apk | head -n1)
+# The phone build: the TV one is ARM only, and the emulator is x86_64.
+apk=$(ls dist/*-android.apk | head -n1)
 adb install -r "$apk"
 adb logcat -c
 adb shell am start -W -n dev.paattu.paattu/.MainActivity

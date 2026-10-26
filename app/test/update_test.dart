@@ -73,6 +73,8 @@ void main() {
       expect(installerSuffix('linux'), '.AppImage');
       expect(installerSuffix('macos'), isNull);
       expect(installerSuffix('fuchsia'), isNull);
+      expect(installerSuffix('android', tv: true), '-android-tv.apk');
+      expect(installerSuffix('windows', tv: true), '-windows-x64-setup.exe');
     });
   });
 
@@ -95,6 +97,17 @@ void main() {
       expect(release.installerFor('linux')?.name, 'Paattu-0.8.0-linux-x86_64.AppImage');
       expect(release.installerFor('macos'), isNull);
       expect(release.checksums?.name, checksumsName);
+    });
+
+    test('a TV takes the TV build, or the phone one before there was one', () {
+      final both = Release.fromJson(_release('1.0.0', assets: [
+        _asset('Paattu-1.0.0-android.apk'),
+        _asset('Paattu-1.0.0-android-tv.apk'),
+      ]));
+      expect(both.installerFor('android', tv: true)?.name, 'Paattu-1.0.0-android-tv.apk');
+      expect(both.installerFor('android')?.name, 'Paattu-1.0.0-android.apk');
+      final phoneOnly = Release.fromJson(_release('0.23.1', assets: [_asset('Paattu-0.23.1-android.apk')]));
+      expect(phoneOnly.installerFor('android', tv: true)?.name, 'Paattu-0.23.1-android.apk');
     });
 
     test('a release with no file for this device', () {
