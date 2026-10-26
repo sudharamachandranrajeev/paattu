@@ -77,6 +77,9 @@ jobs:
             --build-name=${{ needs.version.outputs.version }} --build-number=${{ needs.version.outputs.build }}
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/Paattu-${{ needs.version.outputs.version }}-android.apk
+          # The same APK runs on Android TV (the TV home screen, the remote);
+          # under its own name so a TV owner finds it.
+          cp build/app/outputs/flutter-apk/app-release.apk ../dist/Paattu-${{ needs.version.outputs.version }}-android-tv.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android
