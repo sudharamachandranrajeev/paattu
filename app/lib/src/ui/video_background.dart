@@ -270,9 +270,10 @@ class _SongVideoPlayer extends ChangeNotifier {
         fire(playback.seek(_player.position + const Duration(milliseconds: 150)));
         return;
       }
-      final nudge = !_exact || ahead.abs() < 40 ? 1.0 : 1 - (ahead / 2000).clamp(-0.06, 0.06);
-      // Only once it has come back in line: nudging every check would wobble.
-      if (rate != _rate || (nudge == 1) != (_nudge == 1)) await _setRate(rate, nudge);
+      // As much faster or slower as it is out (in steps of 2%, so the speed
+      // changes only a few times as it comes back in line, not every check).
+      final nudge = !_exact || ahead.abs() < 40 ? 1.0 : 1 - ((ahead / 2000).clamp(-0.06, 0.06) * 50).round() / 50;
+      if (rate != _rate || nudge != _nudge) await _setRate(rate, nudge);
     } catch (_) {
       // the video is closing; the next check sees
     } finally {
