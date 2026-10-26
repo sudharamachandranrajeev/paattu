@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.17.0 — A cleaner cover in 3D
+
+Which file: the same as before (`Paattu-0.17.0-android.apk`,
+`Paattu-0.17.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **No pale outline.** The light on the subject used to be added on top of
+  the picture, which drew a white rim round dark hair and edges. Now it only
+  brightens or darkens the picture's own colours a little, over broad slopes.
+- **No dark layer when you lean it.** The subject's shadow on what is behind
+  it is a soft dimming now, not a dark band, and in the app the card's shadow
+  is the plain cover's, so hovering over a cover no longer seems to reveal a
+  black layer behind it.
+- **Smoother round the edges.** The picture flows round the subject's edge
+  rather than stretching across it.
+
 ## 0.16.0 — Lyrics in step, and three new ways for them to come in
 
 Which file: the same as before (`Paattu-0.16.0-android.apk`,

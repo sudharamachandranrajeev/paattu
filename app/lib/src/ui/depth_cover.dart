@@ -166,10 +166,12 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
               key: ValueKey(depth),
               fit: StackFit.expand,
               children: [
+                // The same shadow as the plain cover's, so the card doesn't
+                // seem to gain a dark layer behind it as it leans.
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: radius,
-                    boxShadow: const [BoxShadow(color: Color(0x73000000), blurRadius: 28, offset: Offset(0, 12))],
+                    boxShadow: kElevationToShadow[12],
                   ),
                 ),
                 CustomPaint(
