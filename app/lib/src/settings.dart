@@ -314,6 +314,11 @@ class Settings extends ChangeNotifier {
   bool get videoBackground => _data['videoBackground'] != false;
   set videoBackground(bool on) => _set('videoBackground', on);
 
+  /// Video mode: Now Playing shows the song's video, playing with its own
+  /// sound (off unless turned on; the Audio | Video switch on Now Playing).
+  bool get videoMode => _data['videoMode'] == true;
+  set videoMode(bool on) => _set('videoMode', on);
+
   /// How Now Playing looks (the cover, the video first, the full picture or a record).
   NowPlayingStyle get nowPlayingStyle =>
       NowPlayingStyle.values.firstWhere((s) => s.name == _data['nowPlayingStyle'], orElse: () => NowPlayingStyle.cover);

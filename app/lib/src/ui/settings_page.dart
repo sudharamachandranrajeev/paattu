@@ -230,6 +230,17 @@ class SettingsPage extends StatelessWidget {
             const SectionHeader('Now Playing'),
             GlassGroup(
               children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.smart_display_outlined),
+                  title: const Text('Video mode'),
+                  subtitle: Text(
+                    "Shows the song's video and plays its own sound, so the singing matches the lips "
+                    '(${settings.saveData ? 'about 3' : 'about 10'} MB a minute; songs without one play as usual). '
+                    'Also the Audio | Video switch at the top of Now Playing',
+                  ),
+                  value: settings.videoMode,
+                  onChanged: (on) => settings.videoMode = on,
+                ),
                 for (final style in NowPlayingStyle.values)
                   ListTile(
                     leading: Icon(

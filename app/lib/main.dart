@@ -123,6 +123,7 @@ Future<void> main() async {
       ..cacheAhead = !settings.saveData
       // Saving data means not pulling whole songs down, so don't keep them.
       ..keepListened = settings.offlineAutoSave && !settings.saveData;
+    fire(player.setVideoMode(settings.videoMode));
     // The folder or the space allowed changed while running.
     fire(offline.moveTo(keptSongsDirectory(settings.offlineDir, dir), allowed: settings.offlineLimitMb << 20));
     fire(androidScreenAwake(settings.screenAwake));

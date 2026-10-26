@@ -84,6 +84,13 @@ void main() {
       app.navigator.currentState!.pop();
       await settle();
       if (mode == 'dark') {
+        // Video mode: the song has no video here, so its card shows the cover.
+        app.settings.videoMode = true;
+        app.navigator.currentState!.push(PageRouteBuilder<void>(pageBuilder: (_, _, _) => const NowPlayingPage()));
+        await shot('now-playing-video-$mode');
+        app.navigator.currentState!.pop();
+        app.settings.videoMode = false;
+        await settle();
         await tap(find.byTooltip('Library'));
         await shot('library-$mode');
         await tap(find.text('Night drive'));

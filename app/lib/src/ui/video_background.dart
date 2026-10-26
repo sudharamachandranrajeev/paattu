@@ -1,6 +1,10 @@
-// The song's video, silent and blurred, kept in time with the music behind
-// Now Playing. Android plays it with ExoPlayer (video_player); Windows and
-// Linux with libmpv (media_kit), like the music.
+// The song's video, silent, kept in time with the music on Now Playing:
+// blurred behind it (SongVideo) and, in video mode, sharp in a card of its
+// own (SongVideoCard), both from the one player (SongVideoHost). In video
+// mode the music is the video's own sound (PaattuAudioHandler.setVideoMode),
+// so the picture is held to it closely enough for the lips to match.
+// Android plays the video with ExoPlayer (video_player); Windows and Linux
+// with libmpv (media_kit), like the music.
 
 import 'dart:async';
 import 'dart:io';
@@ -16,6 +20,7 @@ import '../log.dart';
 import '../player/paattu_audio_handler.dart';
 import '../sources/http.dart';
 import '../sources/sources.dart' as sources;
+import '../sources/youtube.dart' show videoYouTube;
 import '../track.dart';
 import '../util.dart';
 
@@ -23,61 +28,179 @@ import '../util.dart';
 /// the cover out of its way.
 final songVideoShown = ValueNotifier<bool>(false);
 
-/// The video of [track], fading in over what's behind it once it's playing.
-/// Nothing shows for a song without one.
-class SongVideo extends StatefulWidget {
-  const SongVideo({super.key, required this.app, required this.track, required this.blur});
+/// Plays [track]'s video for the SongVideo and SongVideoCard under it: none
+/// unless [enabled]; [big] (video mode) for a picture sharp enough to watch,
+/// else the smallest, for the blur.
+class SongVideoHost extends StatefulWidget {
+  const SongVideoHost({
+    super.key,
+    required this.app,
+    required this.track,
+    required this.enabled,
+    required this.big,
+    required this.child,
+  });
   final AppState app;
   final Json track;
-  final double blur;
+  final bool enabled;
+  final bool big;
+  final Widget child;
 
   @override
-  State<SongVideo> createState() => _SongVideoState();
+  State<SongVideoHost> createState() => _SongVideoHostState();
 }
 
-class _SongVideoState extends State<SongVideo> {
-  _Playback? _playback;
-  bool _shown = false;
-  int _generation = 0;
-  StreamSubscription<bool>? _playing;
-  Timer? _timer;
-  double _rate = 1;
-  DateTime _settled = DateTime(0);
-
-  PaattuAudioHandler get _player => widget.app.player;
+class _SongVideoHostState extends State<SongVideoHost> {
+  late final _video = _SongVideoPlayer(widget.app);
 
   @override
   void initState() {
     super.initState();
-    fire(_start());
+    _video.show(widget.enabled ? widget.track : null, big: widget.big);
   }
 
   @override
-  void didUpdateWidget(SongVideo old) {
+  void didUpdateWidget(SongVideoHost old) {
     super.didUpdateWidget(old);
-    if (old.track['site'] != widget.track['site'] || trackId(old.track) != trackId(widget.track)) {
-      _stop();
-      fire(_start());
-    }
+    _video.show(widget.enabled ? widget.track : null, big: widget.big);
   }
 
   @override
   void dispose() {
-    _stop();
+    _video.dispose();
     super.dispose();
   }
 
-  Future<void> _start() async {
+  @override
+  Widget build(BuildContext context) => _SongVideoScope(video: _video, child: widget.child);
+}
+
+class _SongVideoScope extends InheritedNotifier<_SongVideoPlayer> {
+  const _SongVideoScope({required _SongVideoPlayer video, required super.child}) : super(notifier: video);
+
+  static _SongVideoPlayer? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SongVideoScope>()?.notifier;
+}
+
+/// The song's video, blurred by [blur], fading in over what's behind it once
+/// it's playing. Nothing shows for a song without one.
+class SongVideo extends StatelessWidget {
+  const SongVideo({super.key, required this.blur});
+  final double blur;
+
+  @override
+  Widget build(BuildContext context) {
+    final video = _SongVideoScope.of(context);
+    final playback = video?.playback;
+    return AnimatedOpacity(
+      opacity: video?.shown ?? false ? 1 : 0,
+      duration: const Duration(milliseconds: 900),
+      child: playback == null
+          ? const SizedBox.expand()
+          : ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur, tileMode: TileMode.decal),
+              child: playback.view(BoxFit.cover),
+            ),
+    );
+  }
+}
+
+/// The song's video, sharp, filling the card it's given (16 by 9); [cover]
+/// until it plays, and for a song without one.
+class SongVideoCard extends StatelessWidget {
+  const SongVideoCard({super.key, required this.cover});
+  final Widget cover;
+
+  @override
+  Widget build(BuildContext context) {
+    final video = _SongVideoScope.of(context);
+    final playback = video?.playback;
+    final shown = playback != null && video!.shown;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AnimatedOpacity(opacity: shown ? 0 : 1, duration: const Duration(milliseconds: 600), child: cover),
+        if (playback != null)
+          AnimatedOpacity(
+            opacity: shown ? 1 : 0,
+            duration: const Duration(milliseconds: 600),
+            child: ColoredBox(color: Colors.black, child: playback.view(BoxFit.contain)),
+          ),
+      ],
+    );
+  }
+}
+
+/// The one player behind SongVideo and SongVideoCard: which video, and
+/// keeping it in time with the music.
+class _SongVideoPlayer extends ChangeNotifier {
+  _SongVideoPlayer(this.app) {
+    _sound = _player.playingVideo.listen((_) => _soundChanged());
+  }
+
+  final AppState app;
+  late final StreamSubscription<String?> _sound;
+
+  Json? _track;
+  bool _big = false;
+  String? _id;
+  _Playback? playback;
+  bool shown = false;
+  int _generation = 0;
+  StreamSubscription<bool>? _playing;
+  Timer? _timer;
+  bool _checking = false;
+  double _rate = 1;
+  double _nudge = 1;
+  DateTime _settled = DateTime(0);
+  bool _disposed = false;
+
+  PaattuAudioHandler get _player => app.player;
+
+  /// Whether the music is this video's own sound, so the two can be held
+  /// together closely.
+  bool get _exact => _id != null && _player.playingVideo.value == _id;
+
+  /// Play [track]'s video (none for null), [big] or small.
+  void show(Json? track, {required bool big}) {
+    final same = track != null &&
+        _track != null &&
+        track['site'] == _track!['site'] &&
+        trackId(track) == trackId(_track!) &&
+        big == _big;
+    if (same || (track == null && _track == null)) return;
+    _stop();
+    _track = track;
+    _big = big;
+    if (track != null) fire(_start(track));
+  }
+
+  /// In video mode the music changed to a video's sound (or back): show that
+  /// video, if it isn't the one showing.
+  void _soundChanged() {
+    final track = _track, playing = _player.playingVideo.value;
+    if (track == null || !_big || playing == null || playing == _id) return;
+    _stop();
+    _track = track;
+    fire(_start(track));
+  }
+
+  Future<void> _start(Json track) async {
     final generation = ++_generation;
-    final ResolvedStream? video;
+    final ResolvedStream? picture;
     try {
-      video = await sources.videoFor(widget.track);
+      final playing = _player.playingVideo.value;
+      final id = _id = _big && playing != null && identical(_player.current.value, track)
+          ? playing
+          : (await sources.videoFor(track))?.id;
+      if (generation != _generation) return;
+      picture = id == null ? null : await _picture(track, id);
     } catch (error) {
-      problemLog.warn('no video for ${trackTitle(widget.track)}: $error');
+      problemLog.warn('no video for ${trackTitle(track)}: $error');
       return; // no video then: the picture stays
     }
-    if (video == null || !mounted || generation != _generation) return;
-    final playback = _Playback.of(video);
+    if (picture == null || _disposed || generation != _generation) return;
+    final playback = _Playback.of(picture);
     try {
       // Loading takes a moment, which the music plays on through.
       final music = _player.position;
@@ -85,46 +208,82 @@ class _SongVideoState extends State<SongVideo> {
           .open(_player.playing ? music + const Duration(milliseconds: 1500) : music, play: _player.playing)
           .timeout(const Duration(seconds: 20));
     } catch (error) {
-      problemLog.warn('video for ${trackTitle(widget.track)} would not open: $error');
+      problemLog.warn('video for ${trackTitle(track)} would not open: $error');
       await playback.dispose();
       return;
     }
-    if (!mounted || generation != _generation) {
+    if (_disposed || generation != _generation) {
       await playback.dispose();
       return;
     }
-    _playback = playback;
+    this.playback = playback;
     _rate = _player.speed;
+    _nudge = 1;
     if (_rate != 1) await playback.setRate(_rate);
     _playing = _player.playingStream.listen((on) => fire(on ? playback.play() : playback.pause()));
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _keepInStep());
-    if (mounted) setState(() => _shown = songVideoShown.value = true);
+    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => fire(_keepInStep()));
+    shown = songVideoShown.value = true;
+    notifyListeners();
+  }
+
+  /// The picture of video [id]: big enough to watch in video mode (less to
+  /// save data), else the smallest, for the blur.
+  Future<ResolvedStream?> _picture(Json track, String id) async {
+    if (!_big) return (await sources.videoFor(track))?.picture;
+    return videoYouTube(id, height: app.settings.saveData ? 360 : 720);
   }
 
   /// Follow the music: its place (after a seek, or when the video falls
   /// behind) and its speed. A video found by search can be shorter than the
-  /// song: it fades out at its end.
-  void _keepInStep() {
-    final playback = _playback;
-    if (playback == null) return;
-    final music = _player.position;
-    final length = playback.duration;
-    final over = length > Duration.zero && music >= length;
-    if (over == _shown) setState(() => _shown = songVideoShown.value = !over);
-    if (over) return;
-    // Android pauses and resumes videos with the app, whatever the music did.
-    if (playback.playing != _player.playing) fire(_player.playing ? playback.play() : playback.pause());
-    final rate = _player.speed;
-    if (rate != _rate) {
-      _rate = rate;
-      fire(playback.setRate(rate));
+  /// song: it fades out at its end. When the music is the video's own sound,
+  /// a small drift is made up by running the picture a little faster or
+  /// slower (seeking would stutter), so the lips stay with the singing.
+  Future<void> _keepInStep() async {
+    final playback = this.playback;
+    if (playback == null || _checking) return;
+    _checking = true;
+    try {
+      final music = _player.position;
+      final length = playback.duration;
+      final over = length > Duration.zero && music >= length;
+      if (over == shown) {
+        shown = songVideoShown.value = !over;
+        notifyListeners();
+      }
+      if (over) return;
+      // Android pauses and resumes videos with the app, whatever the music did.
+      if (playback.playing != _player.playing) {
+        fire(_player.playing ? playback.play() : playback.pause());
+        return;
+      }
+      final rate = _player.speed;
+      // After a seek, give the video time to get there before checking again.
+      if (!_player.playing || DateTime.now().isBefore(_settled)) {
+        if (rate != _rate) await _setRate(rate, 1);
+        return;
+      }
+      final ahead = (await playback.position() - _player.position).inMilliseconds;
+      if (playback != this.playback) return;
+      if (ahead.abs() > (_exact ? 600 : 350)) {
+        _settled = DateTime.now().add(const Duration(seconds: 3));
+        await _setRate(rate, 1);
+        fire(playback.seek(_player.position + const Duration(milliseconds: 150)));
+        return;
+      }
+      final nudge = !_exact || ahead.abs() < 40 ? 1.0 : 1 - (ahead / 2000).clamp(-0.06, 0.06);
+      // Only once it has come back in line: nudging every check would wobble.
+      if (rate != _rate || (nudge == 1) != (_nudge == 1)) await _setRate(rate, nudge);
+    } catch (_) {
+      // the video is closing; the next check sees
+    } finally {
+      _checking = false;
     }
-    // After a seek, give the video time to get there before checking again.
-    if (DateTime.now().isBefore(_settled)) return;
-    if ((playback.position - music).inMilliseconds.abs() > 350) {
-      _settled = DateTime.now().add(const Duration(seconds: 3));
-      fire(playback.seek(music + const Duration(milliseconds: 150)));
-    }
+  }
+
+  Future<void> _setRate(double rate, double nudge) async {
+    _rate = rate;
+    _nudge = nudge;
+    await playback?.setRate(rate * nudge);
   }
 
   void _stop() {
@@ -134,27 +293,24 @@ class _SongVideoState extends State<SongVideo> {
     final playing = _playing;
     if (playing != null) fire(playing.cancel());
     _playing = null;
-    final playback = _playback;
-    _playback = null;
-    _shown = false;
+    final playback = this.playback;
+    this.playback = null;
+    _id = null;
+    _track = null;
+    final wasShown = shown;
+    shown = false;
     // Called while the page builds or closes: say so once that is done.
     if (songVideoShown.value) scheduleMicrotask(() => songVideoShown.value = false);
     if (playback != null) fire(playback.dispose());
+    if (wasShown && !_disposed) scheduleMicrotask(() => _disposed ? null : notifyListeners());
   }
 
   @override
-  Widget build(BuildContext context) {
-    final playback = _playback;
-    return AnimatedOpacity(
-      opacity: _shown ? 1 : 0,
-      duration: const Duration(milliseconds: 900),
-      child: playback == null
-          ? const SizedBox.expand()
-          : ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur, tileMode: TileMode.decal),
-              child: playback.view(),
-            ),
-    );
+  void dispose() {
+    _stop();
+    _disposed = true;
+    fire(_sound.cancel());
+    super.dispose();
   }
 }
 
@@ -164,7 +320,9 @@ abstract class _Playback {
 
   /// Load the video at [at]: done when its first picture is ready.
   Future<void> open(Duration at, {required bool play});
-  Duration get position;
+
+  /// Where it is now (asked of the player, not its last report).
+  Future<Duration> position();
   Duration get duration;
   bool get playing;
   Future<void> play();
@@ -172,8 +330,8 @@ abstract class _Playback {
   Future<void> seek(Duration to);
   Future<void> setRate(double rate);
 
-  /// The picture, filling the space it's given.
-  Widget view();
+  /// The picture, fitted to the space it's given.
+  Widget view(BoxFit fit);
   Future<void> dispose();
 }
 
@@ -197,8 +355,9 @@ class _ExoPlayback implements _Playback {
     if (play) await _controller.play();
   }
 
+  // value.position is only brought up to date twice a second.
   @override
-  Duration get position => _controller.value.position;
+  Future<Duration> position() async => await _controller.position ?? _controller.value.position;
   @override
   Duration get duration => _controller.value.duration;
   @override
@@ -213,10 +372,10 @@ class _ExoPlayback implements _Playback {
   Future<void> setRate(double rate) => _controller.setPlaybackSpeed(rate);
 
   @override
-  Widget view() {
+  Widget view(BoxFit fit) {
     final size = _controller.value.size;
     return FittedBox(
-      fit: BoxFit.cover,
+      fit: fit,
       clipBehavior: Clip.hardEdge,
       child: SizedBox(width: size.width, height: size.height, child: exo.VideoPlayer(_controller)),
     );
@@ -244,7 +403,7 @@ class _MpvPlayback implements _Playback {
   }
 
   @override
-  Duration get position => _player.state.position;
+  Future<Duration> position() async => _player.state.position;
   @override
   Duration get duration => _player.state.duration;
   @override
@@ -259,10 +418,10 @@ class _MpvPlayback implements _Playback {
   Future<void> setRate(double rate) => _player.setRate(rate);
 
   @override
-  Widget view() => mkv.Video(
+  Widget view(BoxFit fit) => mkv.Video(
         controller: _controller,
         controls: mkv.NoVideoControls,
-        fit: BoxFit.cover,
+        fit: fit,
         fill: Colors.transparent,
         wakelock: false,
         pauseUponEnteringBackgroundMode: false,

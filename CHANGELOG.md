@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.20.0 — Video mode
+
+Which file: the same as before (`Paattu-0.20.0-android.apk`,
+`Paattu-0.20.0-windows-x64-setup.exe`, the AppImage or the tarball). The
+Omarchy app gets video mode later.
+
+- **Watch the song.** A new Audio | Video switch at the top of Now Playing
+  (also Settings › Now Playing › Video mode, and remembered). In video mode
+  the song's video plays sharp in a wide card where the cover was, with its
+  blurred copy behind, and the music is the video's own sound, so the
+  singing matches the lips. A song whose own video is only its cover held
+  still gets the video found on YouTube (about as long, a picture that
+  moves); a song with no video at all plays as usual, its cover in the card.
+  The equaliser and the crossfade still work, and the music carries on with
+  the screen off, as ever.
+- Turning video mode on or off mid-song changes the sound where it is.
+- The video is 720p (360p with Save data on): about 10 MB a minute, or 3.
+
 ## 0.19.1 — The cover in 3D on Android
 
 Which file: the same as before (`Paattu-0.19.1-android.apk`,

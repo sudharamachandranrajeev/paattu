@@ -68,8 +68,8 @@ void main() {
       expect(() => bestAudio(_player([_format(137, 'video/mp4', 1)])), throwsA(isA<SourceException>()));
     });
 
-    test('the smallest H.264 picture for the background', () {
-      final video = smallestVideo(
+    test('an H.264 picture, the smallest for the background or as tall as asked', () {
+      final video = videoPicture(
         _player([
           _format(140, 'audio/mp4; codecs="mp4a.40.2"', 130000),
           _format(133, 'video/mp4; codecs="avc1.4D4015"', 282634, height: 240),
@@ -80,8 +80,17 @@ void main() {
       );
       expect((video?.uri.queryParameters['itag'], video?.codec, video?.kbps), ('160', 'h264', 133));
       expect(video?.headers?['Range'], 'bytes=0-');
-      expect(smallestVideo(_player([_format(278, 'video/webm; codecs="vp9"', 1, height: 144)])), isNull);
-      expect(smallestVideo(_player([], status: 'LOGIN_REQUIRED')), isNull);
+      final formats = [
+        _format(133, 'video/mp4; codecs="avc1.4D4015"', 282634, height: 240),
+        _format(136, 'video/mp4; codecs="avc1.4d401f"', 1100000, height: 720),
+        _format(135, 'video/mp4; codecs="avc1.4D401E"', 600000, height: 480),
+        _format(160, 'video/mp4; codecs="avc1.4D400C"', 133229, height: 144),
+      ];
+      expect(videoPicture(_player(formats), height: 480)?.uri.queryParameters['itag'], '135');
+      expect(videoPicture(_player(formats), height: 1080)?.uri.queryParameters['itag'], '136');
+      expect(videoPicture(_player(formats), height: 100)?.uri.queryParameters['itag'], '160');
+      expect(videoPicture(_player([_format(278, 'video/webm; codecs="vp9"', 1, height: 144)])), isNull);
+      expect(videoPicture(_player([], status: 'LOGIN_REQUIRED')), isNull);
     });
 
     test("an art track's still cover is no video", () {
@@ -89,8 +98,8 @@ void main() {
             _format(133, 'video/mp4; codecs="avc1.4D4015"', 16000, average: 13000, height: 240),
             _format(160, 'video/mp4; codecs="avc1.4D400C"', 11468, average: average, height: 144),
           ]);
-      expect(smallestVideo(still(10382)), isNull);
-      expect(smallestVideo(still(96879))?.uri.queryParameters['itag'], '160');
+      expect(videoPicture(still(10382)), isNull);
+      expect(videoPicture(still(96879))?.uri.queryParameters['itag'], '160');
     });
 
     test('a song whose own video is still gets one found by search', () async {
@@ -108,7 +117,8 @@ void main() {
       }
 
       final song = {'id': 'NAkQVL61BRI', 'site': 'youtube', 'title': 'Naan Naan', 'credits': ['Anirudh'], 'duration': 240};
-      expect((await findVideo(song, search, video))?.uri.path, '/S3oq6IwPWBw');
+      final found = await findVideo(song, search, video);
+      expect((found?.id, found?.picture.uri.path), ('S3oq6IwPWBw', '/S3oq6IwPWBw'));
       expect(tried, ['NAkQVL61BRI', 'rcdWUeVKFnA', 'S3oq6IwPWBw']);
       expect(await findVideo({...song, 'duration': null}, search, (_) async => null), isNull);
     });

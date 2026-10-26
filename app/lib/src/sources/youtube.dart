@@ -391,11 +391,12 @@ ResolvedStream bestAudio(Json response, {String agent = _visionAgent, bool? andr
 /// the desktop.
 const stillKbps = 30;
 
-/// The smallest picture of a video, without sound, for the blurred
-/// background of Now Playing: H.264, which every phone and PC decodes in
-/// hardware, at 144p (about 100 kbps), plenty under a blur. Null when
-/// YouTube won't play it, or when the picture is a still ([stillKbps]).
-ResolvedStream? smallestVideo(Json response, {String agent = _visionAgent, bool? android}) {
+/// A video's picture, without sound: H.264, which every phone and PC decodes
+/// in hardware, the tallest up to [height] lines (else the smallest). 144p
+/// (about 100 kbps) is plenty under the blur behind Now Playing; video mode
+/// asks for more. Null when YouTube won't play it, or when the picture is a
+/// still ([stillKbps], judged at the smallest size).
+ResolvedStream? videoPicture(Json response, {int height = 144, String agent = _visionAgent, bool? android}) {
   if (asString(asJson(response['playabilityStatus'])['status']) != 'OK') return null;
   final streaming = asJson(response['streamingData']);
   final videos = [
@@ -411,10 +412,11 @@ ResolvedStream? smallestVideo(Json response, {String agent = _visionAgent, bool?
   final smallest = videos.first;
   final average = toInt(smallest['averageBitrate']) ?? toInt(smallest['bitrate']);
   if (average != null && average < stillKbps * 1000) return null;
+  final picked = videos.lastWhere((f) => toInt(f['height'])! <= height, orElse: () => smallest);
   final seconds = toInt(streaming['expiresInSeconds']) ?? 21600;
-  return ResolvedStream(Uri.parse(asString(smallest['url'])),
+  return ResolvedStream(Uri.parse(asString(picked['url'])),
       codec: 'h264',
-      kbps: ((toInt(smallest['bitrate']) ?? 0) / 1000).round(),
+      kbps: ((toInt(picked['bitrate']) ?? 0) / 1000).round(),
       headers: streamHeaders(agent, android: android),
       lifetime: Duration(seconds: max(600, seconds - 1800)));
 }
@@ -442,8 +444,9 @@ Future<Json> _visionPlayer(String id, {bool fresh = false}) async {
 Future<ResolvedStream> _visionStream(String id, {bool fresh = false}) async =>
     bestAudio(await _visionPlayer(id, fresh: fresh));
 
-/// A video's smallest silent picture (see [smallestVideo]), or null.
-Future<ResolvedStream?> videoYouTube(String id) async => smallestVideo(await _visionPlayer(id));
+/// A video's silent picture up to [height] lines (see [videoPicture]), or null.
+Future<ResolvedStream?> videoYouTube(String id, {int height = 144}) async =>
+    videoPicture(await _visionPlayer(id), height: height);
 
 /// The best audio stream for a video: as YouTube's Vision Pro app, then again
 /// with a new visitor id, then (slower) youtube_explode's own ways, for when
