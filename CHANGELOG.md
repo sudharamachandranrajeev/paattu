@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.19.1 — The cover in 3D on Android
+
+Which file: the same as before (`Paattu-0.19.1-android.apk`,
+`Paattu-0.19.1-windows-x64-setup.exe`, the AppImage or the tarball).
+
+- **The cover's depth shows even before its subject is found.** On Android
+  the subject (the people in a cover) is found by ML Kit, which Google Play
+  services downloads the first time it is asked. Until then every search
+  failed, and the cover was shown flat with no depth at all. Now the cover is
+  shown in layers of its own colours meanwhile, and the subject is looked for
+  again the next time the song plays. Why it couldn't be found is noted once
+  in Settings › Problem log.
+
 ## 0.19.0 — The screen stays on while Paattu is open
 
 Which file: the same as before (`Paattu-0.19.0-android.apk`,

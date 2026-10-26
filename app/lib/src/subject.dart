@@ -193,7 +193,7 @@ Float32List modelInput(Uint8List rgba) {
 
 // Covers seen lately, by picture address: a song played again, or Now
 // Playing opened again, finds its depth map at once.
-final _found = LinkedHashMap<String, Future<CoverDepth?>>();
+final _found = LinkedHashMap<String, Future<(CoverDepth, bool)>>();
 
 /// [track]'s cover with its depth map, or null for a song without a cover.
 Future<CoverDepth?> depthOf(Json track) async {
@@ -205,10 +205,13 @@ Future<CoverDepth?> depthOf(Json track) async {
     _found.remove(_found.keys.first);
   }
   try {
-    return await found;
+    final (depth, whole) = await found;
+    // Shown without its subject this time (ML Kit still fetching its model):
+    // looked for again next time.
+    if (!whole && identical(_found[url], found)) _found.remove(url);
+    return depth;
   } catch (error) {
-    // A failure (no network, ML Kit still fetching its model) is tried again
-    // next time.
+    // A failure (no network) is tried again next time.
     if (identical(_found[url], found)) {
       _found.remove(url);
       problemLog.warn("couldn't make the depth map of ${trackTitle(track)}'s cover: ${errorText(error)}");
@@ -217,7 +220,9 @@ Future<CoverDepth?> depthOf(Json track) async {
   }
 }
 
-Future<CoverDepth?> _find(String url, String? fallback) async {
+/// The cover's depth, and whether the subject was looked for (a failure to
+/// look leaves the cover as layers of its own colours).
+Future<(CoverDepth, bool)> _find(String url, String? fallback) async {
   ui.Image cover;
   try {
     cover = await _load(url);
@@ -227,24 +232,40 @@ Future<CoverDepth?> _find(String url, String? fallback) async {
   }
   try {
     final small = await _square(cover, maskSide);
-    final List<double>? raw;
+    List<double>? raw;
+    var whole = true;
     try {
       raw = Platform.isAndroid ? await _mlKit(small) : await _u2net(small);
+    } catch (error) {
+      whole = false;
+      _subjectFailed(error);
     } finally {
       small.dispose();
     }
     final mask = raw == null ? null : cleanMask(raw, maskSide);
     final rgb = await _rgb(cover, depthSide);
     final map = depthMap(rgb, depthSide, mask == null ? null : shrink(mask.alpha, maskSide, depthSide));
-    return CoverDepth(
+    final depth = CoverDepth(
       picture: await _square(cover, min(_pictureSide, min(cover.width, cover.height))),
       depth: await _depthImage(depthPixels(map)),
       centre: mask?.centre ?? depthCentre(map.depth, depthSide),
       subject: mask != null,
     );
+    return (depth, whole);
   } finally {
     cover.dispose();
   }
+}
+
+String? _lastFailure;
+
+/// Why the subject couldn't be looked for, in the problem log once (not for
+/// every cover while ML Kit fetches its model).
+void _subjectFailed(Object error) {
+  final why = errorText(error);
+  if (why == _lastFailure) return;
+  _lastFailure = why;
+  problemLog.warn("couldn't find the subject of a cover (shown as layers): $why");
 }
 
 Future<ui.Image> _load(String url) {
