@@ -59,6 +59,19 @@ void main() {
     expect([found.$1, found.$2], cases['youtubeLyrics']);
   });
 
+  test("YouTube Music's timed words", () {
+    expect(musicTimedLyrics(cases['youtubeTimedBrowse']), cases['youtubeTimedLrc']);
+    expect(musicTimedLyrics(cases['youtubeBrowse']), isNull);
+  });
+
+  test('lining up two uploads of a song', () {
+    for (final c in asList(cases['shift']).map(asJson)) {
+      List<int> ints(Object? v) => [for (final x in asList(v)) (x as num).toInt()];
+      expect(lyricShift(ints(c['played']), ints(c['reference']), c['fps'] as int, c['most'] as num), c['shift'],
+          reason: '${c['comment']}');
+    }
+  });
+
   test('what Now Playing shows', () {
     for (final c in asList(cases['shown']).map(asJson)) {
       final found = c['found'] == null ? null : asJson(c['found']);
@@ -76,7 +89,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('paattu-lyrics');
     addTearDown(() => dir.delete(recursive: true));
     var asked = 0;
-    final lyrics = Lyrics(dir, find: (track, language) async {
+    final lyrics = Lyrics(dir, find: (track, language, {level}) async {
       asked++;
       return null;
     });
@@ -84,6 +97,30 @@ void main() {
     expect(await lyrics.lookup(track, 'Malayalam'), isNull);
     expect(await lyrics.lookup(track, 'Malayalam'), isNull);
     expect(asked, 1);
+  });
+
+  test("partial finds and the last version's are asked again", () async {
+    final dir = await Directory.systemTemp.createTemp('paattu-lyrics');
+    addTearDown(() => dir.delete(recursive: true));
+    var asked = 0;
+    final lyrics = Lyrics(dir, find: (track, language, {level}) async {
+      asked++;
+      return {'plain': 'x', 'partial': asked == 1};
+    });
+    final track = {'id': 'aaaaaaaaaaa', 'title': 'Malare'};
+    expect((await lyrics.lookup(track, 'Malayalam'))!['plain'], 'x');
+    expect(asked, 1);
+    // Kept an hour ago: asked again.
+    final file = dir.listSync().whereType<File>().single;
+    final kept = asJson(jsonDecode(file.readAsStringSync()));
+    file.writeAsStringSync(jsonEncode({...kept, 'fetched': (kept['fetched'] as int) - 3700}));
+    await lyrics.lookup(track, 'Malayalam');
+    expect(asked, 2);
+    await lyrics.lookup(track, 'Malayalam');
+    expect(asked, 2);
+    file.writeAsStringSync(jsonEncode({'fetched': kept['fetched'], 'found': {'plain': 'x'}}));
+    await lyrics.lookup(track, 'Malayalam');
+    expect(asked, 3);
   });
 }
 

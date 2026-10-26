@@ -1709,6 +1709,10 @@ def cmd_depth(args, out):
         print("No depth map for that cover")
 
 
+def _rhythm(source, tid):
+    return rhythm.find(source, str(paths.CACHE / "rhythm"), re.sub(r"[^A-Za-z0-9_-]", "_", tid))
+
+
 def cmd_rhythm(args, out):
     """The rhythm of a song (Now Playing's cover moves with it): from its link
     (the engine's path) or id, decoded by mpv, kept in ~/.cache/paattu/rhythm."""
@@ -1720,7 +1724,7 @@ def cmd_rhythm(args, out):
         track = _known(library.load(), tid) or {"id": tid}
         target = sources.track_url(track)
     out.progress("Finding the song's rhythm…")
-    found = rhythm.find(target, str(paths.CACHE / "rhythm"), re.sub(r"[^A-Za-z0-9_-]", "_", tid))
+    found = _rhythm(target, tid)
     if args.json:
         out.done("", id=tid, fps=found["fps"], level=found["level"], punch=found["punch"])
     else:
@@ -1748,7 +1752,14 @@ def cmd_lyrics(args, out):
         track.get("rawTitle"), track.get("title"), track.get("movie"), track.get("channel"),
         default=(settings.get("languages") or [""])[0])
     out.progress("Looking for the words…")
-    found = lyrics.shown(lyrics.lookup(track, language, refresh=args.refresh),
+
+    def level(song):
+        # Words timed to another upload of the song are lined up with this
+        # one by their loudness (the rhythm Now Playing's cover moves with).
+        song = song if song.get("id") == track.get("id") else _known(data, song["id"]) or song
+        return _rhythm(sources.track_url(song), song["id"])["level"]
+
+    found = lyrics.shown(lyrics.lookup(track, language, refresh=args.refresh, level=level),
                          latin=(settings.get("lyrics") or {}).get("transliterate", True))
     if args.json:
         out.done("", id=track.get("id"), **found)

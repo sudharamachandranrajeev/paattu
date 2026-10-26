@@ -45,16 +45,58 @@ Future<RadioPage> musicRadio(String videoId, {String? more}) async {
   return radioPage(await postJson(_nextApi, body, headers: _headers));
 }
 
-/// The words on a song's Lyrics tab (from Musixmatch, in English letters, not
-/// timed) and where they're from, or null.
-Future<(String, String)?> musicLyricsOf(String videoId) async {
+/// YouTube Music's Android app, which is given a song's Lyrics tab timed.
+const _androidClient = {
+  'clientName': 'ANDROID_MUSIC',
+  'clientVersion': '7.21.50',
+  'hl': 'en',
+  'gl': 'IN',
+  'androidSdkVersion': 30,
+};
+const _androidHeaders = {'User-Agent': 'com.google.android.apps.youtube.music/7.21.50 (Linux; U; Android 11) gzip'};
+
+/// The words on a song's Lyrics tab, {synced, plain, source}, or null:
+/// timed (LRC) to that song where YouTube Music has them so, otherwise as
+/// they are (from Musixmatch, often in English letters).
+Future<Json?> musicLyricsOf(String videoId) async {
   final browseId = musicLyricsId(await postJson(
       _nextApi, {'context': const {'client': _client}, 'videoId': videoId},
       headers: _headers));
   if (browseId == null) return null;
-  return musicLyrics(await postJson(
+  try {
+    final synced = musicTimedLyrics(await postJson(
+        _browseApi, {'context': const {'client': _androidClient}, 'browseId': browseId},
+        headers: _androidHeaders));
+    if (synced != null) return {'synced': synced, 'plain': '', 'source': 'YouTube Music'};
+  } catch (_) {
+    // the plain words, then
+  }
+  final found = musicLyrics(await postJson(
       _browseApi, {'context': const {'client': _client}, 'browseId': browseId},
       headers: _headers));
+  return found == null ? null : {'plain': found.$1, 'synced': '', 'source': found.$2};
+}
+
+String _stamp(double seconds) {
+  final minutes = seconds ~/ 60;
+  return '[${minutes.toString().padLeft(2, '0')}:${(seconds - minutes * 60).toStringAsFixed(2).padLeft(5, '0')}]';
+}
+
+/// The timed words (as LRC) on a Lyrics page as YouTube Music's Android app
+/// is given it (lyrics.py's music_timed_lyrics), or null. A lone music note
+/// (the start, a break) is an empty line.
+String? musicTimedLyrics(Object? response) {
+  for (final model in _all(response, 'lyricsData')) {
+    final out = <String>[];
+    for (final item in asList(model['timedLyricsData']).map(asJson)) {
+      final start = toInt(asJson(item['cueRange'])['startTimeMilliseconds']);
+      if (start == null) continue;
+      final text = asString(item['lyricLine']).trim();
+      out.add(_stamp(start / 1000) + (text.replaceAll(RegExp(r'[♪ ]'), '').isEmpty ? '' : text));
+    }
+    if (out.isNotEmpty) return out.join('\n');
+  }
+  return null;
 }
 
 /// The browse id of the Lyrics tab in a song's /next (lyrics.py's music_lyrics_id).
