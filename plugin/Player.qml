@@ -83,8 +83,13 @@ Item {
   function togglePause() { if (hasTrack) send(["cycle", "pause"]) }
   function play() { setProperty("pause", false) }
   function pause() { setProperty("pause", true) }
-  function next() { send(["playlist-next", "weak"]) }
+  // Another song was asked for (next, previous or one from the queue), for
+  // the app window's bell.
+  signal skipped()
+
+  function next() { skipped(); send(["playlist-next", "weak"]) }
   function previous() {
+    skipped()
     if (position > 4) send(["seek", 0, "absolute"])
     else send(["playlist-prev", "weak"])
   }
@@ -94,7 +99,7 @@ Item {
   function setVolume(v) { volume = Math.max(0, Math.min(100, v)); setProperty("volume", volume) }
   function changeVolume(delta) { setVolume(volume + delta) }
   function toggleMute() { send(["cycle", "mute"]) }
-  function playIndex(i) { send(["playlist-play-index", i]); play() }
+  function playIndex(i) { skipped(); send(["playlist-play-index", i]); play() }
   function removeIndex(i) { send(["playlist-remove", i]) }
   function stop() { send(["stop"]) }
 

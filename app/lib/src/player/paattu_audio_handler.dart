@@ -178,6 +178,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   /// A song the radio queued was taken out of Up next before it played.
   void Function(Json track)? onRemovedFromRadio;
 
+  /// Another song was asked for: next, previous or one picked from the queue
+  /// (not the next one coming on by itself).
+  void Function()? onSkip;
+
   /// Songs in play order, and where the queue was before shuffling.
   final List<Json> _queue = [];
   List<Json>? _unshuffled;
@@ -1109,6 +1113,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToNext() async {
+    onSkip?.call();
     if (_index + 1 < _queue.length) {
       await _playAt(_index + 1);
     } else if (_repeat == AudioServiceRepeatMode.all && _queue.isNotEmpty) {
@@ -1118,6 +1123,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToPrevious() async {
+    onSkip?.call();
     if (_player.position > const Duration(seconds: 4) || _index <= 0) {
       await seek(Duration.zero);
       return;
@@ -1126,7 +1132,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> skipToQueueItem(int index) => _playAt(index);
+  Future<void> skipToQueueItem(int index) {
+    onSkip?.call();
+    return _playAt(index);
+  }
 
   @override
   Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {

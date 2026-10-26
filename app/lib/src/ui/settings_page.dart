@@ -160,6 +160,13 @@ class SettingsPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => openSound(context),
                 ),
+                SwitchListTile(
+                  secondary: const Icon(Icons.spa_outlined),
+                  title: const Text('Interface sounds'),
+                  subtitle: const Text('A soft tap, a breath between pages and a small bell for another song'),
+                  value: settings.uiSounds,
+                  onChanged: (on) => settings.uiSounds = on,
+                ),
               ],
             ),
             const SectionHeader('Playback'),

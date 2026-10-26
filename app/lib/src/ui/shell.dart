@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../ui_sounds.dart';
 import 'glass.dart';
 import 'home_page.dart';
 import 'library_page.dart';
@@ -26,6 +27,10 @@ class PaattuApp extends StatefulWidget {
 
 class _PaattuAppState extends State<PaattuApp> {
   StreamSubscription<String>? _messages;
+  final _pages = SoundingPages();
+
+  /// The theme with the tap sound in its ink splash (ui_sounds.dart).
+  ThemeData _sounding(ThemeData data) => data.copyWith(splashFactory: SoundingSplash(data.splashFactory));
 
   @override
   void initState() {
@@ -47,9 +52,10 @@ class _PaattuAppState extends State<PaattuApp> {
           builder: (context, _) => MaterialApp(
             title: 'Paattu',
             debugShowCheckedModeBanner: false,
-            theme: widget.state.settings.theme.data,
+            theme: _sounding(widget.state.settings.theme.data),
             scaffoldMessengerKey: widget.state.messenger,
             navigatorKey: widget.state.navigator,
+            navigatorObservers: [_pages],
             home: const Shell(),
           ),
         ),
@@ -66,6 +72,8 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
   final _navigators = List.generate(4, (_) => GlobalKey<NavigatorState>());
+  // One each: an observer watches one navigator.
+  final _pageSounds = List.generate(4, (_) => SoundingPages());
   final _searchFocus = FocusNode();
 
   @override
@@ -75,6 +83,7 @@ class _ShellState extends State<Shell> {
   }
 
   void _select(int tab) {
+    if (tab != _tab) UiSounds.instance.play(UiSound.move);
     if (tab == _tab) {
       // Tapping the open tab goes back to its first page.
       _navigators[tab].currentState?.popUntil((route) => route.isFirst);
@@ -87,6 +96,7 @@ class _ShellState extends State<Shell> {
 
   Widget _tabNavigator(int i, Widget page) => Navigator(
         key: _navigators[i],
+        observers: [_pageSounds[i]],
         onGenerateRoute: (settings) => MaterialPageRoute<void>(builder: (_) => page, settings: settings),
       );
 

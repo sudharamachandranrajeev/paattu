@@ -381,6 +381,28 @@ Flickable {
         onClicked: root.set("songInfo", !on)
       }
     }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Interface sounds"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.uiSounds !== false
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.set("uiSounds", !on)
+      }
+    }
+    Hint { app: root.app; width: column.width; text: "A soft tap when you click, a breath between pages and a small bell for another song, quiet under the music." }
 
     // ---------- Lyrics ----------
     Item { width: 1; height: 8 }

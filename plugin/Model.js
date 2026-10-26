@@ -50,6 +50,13 @@ var GLYPH_CHART = "\u{F0128}"       // md-chart_line
 var GLYPH_UPDATE = "\u{F06B0}"      // md-update
 var GLYPH_TROPHY = "\u{F0538}"      // md-trophy
 
+// The app window's UiSounds while it is open, so every Chip and GlyphButton
+// (in any window) can click softly.
+var uiSounds = null
+function clickSound() {
+  if (uiSounds) uiSounds.play("tap")
+}
+
 var LANGUAGES = ["Malayalam", "Tamil"]
 var STYLES = ["vinyl", "card", "minimal"]
 var POSITIONS = ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right"]
