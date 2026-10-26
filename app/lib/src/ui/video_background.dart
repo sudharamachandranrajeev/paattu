@@ -1,6 +1,7 @@
 // The song's video, silent, kept in time with the music on Now Playing:
 // blurred behind it (SongVideo) and, in video mode, sharp in a card of its
-// own (SongVideoCard), both from the one player (SongVideoHost). In video
+// own (SongVideoCard, which FloatingVideo melts into the page and moves like
+// the 3D cover), both from the one player (SongVideoHost). In video
 // mode the music is the video's own sound (PaattuAudioHandler.setVideoMode),
 // so the picture is held to it closely enough for the lips to match.
 // Android plays the video with ExoPlayer (video_player); Windows and Linux
@@ -8,9 +9,11 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:video_player/video_player.dart' as exo;
@@ -23,6 +26,7 @@ import '../sources/sources.dart' as sources;
 import '../sources/youtube.dart' show videoYouTube;
 import '../track.dart';
 import '../util.dart';
+import 'beat.dart';
 
 /// Whether a song's video is showing, for Now Playing on a phone to fade
 /// the cover out of its way.
@@ -105,8 +109,8 @@ class SongVideo extends StatelessWidget {
   }
 }
 
-/// The song's video, sharp, filling the card it's given (16 by 9); [cover]
-/// until it plays, and for a song without one.
+/// The song's video, sharp, filling the card it's given (16 by 9, cut to fit
+/// rather than with bars); [cover] until it plays, and for a song without one.
 class SongVideoCard extends StatelessWidget {
   const SongVideoCard({super.key, required this.cover});
   final Widget cover;
@@ -124,9 +128,112 @@ class SongVideoCard extends StatelessWidget {
           AnimatedOpacity(
             opacity: shown ? 1 : 0,
             duration: const Duration(milliseconds: 600),
-            child: ColoredBox(color: Colors.black, child: playback.view(BoxFit.contain)),
+            child: playback.view(BoxFit.cover),
           ),
       ],
+    );
+  }
+}
+
+/// [child] (video mode's card) with no edge of its own: it fades out into the
+/// page behind it all round, and like the 3D cover it leans a little, slowly
+/// drifting (towards the pointer on a computer) and swelling a touch on each
+/// beat. Still for those who turn animations off.
+class FloatingVideo extends StatefulWidget {
+  const FloatingVideo({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<FloatingVideo> createState() => _FloatingVideoState();
+}
+
+class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker = createTicker(_tick);
+  final _tilt = ValueNotifier(Offset.zero);
+  Offset _aim = Offset.zero;
+  DateTime _moved = DateTime(0);
+  Duration _last = Duration.zero;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final still = MediaQuery.disableAnimationsOf(context);
+    if (still && _ticker.isActive) {
+      _ticker.stop();
+      _tilt.value = Offset.zero;
+    } else if (!still && !_ticker.isActive) {
+      _last = Duration.zero;
+      _ticker.start();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _tilt.dispose();
+    super.dispose();
+  }
+
+  void _tick(Duration elapsed) {
+    final seconds = (elapsed - _last).inMicroseconds / 1e6;
+    _last = elapsed;
+    final t = elapsed.inMicroseconds / 1e6;
+    // Slower and smaller than the cover's: a picture that moves on its own
+    // needs only a hint of it.
+    final drifting = DateTime.now().difference(_moved) > const Duration(seconds: 3);
+    final aim = drifting ? Offset(sin(t * 0.3) * 0.3, cos(t * 0.21) * 0.22) : _aim;
+    final next = _tilt.value + (aim - _tilt.value) * (1 - exp(-seconds * 3));
+    if ((next - _tilt.value).distance > 0.0004) _tilt.value = next;
+  }
+
+  void _pointerMoved(Offset at) {
+    final size = context.size;
+    if (size == null || size.isEmpty) return;
+    _aim = Offset((at.dx / size.width * 2 - 1).clamp(-1.0, 1.0), (at.dy / size.height * 2 - 1).clamp(-1.0, 1.0));
+    _moved = DateTime.now();
+  }
+
+  /// Opaque in the middle, clear at the edges: a fade over the outer [edge]
+  /// of each side.
+  static Shader _fade(Rect rect, Axis axis, double edge) => LinearGradient(
+        begin: axis == Axis.horizontal ? Alignment.centerLeft : Alignment.topCenter,
+        end: axis == Axis.horizontal ? Alignment.centerRight : Alignment.bottomCenter,
+        colors: const [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+        stops: [0, edge, 1 - edge, 1],
+      ).createShader(rect);
+
+  @override
+  Widget build(BuildContext context) {
+    final beat = BeatDriver.of(context);
+    final melted = ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) => _fade(rect, Axis.vertical, 0.12),
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (rect) => _fade(rect, Axis.horizontal, 0.08),
+        child: widget.child,
+      ),
+    );
+    return MouseRegion(
+      onHover: (event) => _pointerMoved(event.localPosition),
+      onExit: (_) => _aim = Offset.zero,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_tilt, ?beat]),
+        child: RepaintBoundary(child: melted),
+        builder: (context, child) {
+          final tilt = _tilt.value;
+          final swell = 1 + (beat?.punch ?? 0) * 0.012;
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateX(-tilt.dy * 0.07)
+              ..rotateY(tilt.dx * 0.09)
+              ..scaleByDouble(swell, swell, 1, 1),
+            child: child,
+          );
+        },
+      ),
     );
   }
 }

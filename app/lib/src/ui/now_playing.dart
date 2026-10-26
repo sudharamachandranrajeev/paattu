@@ -444,7 +444,9 @@ class _Background extends StatelessWidget {
                   scheme.surface.withValues(alpha: wide ? 0.55 : 0),
                   scheme.surface,
                 ],
-                stops: [0, cover * 0.45, cover * 0.75, max(cover, 0.8)],
+                // On a tall screen the square picture ends at cover: it has
+                // melted into the page by then, or its edge shows as a line.
+                stops: [0, cover * 0.45, cover * 0.75, wide ? max(cover, 0.8) : cover],
               ),
             ),
           ),
@@ -1391,7 +1393,8 @@ class _ModeSwitch extends StatelessWidget {
 
 /// Video mode's card: the song's video, 16 by 9, as wide as there is room
 /// for, its [cover] until it plays (and for a song without one), with the
-/// [words] under it when they fit.
+/// [words] under it when they fit. It has no frame: its edges melt into the
+/// page, and it drifts and swells like the 3D cover (FloatingVideo).
 class _VideoCard extends StatelessWidget {
   const _VideoCard({required this.cover, this.words});
   final Widget cover;
@@ -1399,7 +1402,8 @@ class _VideoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
-        final width = max(0.0, box.maxWidth - 32);
+        // Edge to edge: the faded edges are the margin.
+        final width = box.maxWidth;
         // The video as wide as it goes; the words only where two lines or
         // so fit under it.
         final height = min(width * 9 / 16, max(0.0, box.maxHeight - 16));
@@ -1407,21 +1411,16 @@ class _VideoCard extends StatelessWidget {
         final video = SizedBox(
           width: height * 16 / 9,
           height: height,
-          child: Material(
-            elevation: 12,
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(20),
-            clipBehavior: Clip.antiAlias,
-            child: SongVideoCard(cover: cover),
-          ),
+          child: FloatingVideo(child: SongVideoCard(cover: cover)),
         );
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisAlignment: words == null ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               video,
-              if (words != null) Expanded(child: Padding(padding: const EdgeInsets.only(top: 12), child: words)),
+              if (words != null)
+                Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), child: words)),
             ],
           ),
         );

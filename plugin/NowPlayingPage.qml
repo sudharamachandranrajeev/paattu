@@ -112,10 +112,10 @@ Item {
       anchors.fill: parent
       anchors.margins: 18
       anchors.topMargin: 36
-      radius: root.style === "record" && !root.videoMode ? width / 2 : 40
+      radius: root.style === "record" ? width / 2 : 40
       color: root.pal.accent
       opacity: 0.55
-      visible: GraphicsInfo.api !== GraphicsInfo.Software
+      visible: !root.videoMode && GraphicsInfo.api !== GraphicsInfo.Software
       layer.enabled: visible
       layer.effect: MultiEffect {
         blurEnabled: true
@@ -126,7 +126,7 @@ Item {
     }
     Cover {
       anchors.fill: parent
-      visible: root.videoMode || (root.style !== "record" && !root.depth)
+      visible: !root.videoMode && root.style !== "record" && !root.depth
       radius: 32
       source: visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
       revision: root.app.artRevision
@@ -161,30 +161,111 @@ Item {
       holeColor: root.pal.background
       fontFamily: root.app.fontFamily
     }
-    // Video mode: the video, sharp, over the cover once it plays.
+    // Video mode: the video, sharp, over the cover once it plays. It has no
+    // frame: its edges melt into the page (a blurred mask), and like the 3D
+    // cover it leans a little, drifting (towards the pointer when it's over
+    // it) and swelling a touch on each beat.
     Item {
+      id: stage
       anchors.fill: parent
-      visible: root.videoMode && root.app.videoTexture !== null
-      opacity: root.app.videoShown ? 1 : 0
-      Behavior on opacity { NumberAnimation { duration: 600 } }
-      layer.enabled: visible
+      visible: root.videoMode
+      readonly property bool fancy: GraphicsInfo.api !== GraphicsInfo.Software
+      property point tilt: Qt.point(0, 0)
+      property point aim: Qt.point(0, 0)
+      property real movedAt: 0
+      transform: [
+        Rotation {
+          origin.x: stage.width / 2
+          origin.y: stage.height / 2
+          axis { x: 1; y: 0; z: 0 }
+          angle: stage.tilt.y * 4
+        },
+        Rotation {
+          origin.x: stage.width / 2
+          origin.y: stage.height / 2
+          axis { x: 0; y: 1; z: 0 }
+          angle: -stage.tilt.x * 5
+        },
+        Scale {
+          origin.x: stage.width / 2
+          origin.y: stage.height / 2
+          xScale: 1 + root.beatPunch * 0.012
+          yScale: xScale
+        }
+      ]
+      layer.enabled: visible && fancy
       layer.effect: MultiEffect {
         maskEnabled: true
         maskSource: videoMask
       }
-      Rectangle { anchors.fill: parent; color: "black" }
-      ShaderEffect {
-        // The picture is 16 by 9; fitted into the card it fills it.
+
+      HoverHandler {
+        id: stageHover
+        onPointChanged: {
+          if (!hovered || stage.width <= 0 || stage.height <= 0) return
+          var at = point.position
+          stage.aim = Qt.point(Math.max(-1, Math.min(1, at.x / stage.width * 2 - 1)),
+                               Math.max(-1, Math.min(1, at.y / stage.height * 2 - 1)))
+          stage.movedAt = Date.now()
+        }
+        onHoveredChanged: if (!hovered) stage.aim = Qt.point(0, 0)
+      }
+      FrameAnimation {
+        running: stage.visible && root.visible && stage.Window.window !== null && stage.Window.window.visible
+        onTriggered: {
+          // Slower and smaller than the cover's: a picture that moves on its
+          // own needs only a hint of it.
+          var drifting = Date.now() - stage.movedAt > 3000
+          var aim = drifting ? Qt.point(Math.sin(elapsedTime * 0.3) * 0.3, Math.cos(elapsedTime * 0.21) * 0.22) : stage.aim
+          var k = 1 - Math.exp(-frameTime * 3)
+          var x = stage.tilt.x + (aim.x - stage.tilt.x) * k
+          var y = stage.tilt.y + (aim.y - stage.tilt.y) * k
+          if (Math.abs(x - stage.tilt.x) + Math.abs(y - stage.tilt.y) > 0.0004) stage.tilt = Qt.point(x, y)
+        }
+      }
+
+      Cover {
         anchors.fill: parent
+        radius: stage.fancy ? 0 : 32
+        source: stage.visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
+        revision: root.app.artRevision
+        tint: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.08)
+        glyphColor: root.pal.muted
+        glyph: root.player.hasTrack ? Model.GLYPH_NOTE : Model.GLYPH_ALBUM
+        fontFamily: root.app.fontFamily
+      }
+      ShaderEffect {
+        // The picture is 16 by 9 (cut to fill), like the card.
+        anchors.fill: parent
+        visible: root.app.videoTexture !== null
+        opacity: root.app.videoShown ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 600 } }
         property var source: root.app.videoTexture
       }
     }
-    Rectangle {
+    // Opaque in the middle, clear at the edges: a rectangle well inside the
+    // card, blurred out to them.
+    Item {
       id: videoMask
       anchors.fill: parent
-      radius: 32
       visible: false
       layer.enabled: true
+      Rectangle {
+        anchors.fill: parent
+        anchors.leftMargin: parent.width * 0.06
+        anchors.rightMargin: parent.width * 0.06
+        anchors.topMargin: parent.height * 0.09
+        anchors.bottomMargin: parent.height * 0.09
+        radius: height * 0.12
+        color: "white"
+        layer.enabled: true
+        layer.effect: MultiEffect {
+          blurEnabled: true
+          blurMax: 64
+          blur: 1
+          autoPaddingEnabled: true
+        }
+      }
     }
   }
 

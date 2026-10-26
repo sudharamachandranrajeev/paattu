@@ -175,12 +175,13 @@ Item {
 
   // The picture as it comes, drawn only through videoTexture: blurred
   // below, and sharp in Now Playing's card. 16 by 9 at the card's size or
-  // the window's, whichever is bigger.
+  // the window's, whichever is bigger; a picture of another shape is cut to
+  // fill it rather than given bars.
   VideoOutput {
     id: picture
     width: Math.max(root.width, 1280)
     height: width * 9 / 16
-    fillMode: VideoOutput.PreserveAspectFit
+    fillMode: VideoOutput.PreserveAspectCrop
   }
   ShaderEffectSource {
     id: videoTexture
