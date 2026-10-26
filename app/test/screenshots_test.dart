@@ -190,7 +190,7 @@ Future<AppState> _openApp(Directory root, String theme) async {
   player.quality.add('AAC · 320 kbps');
   final updates = UpdateManager(currentVersion: sourceVersion, dir: Directory('${dir.path}/updates'));
   // Words for every song, the line at 1:47 sung (the player stands there).
-  final lyrics = Lyrics(Directory('${dir.path}/lyrics'), find: (track, language) async => {
+  final lyrics = Lyrics(Directory('${dir.path}/lyrics'), find: (track, language, {level}) async => {
         'synced': '[01:40.00]പുഴയോരം തഴുകുന്നീ തണു ഈറൻ കാറ്റും\n[01:45.00]തെളിമാനം മഴവില്ലിൻ നിറമണിയും നേരം\n'
             '[01:52.00]നിറമാർന്നൊരു കനവെന്നിൽ തെളിയുന്ന പോലെ',
         'plain': '',

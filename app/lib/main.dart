@@ -148,7 +148,12 @@ Future<void> main() async {
     File('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}charts.json'),
   );
   fire(charts.load());
-  final lyrics = Lyrics(Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}lyrics'));
+  final lyrics = Lyrics(
+    Directory('${(await getApplicationCacheDirectory()).path}${Platform.pathSeparator}lyrics'),
+    // Words timed to another upload of the song are lined up with the one
+    // playing by their loudness (the rhythm Now Playing's cover moves with).
+    level: (track) async => (await player.rhythmOf(track))?.level,
+  );
   final app = AppState(library, settings, player, history, offline, updates, listenBrainz, charts, lyrics);
   runApp(PaattuApp(state: app));
   fire(listenBrainz.sync());
