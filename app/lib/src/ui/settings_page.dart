@@ -201,6 +201,14 @@ class SettingsPage extends StatelessWidget {
                       onTap: exempt.data == false ? androidAskBatteryExempt : null,
                     ),
                   ),
+                if (Platform.isAndroid)
+                  SwitchListTile(
+                    secondary: const Icon(Icons.light_mode_outlined),
+                    title: const Text('Keep the screen on'),
+                    subtitle: const Text('While Paattu is open in front; the screen sleeps as usual otherwise'),
+                    value: settings.screenAwake,
+                    onChanged: (on) => settings.screenAwake = on,
+                  ),
                 ListTile(
                   leading: const Icon(Icons.history),
                   title: const Text('Forget what I played'),

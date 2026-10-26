@@ -306,6 +306,10 @@ class Settings extends ChangeNotifier {
   bool get saveData => _data['saveData'] == true;
   set saveData(bool on) => _set('saveData', on);
 
+  /// Android: the screen stays on while Paattu is in front (on unless turned off).
+  bool get screenAwake => _data['screenAwake'] != false;
+  set screenAwake(bool on) => _set('screenAwake', on);
+
   /// The song's video, blurred, behind Now Playing (on unless turned off).
   bool get videoBackground => _data['videoBackground'] != false;
   set videoBackground(bool on) => _set('videoBackground', on);
