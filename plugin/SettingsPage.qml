@@ -333,7 +333,7 @@ Flickable {
         onClicked: root.set("coverColors", !on)
       }
     }
-    Hint { app: root.app; width: column.width; text: "Cover in 3D lifts the people out of the cover and tilts it as the pointer moves over it (it runs U²-Net through uv, on this computer; the first time, uv fetches ONNX Runtime). Cover colours gives Now Playing and the player bar the colours of the song's cover." }
+    Hint { app: root.app; width: column.width; text: "Cover in 3D gives the cover depth, the people in it (or its layers) gliding as it tilts with the pointer (it runs U²-Net through uv, on this computer; the first time, uv fetches ONNX Runtime). Cover colours gives Now Playing and the player bar the colours of the song's cover." }
     Row {
       spacing: 8
       Text {

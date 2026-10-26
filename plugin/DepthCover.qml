@@ -3,13 +3,16 @@ import QtQuick.Window
 import "Model.js" as Model
 
 // A song's cover in 3D (Settings › Cover in 3D). It tilts towards the pointer
-// moving over it, drifting slowly when nothing moves it, and its subject (cut
-// out by `paattu depth`, paattu/depth.py) stands out of the picture: sharp, a
-// little bigger and nearer, over the rest of the cover, softened, with the
-// subject's shadow on it. A cover without a subject to lift only tilts. On
-// Now Playing the subject moves with the song: it swells and rises a little
-// on each beat while the picture behind breathes with the loudness, within
-// the margin the lifted subject already covers.
+// moving over it, drifting slowly when nothing moves it, and the picture has
+// depth: `paattu depth` (paattu/depth.py) makes a soft map of how near each
+// point of it is, and a shader (shaders/DepthCover.frag) moves each point by
+// that as the cover leans, so its subject glides over what is behind it in
+// one piece, with no cut-out edge to show. A cover without a subject is
+// taken as layers of its own colours, which also drift slowly past each
+// other under a slow sheen. On Now Playing the near parts swell a little on
+// each beat while the rest breathes with the loudness. The effect eases in
+// over the plain cover once the map is ready, and the software renderer
+// (which has no shaders) shows the plain cover tilting.
 Item {
   id: root
 
@@ -23,10 +26,11 @@ Item {
   property real beatLevel: 0
   property real beatPunch: 0
 
-  // `paattu depth`'s answer: {subject, back, centre: [x, y]}, for `foundFor`.
+  // `paattu depth`'s answer: {picture, depth, subject, centre: [x, y]}, for `foundFor`.
   property var found: null
   property string foundFor: ""
-  readonly property bool lifted: found !== null && foundFor === trackId && trackId !== ""
+  readonly property bool fancy: GraphicsInfo.api !== GraphicsInfo.Software
+  readonly property bool mapped: fancy && found !== null && foundFor === trackId && trackId !== ""
   // How far the cover leans, -1 to 1 across and down, and where the pointer
   // would have it lean.
   property point tilt: Qt.point(0, 0)
@@ -49,14 +53,14 @@ Item {
 
   function find() {
     var asked = trackId
-    if (!asked || foundFor === asked) return
+    if (!asked || foundFor === asked || !fancy) return
     if (depthJobs.busy) {
       again = true
       return
     }
     // The cover's art may still be on its way: `paattu depth` fetches it then.
     depthJobs.run(["depth", "--", asked], "", function(ok, e) {
-      if (ok && e.subject) {
+      if (ok && e.depth) {
         root.found = e
         root.foundFor = asked
       } else if (!ok) {
@@ -91,6 +95,7 @@ Item {
       var x = root.tilt.x + (aim.x - root.tilt.x) * k
       var y = root.tilt.y + (aim.y - root.tilt.y) * k
       if (Math.abs(x - root.tilt.x) + Math.abs(y - root.tilt.y) > 0.0004) root.tilt = Qt.point(x, y)
+      if (depth.visible) depth.clock = elapsedTime
     }
   }
 
@@ -115,6 +120,7 @@ Item {
 
     Cover {
       anchors.fill: parent
+      visible: depth.opacity < 1
       radius: root.radius
       source: root.trackId ? root.app.store.artFor("v", root.trackId) : ""
       revision: root.app.artRevision
@@ -122,53 +128,51 @@ Item {
       glyphColor: root.glyphColor
       glyph: root.glyph
       fontFamily: root.app.fontFamily
-      opacity: back.shown ? 0 : 1
-      Behavior on opacity { NumberAnimation { duration: 600 } }
     }
 
-    // The rest of the cover, softened, with the subject's shadow.
-    Cover {
-      id: back
-      readonly property bool shown: root.lifted && ready && subject.status === Image.Ready
-      anchors.fill: parent
-      radius: root.radius
-      crop: false
-      source: root.lifted ? "file://" + root.found.back : ""
-      tint: "transparent"
-      glyph: ""
-      opacity: shown ? 1 : 0
-      Behavior on opacity { NumberAnimation { duration: 600 } }
-      transform: Scale {
-        origin.x: subject.centre[0] * back.width
-        origin.y: subject.centre[1] * back.height
-        xScale: 1 + 0.012 * root.beatLevel
-        yScale: xScale
-      }
-    }
-
-    // The subject, nearer: bigger, and moving further as the cover leans
-    // (paattu/depth.py's LIFT and LEAN, which its cut-out allows for).
+    // The cover square (as Cover crops it) and its depth map, for the shader:
+    // the last song's while the next one's are made.
     Image {
-      id: subject
-      readonly property var centre: root.lifted && root.found.centre ? root.found.centre : [0.5, 0.5]
-      anchors.fill: parent
+      id: picture
+      visible: false
       asynchronous: true
       smooth: true
       mipmap: true
-      source: root.lifted ? "file://" + root.found.subject : ""
-      opacity: back.opacity
-      transform: [
-        Scale {
-          origin.x: subject.centre[0] * subject.width
-          origin.y: subject.centre[1] * subject.height
-          xScale: 1.06 * (1 + 0.03 * root.beatPunch + 0.008 * root.beatLevel)
-          yScale: xScale
-        },
-        Translate {
-          x: root.tilt.x * card.width * 0.02
-          y: root.tilt.y * card.height * 0.02 - card.height * 0.008 * root.beatPunch
-        }
-      ]
+      source: root.found ? "file://" + root.found.picture : ""
+    }
+    Image {
+      id: depthMap
+      visible: false
+      asynchronous: true
+      smooth: true
+      source: root.found ? "file://" + root.found.depth : ""
+    }
+
+    ShaderEffect {
+      id: depth
+      readonly property bool ready: root.mapped && picture.status === Image.Ready && depthMap.status === Image.Ready
+      anchors.fill: parent
+      visible: opacity > 0
+      // Fading out (another song) the old cover leaves over the new one.
+      opacity: ready ? 1 : 0
+      Behavior on opacity { NumberAnimation { duration: 400 } }
+
+      property var picture: picture
+      property var depthMap: depthMap
+      property point tilt: root.tilt
+      property point centre: root.found && root.found.centre ? Qt.point(root.found.centre[0], root.found.centre[1])
+                                                             : Qt.point(0.5, 0.5)
+      // Eases in over the plain cover, which it matches at 0.
+      property real strength: ready ? 1 : 0
+      Behavior on strength { NumberAnimation { duration: 1200; easing.type: Easing.InOutCubic } }
+      property real punch: root.beatPunch
+      property real level: root.beatLevel
+      property real clock: 0
+      // A subject stands still but for a breath; layers drift.
+      property real flow: root.found && !root.found.subject ? 1 : 0.25
+      property real corner: width > 0 ? Math.min(0.5, root.radius / width) : 0
+      property real side: width
+      fragmentShader: "DepthCover.frag.qsb"
     }
   }
 }

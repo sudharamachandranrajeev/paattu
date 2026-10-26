@@ -1695,17 +1695,18 @@ def cmd_depth(args, out):
     if not cover.exists():
         cache_art_for(library.load(), track_ids=[tid])
     if not cover.exists():
-        out.done("No cover for that song", subject=None)
+        out.done("No cover for that song", depth=None)
         return
-    out.progress("Finding the subject of the cover…")
+    out.progress("Making the cover's depth map…")
     found = depth.lift(cover, paths.CACHE / "depth", tid)
-    fields = {key: found.get(key) for key in ("subject", "back", "centre", "area")}
+    fields = {key: found.get(key) for key in ("picture", "depth", "subject", "centre", "area")}
     if args.json:
         out.done("", **fields)
-    elif found.get("subject"):
-        print("Subject: %s\nRest of the cover: %s" % (found["subject"], found["back"]))
+    elif found.get("depth"):
+        print("Cover: %s\nDepth map: %s\n%s" % (found["picture"], found["depth"],
+              "From its subject" if found.get("subject") else "From its layers (nothing in it stands out)"))
     else:
-        print("Nothing in that cover stands out to lift")
+        print("No depth map for that cover")
 
 
 def cmd_rhythm(args, out):
@@ -2226,7 +2227,7 @@ def build_parser():
     a.add_argument("target", help="the song: a link or id")
     a.set_defaults(func=cmd_video)
 
-    a = sub.add_parser("depth", help="lift a song's cover's subject out of it (the cover in 3D in Now Playing)")
+    a = sub.add_parser("depth", help="a song's cover's depth map (the cover in 3D in Now Playing)")
     a.add_argument("target", help="the song: an id or a link")
     a.set_defaults(func=cmd_depth)
 

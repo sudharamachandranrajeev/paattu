@@ -52,8 +52,8 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Charts** – the week's top songs, most searched and love songs for Malayalam, Tamil, Hindi,
   Telugu, Kannada and Punjabi, from JioSaavn and YouTube Music.
 * **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
-  (cover, video first, full picture, record), colours from the cover, and the cover in 3D with its
-  subject lifted out and moving with the song's rhythm.
+  (cover, video first, full picture, record), colours from the cover, and the cover in 3D: its
+  subject gliding over the picture in one piece (or its layers drifting) and moving with the song's rhythm.
 * **Lyrics over the cover** – the line being sung pops out of the cover in 3D, filled with the
   cover's colours moving through it, with how it sounds in English letters under it (Malayalam,
   Tamil, Hindi, Telugu, Kannada); all the words in place of Up next, and a bar with the film, year,
@@ -480,7 +480,7 @@ paattu toggle | next | prev | seek +10 | volume 60 | shuffle | repeat
 paattu status | queue | jump 5
 paattu watch                            # this song's video in Brave, audio pauses
 paattu video SONG                       # where to stream its small, silent video
-paattu depth SONG                       # its cover's subject, cut out for the cover in 3D
+paattu depth SONG                       # its cover's depth map, for the cover in 3D
 paattu rhythm SONG                      # its loudness and beats (the cover in 3D moves with them)
 ```
 
@@ -508,14 +508,22 @@ Windows, Linux) and on Omarchy:
 song's cover, changing slowly from one song to the next and keeping the
 theme dark or light. **Cover in 3D** (on by default) tilts the cover towards
 the pointer (on a phone, as you tilt it), drifting slowly when nothing moves
-it, and lifts the people in it out of the picture with a soft shadow behind
-them. The subject is found on the device: by ML Kit on Android, and by
+it, and gives the picture depth. Nothing is cut out: a soft map of how near
+each point of the cover is moves it as it leans (one shader, the same in the
+app and on Omarchy), so the people in it glide over what is behind them in
+one piece, catching the light, their shadow sliding on the picture behind.
+On the beat the near parts swell a little and the rest breathes with the
+loudness. A cover without anyone in it is taken apart into the few colours
+it is made of, each a layer (nearer the more central, colourful and away
+from the edges it is), and the layers drift slowly past each other under a
+slow sheen. The subject is found on the device: by ML Kit on Android, and by
 U²-Net's small model (`models/u2netp.onnx`, with ONNX Runtime) on Windows,
 Linux and Omarchy. On Omarchy, `paattu depth` runs it through
 [uv](https://docs.astral.sh/uv/), which fetches ONNX Runtime, NumPy and
 Pillow (and Python 3.12 if needed) the first time: about 35 MB to download,
-about 100 MB in uv's cache. Without uv the cover only tilts. Each cover's
-cut-out is kept in `~/.cache/paattu/depth/`.
+about 100 MB in uv's cache. Without uv (or on the software renderer) the
+cover only tilts. Each cover's depth map is kept in
+`~/.cache/paattu/depth/`.
 
 The queue skips trailers and plays each song once even when a playlist has
 both the video and the lyrical upload.
