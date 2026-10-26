@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "Model.js" as Model
 
-// Sound: a fifteen-band equaliser, preamp, bass, treble, balance and speed, after
+// Sound: a fifteen-band equaliser, preamp, bass, treble, surround, balance and speed, after
 // Poweramp and AIMP; `paattu sound` underneath. Moving a control changes the
 // playing song at once (af-command on the engine's filter graph); letting go
 // saves it through the CLI, which also sets the graph mpv keeps for the next
@@ -31,7 +31,8 @@ Flickable {
     if (!s.on) return "Off: songs play as they are. Pick a preset or move a band to turn it on."
     var parts = [presetName(s.preset) || "Custom"]
     if (gains.pre !== s.preamp)
-      parts.push("preamp " + Model.soundDb(s.preamp) + " dB plays at " + Model.soundDb(gains.pre) + " dB, leaving room for the boosts")
+      parts.push("preamp " + Model.soundDb(s.preamp) + " dB plays at " + Model.soundDb(gains.pre) + " dB, leaving room for the boosts"
+        + (s.surround ? " and the surround" : ""))
     if (!app.player.connected) parts.push("plays with the next song")
     return parts.join("  ·  ")
   }
@@ -70,6 +71,7 @@ Flickable {
     edit = next
     if (next.on && app.player.connected) {
       var after = Model.soundGains(next)
+      after.surround = Model.soundWiden(next)
       var commands = Model.soundCommands(before, after)
       for (var i = 0; i < commands.length; i++) app.player.send(commands[i])
       sent = after
@@ -382,6 +384,17 @@ Flickable {
         onCommitted: function(v) { root.keep(["--treble=" + Model.soundFmt(v)]) }
       }
       Knob {
+        label: "Surround"
+        value: root.s.surround
+        from: 0; to: 1; origin: 0; step: 0.05
+        valueText: Math.round(value * 100) + "%"
+        textColor: root.pal.foreground; mutedColor: root.pal.muted; accent: root.pal.accent
+        fontFamily: root.app.fontFamily
+        onPressedChanged: root.held += pressed ? 1 : -1
+        onMoved: function(v) { root.move({ surround: v }, true) }
+        onCommitted: function(v) { root.keep(["--surround=" + Model.soundHundredth(v)]) }
+      }
+      Knob {
         label: "Balance"
         value: root.s.balance
         from: -1; to: 1; step: 0.05
@@ -404,7 +417,7 @@ Flickable {
         onCommitted: function(v) { root.keep(["--speed=" + Model.soundHundredth(v)]) }
       }
     }
-    Hint { app: root.app; width: column.width; text: "Speed keeps the pitch, and stays as it is when the equaliser is off." }
+    Hint { app: root.app; width: column.width; text: "Surround widens the stereo, on speakers and headphones alike. Speed keeps the pitch, and stays as it is when the equaliser is off." }
 
     // ---------- Options ----------
     Item { width: 1; height: 4 }

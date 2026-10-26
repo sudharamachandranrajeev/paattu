@@ -213,18 +213,23 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               )
             : null,
       ),
+      // A click on a suggestion counts as inside the box: on the desktop a
+      // press anywhere else takes the box's focus, which hid the
+      // suggestions before the click landed on one.
       body: _suggesting
-          ? _Suggestions(
-              typed: _query.text.trim(),
-              suggestions: _query.text.trim() == _suggestedFor ? _suggestions : const [],
-              recent: app.settings.recentSearches,
-              onSearch: _search,
-              onFill: (text) {
-                _query.value = TextEditingValue(text: '$text ', selection: TextSelection.collapsed(offset: text.length + 1));
-                _typed(_query.text);
-              },
-              onOpen: _openSuggestion,
-              onForget: (q) => setState(() => app.settings.forgetSearch(q)),
+          ? TextFieldTapRegion(
+              child: _Suggestions(
+                typed: _query.text.trim(),
+                suggestions: _query.text.trim() == _suggestedFor ? _suggestions : const [],
+                recent: app.settings.recentSearches,
+                onSearch: _search,
+                onFill: (text) {
+                  _query.value = TextEditingValue(text: '$text ', selection: TextSelection.collapsed(offset: text.length + 1));
+                  _typed(_query.text);
+                },
+                onOpen: _openSuggestion,
+                onForget: (q) => setState(() => app.settings.forgetSearch(q)),
+              ),
             )
           : _searched.isEmpty
               ? const EmptyState(

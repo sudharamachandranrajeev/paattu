@@ -8,6 +8,7 @@ import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.media.audiofx.Virtualizer
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -112,6 +113,24 @@ class MainActivity : AudioServiceActivity() {
                         main.post { result.error("decode_failed", error.toString(), null) }
                     }
                 }.start()
+            }
+        // Surround (android_surround.dart): the phone's virtualizer on a
+        // player's audio session, at 0 … 1000.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.paattu.paattu/sound")
+            .setMethodCallHandler { call, result ->
+                val session = call.argument<Int>("session")
+                val strength = call.argument<Int>("strength")
+                val live = call.argument<List<Int>>("live") ?: listOf(session ?: 0)
+                if (call.method != "surround" || session == null || strength == null) {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                try {
+                    surround(session, strength, live)
+                    result.success(null)
+                } catch (error: Exception) {
+                    result.error("surround_failed", error.toString(), null)
+                }
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.paattu.paattu/update")
             .setMethodCallHandler { call, result ->
@@ -238,6 +257,25 @@ class MainActivity : AudioServiceActivity() {
                 }
                 codec?.release()
                 extractor.release()
+            }
+        }
+
+        // A virtualizer for each audio session given one, held by the
+        // application like the players; those of players gone (not in
+        // [live]) are let go.
+        private val virtualizers = HashMap<Int, Virtualizer>()
+
+        @Suppress("DEPRECATION")
+        fun surround(session: Int, strength: Int, live: List<Int>) {
+            for (gone in virtualizers.keys.filter { it != session && it !in live }) {
+                virtualizers.remove(gone)?.release()
+            }
+            val effect = virtualizers.getOrPut(session) { Virtualizer(0, session) }
+            if (strength > 0) {
+                if (effect.strengthSupported) effect.setStrength(strength.coerceIn(0, 1000).toShort())
+                effect.enabled = true
+            } else {
+                effect.enabled = false
             }
         }
 

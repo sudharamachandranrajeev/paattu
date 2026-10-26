@@ -97,6 +97,28 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# A libmpv with FFmpeg's audio filters in place of media_kit's, which has
+# only `equalizer` (the surround needs extrastereo): shinchiro's build, with
+# the Vulkan loader it needs, pinned in its own repo (its README says where
+# each came from). Installed after the plugins' libraries, so it wins.
+set(PAATTU_LIBMPV "libmpv-windows-x86_64-20261017.zip")
+set(PAATTU_LIBMPV_URL
+  "https://github.com/sudharamachandranrajeev/paattu-libmpv/releases/download/2026-10-17/${PAATTU_LIBMPV}")
+set(PAATTU_LIBMPV_SHA256 "205b7f06d17c492655b5d4a98d03644badbef07ce27a91c632f2f54438c5e164")
+set(PAATTU_LIBMPV_ARCHIVE "${CMAKE_BINARY_DIR}/${PAATTU_LIBMPV}")
+set(PAATTU_LIBMPV_DIR "${CMAKE_BINARY_DIR}/paattu-libmpv")
+if(NOT EXISTS "${PAATTU_LIBMPV_DIR}/libmpv-2.dll")
+  file(DOWNLOAD "${PAATTU_LIBMPV_URL}" "${PAATTU_LIBMPV_ARCHIVE}"
+    EXPECTED_HASH SHA256=${PAATTU_LIBMPV_SHA256} SHOW_PROGRESS)
+  file(ARCHIVE_EXTRACT INPUT "${PAATTU_LIBMPV_ARCHIVE}" DESTINATION "${PAATTU_LIBMPV_DIR}")
+endif()
+install(FILES "${PAATTU_LIBMPV_DIR}/libmpv-2.dll" "${PAATTU_LIBMPV_DIR}/vulkan-1.dll"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+install(FILES "${PAATTU_LIBMPV_DIR}/README.txt" "${PAATTU_LIBMPV_DIR}/vulkan-1-LICENSE.txt"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/libmpv"
+  COMPONENT Runtime)
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

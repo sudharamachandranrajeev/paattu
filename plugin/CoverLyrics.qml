@@ -119,19 +119,31 @@ Item {
   readonly property var shown: line >= 0 && timed ? words.lines[line] : null
   readonly property bool speaking: !!(shown && shown.text)
 
-  // A shade across the top of the cover, so the words read on any picture.
-  Rectangle {
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: parent.top
-    height: parent.height * 0.62
-    radius: 32
+  // A soft shade behind the words, so they read on any picture: an ellipse
+  // across the top of the cover that fades out before its edges, as the 3D
+  // cover leans and swells under it (a shade with edges showed as a grey
+  // patch where the cover had moved from). A circle, stretched sideways.
+  Shape {
+    id: shade
+    readonly property real ry: parent.height * 0.62 * 0.4
+    x: parent.width / 2 - ry
+    y: 0
+    width: 2 * ry
+    height: 2 * ry
+    transform: Scale { origin.x: shade.ry; origin.y: shade.ry; xScale: shade.ry > 0 ? root.width / (2 * shade.ry) : 1 }
+    preferredRendererType: Shape.CurveRenderer
     opacity: root.speaking && root.on ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 600 } }
-    gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.6) }
-      GradientStop { position: 0.55; color: Qt.rgba(0, 0, 0, 0.32) }
-      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0) }
+    ShapePath {
+      strokeWidth: -1
+      fillGradient: RadialGradient {
+        centerX: shade.ry; centerY: shade.ry; centerRadius: shade.ry
+        focalX: shade.ry; focalY: shade.ry
+        GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.55) }
+        GradientStop { position: 0.6; color: Qt.rgba(0, 0, 0, 0.3) }
+        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0) }
+      }
+      PathRectangle { width: 2 * shade.ry; height: 2 * shade.ry }
     }
   }
 

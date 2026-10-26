@@ -319,6 +319,10 @@ test("sound: live moves, labels and presets", () => {
   const shape = M.soundCurve(M.soundNormalize({ bands }))
   M.SOUND_BANDS.forEach((f, i) => assert.ok(Math.abs(M.soundResponse(shape, f) - bands[i]) < 0.5, `${f} Hz`))
   assert.equal(M.soundCommands(flat, flat).length, 0)
+  // Surround moves extrastereo's m, and the preamp makes room for the sides.
+  const wide = M.soundGains({ on: true, surround: 1 })
+  eq(M.soundCommands({ ...flat, surround: 1 }, { ...wide, surround: M.soundWiden({ surround: 1 }) }),
+    [["af-command", "paattu", "g", "-4.9", "equalizer@pre"], ["af-command", "paattu", "m", "2.5", "extrastereo@surround"]])
   assert.equal(M.soundFmt(-0.04), "0")
   assert.equal(M.soundDb(2.5), "+2.5")
   assert.equal(M.soundDb(-3), "-3")

@@ -1,5 +1,5 @@
 // Sound: a fifteen-band equaliser drawn over its curve, presets (yours
-// too), and knobs for the preamp, bass, treble, balance and speed. Moving a
+// too), and knobs for the preamp, bass, treble, surround, balance and speed. Moving a
 // control plays it straight away; letting go keeps it. Fine steps (or Shift
 // on a keyboard) move the bands in tenths of a dB, slowly, from where they are.
 
@@ -65,8 +65,8 @@ class _SoundPageState extends State<SoundPage> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final s = _sound;
-    final pre = s.gains['pre']!;
     final android = Platform.isAndroid;
+    final pre = android ? s.phonePreamp : s.gains['pre']!;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sound'),
@@ -180,6 +180,16 @@ class _SoundPageState extends State<SoundPage> {
                 onChanged: (v) => _move(s.copyWith(treble: v)),
                 onChangeEnd: (v) => _keep(_sound.copyWith(treble: v)),
               ),
+              _Knob(
+                label: 'Surround',
+                value: s.surround,
+                min: 0,
+                max: 1,
+                step: 0.05,
+                format: (v) => v == 0 ? 'Off' : '${(v * 100).round()}%',
+                onChanged: (v) => _move(s.copyWith(surround: v)),
+                onChangeEnd: (v) => _keep(_sound.copyWith(surround: v)),
+              ),
               // The phone's effects can't move sound between the speakers.
               if (!android)
                 _Knob(
@@ -211,6 +221,7 @@ class _SoundPageState extends State<SoundPage> {
             title: const Text('Keep loud songs from clipping'),
             subtitle: Text(s.noclip && pre != s.preamp
                 ? 'The preamp plays at ${soundDb(pre)} dB, leaving room for the boosts'
+                    '${s.surround > 0 && !android ? ' and the surround' : ''}'
                 : 'Lowers the preamp by the biggest boost'),
             value: s.noclip,
             onChanged: (on) => _keep(s.copyWith(noclip: on)),
@@ -225,6 +236,7 @@ class _SoundPageState extends State<SoundPage> {
           ),
           Text(
             'Drag a slider or knob, or scroll over it. Double-tap one to put it back. '
+            '${android ? "Surround uses your phone's virtualizer; some phones apply it only on headphones. " : 'Surround widens the stereo. '}'
             'Speed keeps the pitch and works with the equaliser off.',
             style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),

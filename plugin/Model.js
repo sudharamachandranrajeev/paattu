@@ -926,6 +926,8 @@ var SOUND_OLD_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 var SOUND_LIMIT = 12
 var SOUND_SPEED = [0.5, 2]
 var SOUND_RATE = 48000
+// extrastereo's m at full surround (sound.WIDEN).
+var SOUND_WIDEN = 2.5
 var SOUND_PRESETS = [
   { id: "flat", name: "Flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
   { id: "melody", name: "Melody", bands: [-1.5, -2, -2, -1, -0.5, 1, 2, 3, 4.5, 4, 3.5, 3, 1, 0.5, -0.5] },
@@ -943,7 +945,7 @@ var SOUND_PRESETS = [
   { id: "night", name: "Late night", bands: [-1, -1, -1, -0.5, 0.5, 1.5, 1.5, 1.5, 1, 0, -0.5, -1.5, -2.5, -3, -3] }
 ]
 var SOUND_DEFAULTS = { on: false, preset: "flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], preamp: 0, bass: 0,
-  treble: 0, balance: 0, noclip: true, speed: 1, presets: {} }
+  treble: 0, surround: 0, balance: 0, noclip: true, speed: 1, presets: {} }
 
 // The filters that shape the sound: {name, f (Hz), t ("o": w in octaves, "q"), w}.
 // ("pre", "left" and "right" are flat gains, so they don't change the shape.)
@@ -1006,6 +1008,7 @@ function soundNormalize(settings) {
     preamp: soundTenth(soundNumber(get("preamp"), -SOUND_LIMIT, SOUND_LIMIT)),
     bass: soundTenth(soundNumber(get("bass"), -SOUND_LIMIT, SOUND_LIMIT)),
     treble: soundTenth(soundNumber(get("treble"), -SOUND_LIMIT, SOUND_LIMIT)),
+    surround: soundHundredth(soundNumber(get("surround"), 0, 1)),
     balance: soundHundredth(soundNumber(get("balance"), -1, 1)),
     noclip: get("noclip") !== false,
     speed: soundHundredth(soundNumber(get("speed"), SOUND_SPEED[0], SOUND_SPEED[1], 1)),
@@ -1125,10 +1128,18 @@ function soundPeak(s) {
   return top
 }
 
+// extrastereo's m for the surround: 1 (none) … SOUND_WIDEN (sound.widen).
+function soundWiden(settings) {
+  return soundHundredth(1 + (SOUND_WIDEN - 1) * soundNormalize(settings).surround)
+}
+
+// How much louder (dB) the surround can make a side panned hard one way.
+function soundSurroundRoom(settings) { return 20 * Math.log10((1 + soundWiden(settings)) / 2) }
+
 // {filter name: dB} as the graph gets them (sound.gains).
 function soundGains(settings) {
   var s = soundNormalize(settings)
-  var out = { pre: soundTenth(Math.max(-30, s.preamp - (s.noclip ? soundPeak(s) : 0))) }
+  var out = { pre: soundTenth(Math.max(-30, s.preamp - (s.noclip ? soundPeak(s) + soundSurroundRoom(s) : 0))) }
   var bandGains = soundBandGains(s.bands)
   for (var i = 0; i < bandGains.length; i++) out["b" + i] = soundTenth(bandGains[i])
   out.bass = s.bass
@@ -1138,12 +1149,14 @@ function soundGains(settings) {
   return out
 }
 
-// af-commands that move a playing graph from gains `before` to `after`.
+// af-commands that move a playing graph from gains `before` to `after`
+// (whose "surround", when there, is extrastereo's m: soundWiden).
 function soundCommands(before, after) {
   var out = []
   for (var name in after)
     if (!before || before[name] !== after[name])
-      out.push(["af-command", "paattu", "g", soundFmt(after[name]), "equalizer@" + name])
+      out.push(name === "surround" ? ["af-command", "paattu", "m", String(after[name]), "extrastereo@surround"]
+        : ["af-command", "paattu", "g", soundFmt(after[name]), "equalizer@" + name])
   return out
 }
 

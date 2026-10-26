@@ -1,4 +1,4 @@
-"""Sound: the equaliser, preamp, bass, treble, balance and speed.
+"""Sound: the equaliser, preamp, bass, treble, surround, balance and speed.
 
 Everything is FFmpeg's `equalizer` (a peaking filter) in one lavfi graph,
 because that is the only audio filter in the libmpv media_kit ships for
@@ -16,6 +16,12 @@ centre and halfway between centres, solved by least squares, then once more
 with the interaction measured at the gains found (V. Valimaki and J. Liski,
 "Accurate cascade graphic equalizer", IEEE Signal Processing Letters 24(2),
 2017). The curve then lands within about half a dB of every slider.
+
+Surround widens the stereo image with FFmpeg's `extrastereo`: each side
+moves away from the middle (L+R)/2 by WIDEN times (1 at none, 2.5 at full,
+FFmpeg's own default). The Windows app ships a libmpv that has it (the one
+media_kit ships has only `equalizer`); Android hands the strength to the
+phone's own virtualizer instead.
 
 Each filter is named (equalizer@b3), so a slider can move it while it plays
 with `af-command paattu g <dB> equalizer@b3`; the graph is set again when the
@@ -35,6 +41,8 @@ OLD_BANDS = (31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
 LIMIT = 12.0  # dB either way: bands, preamp, bass, treble
 SPEED = (0.5, 2.0)
 LABEL = "paattu"
+# extrastereo's m at full surround.
+WIDEN = 2.5
 RATE = 48000  # for drawing the curve and finding its peak
 
 # The levels the ten-band presets gave at these centres, so they sound as before.
@@ -65,6 +73,8 @@ DEFAULTS = {
     "preamp": 0,
     "bass": 0,
     "treble": 0,
+    # 0 (none) … 1 (full): how much wider the stereo is.
+    "surround": 0,
     # -1 (left only) … 1 (right only).
     "balance": 0,
     # Lower the preamp by the curve's highest boost, so loud songs don't clip.
@@ -80,6 +90,7 @@ FILTERS = (
     (("pre", "f=1000:t=q:w=0.001"),)
     + tuple(("b%d" % i, "f=%d:t=o:w=%g" % (f, WIDTH)) for i, f in enumerate(BANDS))
     + (("bass", "f=60:t=o:w=3"), ("treble", "f=10000:t=o:w=2"),
+       ("surround", None),
        ("left", "f=1000:t=q:w=0.001:c=FL"), ("right", "f=1000:t=q:w=0.001:c=FR"))
 )
 
@@ -147,6 +158,7 @@ def normalize(settings):
         "preamp": tenth(_number(s.get("preamp"), -LIMIT, LIMIT)),
         "bass": tenth(_number(s.get("bass"), -LIMIT, LIMIT)),
         "treble": tenth(_number(s.get("treble"), -LIMIT, LIMIT)),
+        "surround": hundredth(_number(s.get("surround"), 0, 1)),
         "balance": hundredth(_number(s.get("balance"), -1, 1)),
         "noclip": s.get("noclip") is not False,
         "speed": hundredth(_number(s.get("speed"), *SPEED, default=1.0)),
@@ -230,7 +242,7 @@ def curve(settings):
     """[(options, gain)] for the bands, bass and treble: the shape of the sound."""
     s = normalize(settings)
     shape = list(zip((opts for _, opts in FILTERS[1:1 + len(BANDS)]), band_gains(s["bands"])))
-    return shape + [(FILTERS[-4][1], s["bass"]), (FILTERS[-3][1], s["treble"])]
+    return shape + [(FILTERS[-5][1], s["bass"]), (FILTERS[-4][1], s["treble"])]
 
 
 # Where the peak is looked for: 20 Hz … 20 kHz, 24 steps an octave, and the bands.
@@ -243,10 +255,20 @@ def peak(settings):
     return max([0.0] + [response(shape, f) for f in _GRID]) if shape else 0.0
 
 
+def widen(settings):
+    """extrastereo's m for the surround: 1 (none) … WIDEN."""
+    return hundredth(1 + (WIDEN - 1) * normalize(settings)["surround"])
+
+
+def surround_room(settings):
+    """How much louder (dB) the surround can make a side panned hard one way."""
+    return 20 * math.log10((1 + widen(settings)) / 2)
+
+
 def gains(settings):
-    """{filter name: dB} as the graph gets them."""
+    """{filter name: dB} as the graph gets them (surround's isn't a gain: widen)."""
     s = normalize(settings)
-    pre = s["preamp"] - (peak(s) if s["noclip"] else 0)
+    pre = s["preamp"] - (peak(s) + surround_room(s) if s["noclip"] else 0)
     b = s["balance"]
     out = {"pre": tenth(max(-30.0, pre))}
     out.update(("b%d" % i, tenth(g)) for i, g in enumerate(band_gains(s["bands"])))
@@ -263,17 +285,20 @@ def graph(settings):
         return ""
     levels = gains(s)
     return "@%s:lavfi=[%s]" % (LABEL, ",".join(
+        "extrastereo@surround=m=%g" % widen(s) if options is None else
         "equalizer@%s=%s:g=%s" % (name, options, fmt(levels[name])) for name, options in FILTERS))
 
 
 def summary(settings):
-    """One line: "On · Melody · preamp -3.5 dB · bass +2 dB · 1.25×"."""
+    """One line: "On · Melody · preamp -3.5 dB · bass +2 dB · surround 40% · 1.25×"."""
     s = normalize(settings)
     names = dict((key, name) for key, name, _ in PRESETS)
     parts = ["On" if s["on"] else "Off", names.get(s["preset"], s["preset"] or "Custom")]
     for key, label in (("preamp", "preamp"), ("bass", "bass"), ("treble", "treble")):
         if s[key]:
             parts.append("%s %s%s dB" % (label, "+" if s[key] > 0 else "", fmt(s[key])))
+    if s["surround"]:
+        parts.append("surround %d%%" % round(s["surround"] * 100))
     if s["balance"]:
         parts.append("balance %d%% %s" % (round(abs(s["balance"]) * 100), "right" if s["balance"] > 0 else "left"))
     if s["speed"] != 1:

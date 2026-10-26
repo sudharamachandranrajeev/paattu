@@ -31,6 +31,7 @@ import '../titles.dart';
 import '../track.dart';
 import '../util.dart';
 import 'android_power.dart';
+import 'android_surround.dart';
 import 'reasons.dart';
 import 'rhythm.dart';
 import 'sleep_timer.dart';
@@ -1213,6 +1214,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     if (loudness.targetGain != boost) await loudness.setTargetGain(boost);
     if (equalizer.enabled != s.on) await equalizer.setEnabled(s.on);
     if (loudness.enabled != boost > 0) await loudness.setEnabled(boost > 0);
+    final session = deck.player.androidAudioSessionId;
+    if (session != null) {
+      await androidSurround(session, s.on ? s.surround : 0, _decks.map((d) => d.player.androidAudioSessionId).nonNulls);
+    }
   }
 
   @override
@@ -1283,9 +1288,9 @@ class _Way {
   String get describe => '${track['video'] == true ? 'its video' : trackSite(track)} way ${attempt + 1}';
 }
 
-/// One of the two players, with the phone's equaliser and loudness enhancer
-/// that carry the sound settings on Android (the desktop's libmpv gets them
-/// as audio filters instead).
+/// One of the two players, with the phone's equaliser, loudness enhancer and
+/// virtualizer (android_surround.dart) that carry the sound settings on
+/// Android (the desktop's libmpv gets them as audio filters instead).
 class _Deck {
   _Deck() {
     build(effects: Platform.isAndroid);

@@ -70,8 +70,15 @@ class Curve(unittest.TestCase):
     def test_numbers(self):
         self.assertEqual([sound.fmt(x) for x in (2.5, 3.0, -0.0, -0.04, 1.25, -2.25)], ["2.5", "3", "0", "0", "1.3", "-2.2"])
         self.assertEqual(sound.graph({"on": False, "bands": [5] * 15}), "")
-        self.assertEqual(sound.summary({"on": True, "preset": "melody", "bass": 2, "speed": 1.25}),
-                         "On · Melody · bass +2 dB · 1.25×")
+        self.assertEqual(sound.summary({"on": True, "preset": "melody", "bass": 2, "surround": 0.4, "speed": 1.25}),
+                         "On · Melody · bass +2 dB · surround 40% · 1.25×")
+
+    def test_surround_widens_and_makes_room(self):
+        self.assertEqual([sound.widen({"surround": x}) for x in (0, 0.5, 1, 3)], [1.0, 1.75, 2.5, 2.5])
+        self.assertIn("extrastereo@surround=m=1,", sound.graph({"on": True}))
+        # A side panned hard one way comes out (1 + m) / 2 louder.
+        self.assertAlmostEqual(sound.gains({"on": True, "surround": 1})["pre"], -4.9, delta=0.05)
+        self.assertEqual(sound.gains({"on": True, "surround": 1, "noclip": False})["pre"], 0.0)
 
 
 class FakeEngine:
@@ -124,9 +131,9 @@ class Command(unittest.TestCase):
         s = self.run_cli("sound", "preset", "Bass", "boost")
         self.assertEqual((s["on"], s["preset"], s["bands"][2]), (True, "bass", 7.0))
         s = self.run_cli("sound", "set", "--band", "16k=+2", "--band", "1.6k=+1", "--band", "1=-1", "--preamp", "-3",
-                         "--balance", "-0.2")
-        self.assertEqual((s["bands"][14], s["bands"][9], s["bands"][0], s["preamp"], s["balance"], s["preset"]),
-                         (2.0, 1.0, -1.0, -3.0, -0.2, ""))
+                         "--balance", "-0.2", "--surround", "0.35")
+        self.assertEqual((s["bands"][14], s["bands"][9], s["bands"][0], s["preamp"], s["balance"], s["surround"], s["preset"]),
+                         (2.0, 1.0, -1.0, -3.0, -0.2, 0.35, ""))
         s = self.run_cli("sound", "save", "Car")
         self.assertEqual((s["preset"], s["presets"]["Car"]), ("Car", s["bands"]))
         s = self.run_cli("sound", "set", "--bands=" + ",".join(str(b) for b in sound.PRESETS[1][2]))

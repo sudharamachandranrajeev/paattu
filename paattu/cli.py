@@ -1915,7 +1915,7 @@ def cmd_sound(args, out):
                 s["bands"][_sound_band(key)] = float(value)
             except ValueError:
                 raise ValueError("--band takes BAND=DB, e.g. 1k=+2.5")
-        for key in ("preamp", "bass", "treble", "balance", "speed"):
+        for key in ("preamp", "bass", "treble", "surround", "balance", "speed"):
             if getattr(args, key) is not None:
                 s[key] = getattr(args, key)
         if args.noclip is not None:
@@ -2290,7 +2290,7 @@ def build_parser():
     a.add_argument("value", nargs="?")
     a.set_defaults(func=cmd_config)
 
-    a = sub.add_parser("sound", help="equaliser, preamp, bass, treble, balance and speed")
+    a = sub.add_parser("sound", help="equaliser, preamp, bass, treble, surround, balance and speed")
     a.add_argument("action", nargs="?", default="show",
                    choices=("show", "on", "off", "preset", "presets", "set", "save", "delete", "reset"))
     a.add_argument("name", nargs="*", help="a preset (preset, save, delete)")
@@ -2299,6 +2299,7 @@ def build_parser():
     a.add_argument("--preamp", type=float, metavar="DB")
     a.add_argument("--bass", type=float, metavar="DB")
     a.add_argument("--treble", type=float, metavar="DB")
+    a.add_argument("--surround", type=float, metavar="0..1", help="how much wider the stereo is (0 none, 1 full)")
     a.add_argument("--balance", type=float, metavar="-1..1")
     a.add_argument("--speed", type=float, metavar="0.5..2")
     a.add_argument("--noclip", choices=("on", "off"), help="lower the preamp by the biggest boost (default on)")

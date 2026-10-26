@@ -187,7 +187,10 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
           final big = (box.maxWidth / 15).clamp(17.0, 30.0);
           return Stack(
             children: [
-              // A shade across the top of the cover, so the words read on any picture.
+              // A soft shade behind the words, so they read on any picture.
+              // It fades out before its edges: the 3D cover leans and swells
+              // under it, and a shade with edges showed as a grey patch
+              // where the cover had moved from.
               Positioned.fill(
                 child: IgnorePointer(
                   child: AnimatedOpacity(
@@ -195,12 +198,12 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
                     duration: const Duration(milliseconds: 600),
                     child: const DecoratedBox(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x99000000), Color(0x55000000), Color(0x00000000)],
-                          stops: [0, 0.55, 1],
+                        gradient: RadialGradient(
+                          center: Alignment(0, -0.2),
+                          radius: 0.4,
+                          colors: [Color(0x8C000000), Color(0x4D000000), Color(0x00000000)],
+                          stops: [0, 0.6, 1],
+                          transform: _Widen(),
                         ),
                       ),
                     ),
@@ -651,4 +654,20 @@ void showLyrics(BuildContext context, AppState app, SongLyrics words, List<Color
       ),
     ),
   );
+}
+
+/// A radial gradient at (0, -0.2) of radius 0.4 (of the height) stretched
+/// sideways into the ellipse that just fits its box, so it is clear at every
+/// edge.
+class _Widen extends GradientTransform {
+  const _Widen();
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final centre = Offset(bounds.center.dx, bounds.top + bounds.height * 0.4);
+    final stretch = bounds.height > 0 ? bounds.width / (bounds.height * 0.8) : 1.0;
+    return Matrix4.translationValues(centre.dx, centre.dy, 0)
+      ..scaleByDouble(stretch, 1, 1, 1)
+      ..translateByDouble(-centre.dx, -centre.dy, 0, 1);
+  }
 }

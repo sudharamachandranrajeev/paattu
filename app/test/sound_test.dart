@@ -36,6 +36,18 @@ void main() {
     expect(Sound(on: true, bands: List.filled(15, -3)).gains['pre'], 0.0);
   });
 
+  test('surround widens, makes room, and moves live', () {
+    expect([for (final x in [0.0, 0.5, 1.0]) Sound(surround: x).widen], [1.0, 1.75, 2.5]);
+    expect(const Sound(on: true).graph, contains('extrastereo@surround=m=1,'));
+    const wide = Sound(on: true, surround: 1);
+    expect(wide.gains['pre'], closeTo(-4.9, 0.05));
+    expect(wide.copyWith(noclip: false).gains['pre'], 0.0);
+    expect(wide.movesFrom(const Sound(on: true)).last, ['af-command', 'paattu', 'm', '2.5', 'extrastereo@surround']);
+    // The phone's virtualizer widens on its own: no room taken from its bands.
+    expect(wide.phone([1000], -15, 15).$1, [0.0]);
+    expect(wide.summary, 'On · Flat · surround 100%');
+  });
+
   test('the curve lands on the sliders', () {
     for (final bands in [
       List<double>.filled(15, 12),

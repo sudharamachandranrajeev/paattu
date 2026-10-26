@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.23.0 — Surround
+
+Which file: the same as before. On Omarchy, `git pull`, then
+`./install.sh --dev`, then `omarchy restart shell`.
+
+- **Surround, with a strength knob.** Sound has a new *Surround* knob from
+  off to 100%. It widens the stereo so the music spreads further round
+  you, on speakers and headphones alike, and you hear it while you turn
+  it. With *Keep loud songs from clipping* on, the preamp leaves room for
+  it. From the terminal: `paattu sound set --surround 0.4`.
+- **On a phone it is the phone's own virtualizer.** Some phones apply it
+  only on headphones.
+- **The Windows app has a fuller libmpv.** The one it had could only run
+  an equaliser. The installer is about 25 MB bigger.
+- **Search suggestions can be clicked again on Windows and Linux.**
+  Pressing the mouse button took the focus from the search box, and that
+  hid the suggestions before the click landed.
+- **No grey patch over the 3D cover with the words on.** The shade behind
+  the words was a box, and it stayed put as the cover leaned and pulsed.
+  It is now a soft glow with no edges, in the app and on Omarchy.
+
 ## 0.22.0 — Smooth video, steady faces, Now Playing on its side
 
 Which file: the same as before (`Paattu-0.22.0-android.apk`,

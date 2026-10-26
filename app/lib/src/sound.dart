@@ -1,4 +1,4 @@
-// Sound: the equaliser, preamp, bass, treble, balance and speed, as the
+// Sound: the equaliser, preamp, bass, treble, surround, balance and speed, as the
 // desktop Paattu has them (paattu/sound.py; tests/sound_cases.json holds the
 // numbers both must give).
 //
@@ -8,6 +8,11 @@
 // which makes the preamp and the left / right levels. Each filter is named
 // (equalizer@b3), so a slider can move it while it plays. Android has no
 // libmpv: the phone's own equaliser gets this curve at its bands instead.
+//
+// Surround widens the stereo with FFmpeg's `extrastereo` (each side moves
+// away from the middle by [soundWiden] times at full). The Windows app ships
+// a libmpv that has it (windows/CMakeLists.txt), as media_kit's has only
+// `equalizer`; Android hands the strength to the phone's virtualizer.
 //
 // The equaliser has fifteen bands, the ISO 2/3-octave centres. Peaking
 // filters overlap, so the sliders are the levels wanted at the centres and
@@ -35,6 +40,9 @@ const soundLimit = 12.0;
 const speedMin = 0.5;
 const speedMax = 2.0;
 const _label = 'paattu';
+
+/// extrastereo's m at full surround.
+const soundWiden = 2.5;
 
 /// For drawing the curve and finding its peak.
 const _rate = 48000;
@@ -92,6 +100,7 @@ final soundFilters = [
   for (var i = 0; i < soundBands.length; i++) SoundFilter('b$i', soundBands[i], soundWidth),
   const SoundFilter('bass', 60, 3),
   const SoundFilter('treble', 10000, 2),
+  const SoundFilter('surround', 0, 0),
   const SoundFilter('left', 1000, 0.001, octaves: false, channel: 'FL'),
   const SoundFilter('right', 1000, 0.001, octaves: false, channel: 'FR'),
 ];
@@ -254,6 +263,7 @@ class Sound {
     this.preamp = 0,
     this.bass = 0,
     this.treble = 0,
+    this.surround = 0,
     this.balance = 0,
     this.noclip = true,
     this.speed = 1,
@@ -285,6 +295,7 @@ class Sound {
       preamp: tenth(_number(s['preamp'], -soundLimit, soundLimit)),
       bass: tenth(_number(s['bass'], -soundLimit, soundLimit)),
       treble: tenth(_number(s['treble'], -soundLimit, soundLimit)),
+      surround: hundredth(_number(s['surround'], 0, 1)),
       balance: hundredth(_number(s['balance'], -1, 1)),
       noclip: s['noclip'] != false,
       speed: hundredth(_number(s['speed'], speedMin, speedMax, 1)),
@@ -300,6 +311,9 @@ class Sound {
   final double preamp;
   final double bass;
   final double treble;
+
+  /// 0 (none) … 1 (full): how much wider the stereo is.
+  final double surround;
 
   /// -1 (left only) … 1 (right only).
   final double balance;
@@ -320,6 +334,7 @@ class Sound {
         'preamp': preamp,
         'bass': bass,
         'treble': treble,
+        'surround': surround,
         'balance': balance,
         'noclip': noclip,
         'speed': speed,
@@ -334,6 +349,7 @@ class Sound {
     double? preamp,
     double? bass,
     double? treble,
+    double? surround,
     double? balance,
     bool? noclip,
     double? speed,
@@ -347,6 +363,7 @@ class Sound {
         'preamp': ?preamp,
         'bass': ?bass,
         'treble': ?treble,
+        'surround': ?surround,
         'balance': ?balance,
         'noclip': ?noclip,
         'speed': ?speed,
@@ -402,8 +419,8 @@ class Sound {
   /// [(filter, gain)] for the bands, bass and treble: the shape of the sound.
   List<(SoundFilter, double)> get curve => [
         for (var i = 0; i < soundBands.length; i++) (soundFilters[i + 1], bandGains(bands)[i]),
-        (soundFilters[soundFilters.length - 4], bass),
-        (soundFilters[soundFilters.length - 3], treble),
+        (soundFilters[soundFilters.length - 5], bass),
+        (soundFilters[soundFilters.length - 4], treble),
       ];
 
   /// The curve's highest boost (dB), 0 if it only cuts.
@@ -413,9 +430,15 @@ class Sound {
     return _grid.fold(0.0, (top, f) => max(top, soundResponse(shape, f)));
   }
 
-  /// {filter name: dB} as the graph gets them.
+  /// extrastereo's m for the surround: 1 (none) … [soundWiden].
+  double get widen => hundredth(1 + (soundWiden - 1) * surround);
+
+  /// How much louder (dB) the surround can make a side panned hard one way.
+  double get surroundRoom => 20 * log((1 + widen) / 2) / ln10;
+
+  /// {filter name: dB} as the graph gets them (surround's isn't a gain: [widen]).
   Map<String, double> get gains {
-    final pre = preamp - (noclip ? peak : 0);
+    final pre = preamp - (noclip ? peak + surroundRoom : 0);
     final b = balance;
     return {
       'pre': tenth(max(-30.0, pre)),
@@ -431,7 +454,12 @@ class Sound {
   String get graph {
     if (!on) return '';
     final levels = gains;
-    final filters = [for (final f in soundFilters) 'equalizer@${f.name}=${f.options}:g=${soundFmt(levels[f.name]!)}'];
+    final filters = [
+      for (final f in soundFilters)
+        f.name == 'surround'
+            ? 'extrastereo@surround=m=${speedText(widen)}'
+            : 'equalizer@${f.name}=${f.options}:g=${soundFmt(levels[f.name]!)}',
+    ];
     return '@$_label:lavfi=[${filters.join(',')}]';
   }
 
@@ -442,16 +470,21 @@ class Sound {
     return [
       for (final MapEntry(:key, :value) in gains.entries)
         if (was[key] != value) ['af-command', _label, 'g', soundFmt(value), 'equalizer@$key'],
+      if (before.widen != widen) ['af-command', _label, 'm', speedText(widen), 'extrastereo@surround'],
     ];
   }
+
+  /// The preamp (dB) the phone plays: room for the boosts, none for the surround.
+  double get phonePreamp => tenth(max(-30.0, preamp - (noclip ? peak : 0)));
 
   /// The curve on a phone's equaliser with bands at [centres] (Hz) that go
   /// from [low] to [high] dB: each band gets the curve's level there, plus
   /// the preamp when that is a cut. A preamp boost goes to the loudness
-  /// enhancer instead. Returns (band gains, loudness gain) in dB.
+  /// enhancer instead. Returns (band gains, loudness gain) in dB. (The
+  /// phone's virtualizer widens the sound itself: no room is kept for it.)
   (List<double>, double) phone(List<double> centres, double low, double high) {
     if (!on) return ([for (final _ in centres) 0.0], 0.0);
-    final pre = gains['pre']!;
+    final pre = phonePreamp;
     final shape = curve.where((g) => g.$2 != 0).toList();
     return (
       [for (final f in centres) tenth((soundResponse(shape, f) + min(0.0, pre)).clamp(low, high))],
@@ -459,13 +492,14 @@ class Sound {
     );
   }
 
-  /// One line: "On · Melody · preamp -3.5 dB · bass +2 dB · 1.25×".
+  /// One line: "On · Melody · preamp -3.5 dB · bass +2 dB · surround 40% · 1.25×".
   String get summary {
     final name = builtInPresets.where((p) => p.id == preset).firstOrNull?.name ?? (preset.isEmpty ? 'Custom' : preset);
     final parts = [on ? 'On' : 'Off', name];
     for (final (label, value) in [('preamp', preamp), ('bass', bass), ('treble', treble)]) {
       if (value != 0) parts.add('$label ${soundDb(value)} dB');
     }
+    if (surround != 0) parts.add('surround ${(surround * 100).round()}%');
     if (balance != 0) parts.add('balance ${(balance.abs() * 100).round()}% ${balance > 0 ? 'right' : 'left'}');
     if (speed != 1) parts.add('${speedText(speed)}×');
     return parts.join(' · ');

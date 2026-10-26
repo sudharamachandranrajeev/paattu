@@ -799,21 +799,33 @@ were carried over the same way.
   and loudness enhancer. That equaliser usually has five bands, so the
   fifteen-band curve is matched at those five. There's no balance on Android.
 
+**Surround** (0–100%) widens the stereo: each side moves further from
+what both share, up to 2.5 times at full (FFmpeg's `extrastereo`). With
+*Keep loud songs from clipping* on, the preamp also leaves room for a sound
+panned hard one way. On Android it is the phone's own virtualizer at that
+strength (stock Android's is open source; some phone makers ship their
+own, and some apply it only on headphones). Dolby Atmos and DTS can't be
+added to an app: they are licensed to phone and PC makers, and the songs
+are plain stereo. Where your phone or PC has them, they work on Paattu too.
+
 ```
 paattu sound                              # what's on
 paattu sound presets
 paattu sound preset melody                # turns the equaliser on
 paattu sound set --band 1k=+2 --band 1.6k=+1.5 --band 25=-1 --bass 3 --treble -1
 paattu sound set --preamp -2 --balance -0.2 --speed 1.25 --noclip on
+paattu sound set --surround 0.4                # 0 (none) … 1 (full)
 paattu sound save "Car"                   # keep the bands as your preset
 paattu sound delete "Car"
 paattu sound off | on | reset
 ```
 
-Everything is one chain of FFmpeg `equalizer` filters in mpv, the only
-audio filter the Windows libmpv has; the desktop engine and the Windows /
+Everything is one chain of FFmpeg filters in mpv (`equalizer`, and
+`extrastereo` for the surround); the desktop engine and the Windows /
 Linux app build the same chain from the same numbers
-(`tests/sound_cases.json`).
+(`tests/sound_cases.json`). media_kit's Windows libmpv has only
+`equalizer`, so the Windows app ships shinchiro's full libmpv build
+instead, pinned in [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv).
 
 </details>
 
