@@ -231,19 +231,26 @@ class _Rail extends StatelessWidget {
           radius: 30,
           child: SizedBox(
             width: 76,
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                Image.asset('assets/icon.png', width: 40, height: 40),
-                const SizedBox(height: 20),
-                _CreateButton(onPressed: onCreate),
-                const SizedBox(height: 20),
-                for (var i = 0; i < _destinations.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: _NavItem(destination: _destinations[i], selected: i == selected, onTap: () => onSelect(i)),
-                  ),
-              ],
+            // Shrunk to fit a phone on its side.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.topCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 16),
+                  Image.asset('assets/icon.png', width: 40, height: 40),
+                  const SizedBox(height: 20),
+                  _CreateButton(onPressed: onCreate),
+                  const SizedBox(height: 20),
+                  for (var i = 0; i < _destinations.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: _NavItem(destination: _destinations[i], selected: i == selected, onTap: () => onSelect(i)),
+                    ),
+                  const SizedBox(height: 6),
+                ],
+              ),
             ),
           ),
         ),

@@ -89,7 +89,15 @@ void main() {
         app.navigator.currentState!.push(PageRouteBuilder<void>(pageBuilder: (_, _, _) => const NowPlayingPage()));
         await shot('now-playing-video-$mode');
         app.navigator.currentState!.pop();
+        await settle();
+        // The phone on its side: the picture beside the controls, no scrolling.
+        tester.view.physicalSize = const Size(2532, 1170);
+        app.navigator.currentState!.push(PageRouteBuilder<void>(pageBuilder: (_, _, _) => const NowPlayingPage()));
+        await shot('now-playing-landscape-video-$mode');
         app.settings.videoMode = false;
+        await shot('now-playing-landscape-$mode');
+        app.navigator.currentState!.pop();
+        tester.view.physicalSize = const Size(1170, 2532);
         await settle();
         await tap(find.byTooltip('Library'));
         await shot('library-$mode');

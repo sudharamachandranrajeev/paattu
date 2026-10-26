@@ -41,7 +41,7 @@ PICTURE_SIDE = 720
 DEPTH_SIDE = 64
 REGIONS = 5
 # Bumped when the pictures change, so cached ones are made again.
-VERSION = 3
+VERSION = 4
 # Covers whose pictures are kept (the oldest go).
 KEEP = 300
 # How the cover is shown (the shader of the app's DepthCover.qml and the
@@ -338,12 +338,15 @@ def depth_map(rgb, side, subject=None):
     layers = blur(region_depth(rgb, side), side, side / 32)
     if subject is None:
         return layers, [0.0] * (side * side), [0.0] * (side * side)
-    # Softened, then brought back up, so a slim subject is as near as a broad one.
-    lifted = blur(subject, side, side / 40)
+    # Softened, then brought back up (so a slim subject is as near as a broad
+    # one) and past full from its edge in: the subject is all one depth and
+    # moves in one piece, a face never stretched across, and only what is
+    # behind it stretches round its edge.
+    lifted = blur(subject, side, side / 20)
     top = max(lifted)
     if top > 0:
-        lifted = [v / top for v in lifted]
-    depth = [0.25 * a + 0.75 * b for a, b in zip(layers, lifted)]
+        lifted = [min(1.0, 2 * v / top) for v in lifted]
+    depth = [0.25 * a * (1 - b) + b for a, b in zip(layers, lifted)]
     shadow = [0.55 * v for v in blur(subject, side, side / 16)]
     return depth, shadow, blur(subject, side, side / 80)
 

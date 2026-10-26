@@ -144,9 +144,10 @@ Item {
       if (!root.shown) root.shown = true
       // The music is the video's own sound: a small drift is made up by
       // running the picture a little faster or slower (a seek would stutter),
-      // changed only once it has come back in line, so it doesn't wobble.
-      var nudge = !root.exact || Math.abs(ahead) < 40 ? 1 : 1 - Math.max(-0.06, Math.min(0.06, ahead / 2000))
-      if ((nudge === 1) !== (root.nudge === 1)) root.nudge = nudge
+      // as much as it is out, in steps of 2% so the speed changes only a few
+      // times as it comes back in line.
+      var nudge = !root.exact || Math.abs(ahead) < 40 ? 1 : 1 - Math.round(Math.max(-0.06, Math.min(0.06, ahead / 2000)) * 50) / 50
+      if (nudge !== root.nudge) root.nudge = nudge
     })
   }
 

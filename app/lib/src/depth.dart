@@ -224,12 +224,15 @@ DepthMap depthMap(List<int> rgb, int side, [List<double>? subject]) {
   if (subject == null) {
     return DepthMap(layers, List.filled(side * side, 0.0), List.filled(side * side, 0.0));
   }
-  // Softened, then brought back up, so a slim subject is as near as a broad one.
-  var lifted = blur(subject, side, side / 40);
+  // Softened, then brought back up (so a slim subject is as near as a broad
+  // one) and past full from its edge in: the subject is all one depth and
+  // moves in one piece, a face never stretched across, and only what is
+  // behind it stretches round its edge.
+  var lifted = blur(subject, side, side / 20);
   final top = lifted.reduce(max);
-  if (top > 0) lifted = [for (final v in lifted) v / top];
+  if (top > 0) lifted = [for (final v in lifted) min(1.0, 2 * v / top)];
   return DepthMap(
-    [for (var i = 0; i < lifted.length; i++) 0.25 * layers[i] + 0.75 * lifted[i]],
+    [for (var i = 0; i < lifted.length; i++) 0.25 * layers[i] * (1 - lifted[i]) + lifted[i]],
     [for (final v in blur(subject, side, side / 16)) 0.55 * v],
     blur(subject, side, side / 80),
   );

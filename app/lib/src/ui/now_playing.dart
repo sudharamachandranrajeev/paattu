@@ -276,7 +276,9 @@ class NowPlayingPage extends StatelessWidget {
               track: track,
               wide: wide,
               sharp: !settings.videoMode && style == NowPlayingStyle.full,
-              video: settings.videoBackground,
+              // In video mode the video is in the card: blurring it behind
+              // as well, every frame, made it stutter on a phone.
+              video: settings.videoBackground && !settings.videoMode,
               blur: settings.videoBlur * (wide ? 1.2 : 0.4),
             ),
           ),
@@ -314,6 +316,30 @@ class NowPlayingPage extends StatelessWidget {
                   ],
                 );
               }
+              // A short window (a phone on its side): the picture on the
+              // left as tall as it goes, the controls beside it, nothing to
+              // scroll.
+              if (page.maxWidth > page.maxHeight && page.maxHeight < _barHeight + _domeHeight + 40) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: card),
+                    SizedBox(
+                      width: min(440.0, page.maxWidth * 0.5),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 12, bottom: 12),
+                        child: Column(
+                          children: [
+                            bar,
+                            const Spacer(),
+                            _Dome(app: app, track: track, playing: playing, loading: loading, compact: true),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
               return Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
@@ -321,12 +347,6 @@ class NowPlayingPage extends StatelessWidget {
                     final room = box.maxHeight - _barHeight - _domeHeight;
                     final info = settings.songInfo && room - _infoHeight > 120;
                     final arc = room - _arcHeight - (info ? _infoHeight : 0) > 120;
-                    if (room < 40) {
-                      // A short window (a phone on its side): scroll instead.
-                      return SingleChildScrollView(
-                        child: Column(children: [bar, SizedBox(height: 260, child: card), dome]),
-                      );
-                    }
                     return Column(
                       children: [
                         bar,
@@ -817,13 +837,18 @@ class _UpcomingArc extends StatelessWidget {
 /// The controls in a glass dome: title, the transport around a big glowing
 /// play button, the seek bar and the song's buttons.
 class _Dome extends StatelessWidget {
-  const _Dome({required this.app, required this.track, required this.playing, required this.loading});
+  const _Dome({required this.app, required this.track, required this.playing, required this.loading, this.compact = false});
   final AppState app;
   final Json track;
   final bool playing;
   final bool loading;
 
+  /// A flat, rounded panel with smaller controls, beside the picture on a
+  /// phone on its side, where there is no height for the dome.
+  final bool compact;
+
   static const _rise = 44.0;
+  static const _round = 28.0;
 
   @override
   Widget build(BuildContext context) {
@@ -831,14 +856,12 @@ class _Dome extends StatelessWidget {
     final scheme = theme.colorScheme;
     final player = app.player;
     final muted = theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
-    return ClipPath(
-      clipper: const _DomeShape(_rise),
-      child: BackdropFilter(
+    final glass = BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: CustomPaint(
-          painter: _DomePainter(edge: scheme.glassEdge, glow: scheme.primary, fill: scheme.surface),
+          painter: _DomePainter(edge: scheme.glassEdge, glow: scheme.primary, fill: scheme.surface, round: compact ? _round : 0),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 30, 16, 8),
+            padding: compact ? const EdgeInsets.fromLTRB(12, 12, 12, 4) : const EdgeInsets.fromLTRB(16, 30, 16, 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -846,7 +869,8 @@ class _Dome extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                    style: (compact ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 Text(trackSubtitle(track), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: muted),
                 StreamBuilder<String>(
                   stream: player.quality,
@@ -856,7 +880,7 @@ class _Dome extends StatelessWidget {
                     style: muted?.copyWith(fontSize: 11, color: scheme.secondary),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: compact ? 2 : 10),
                 StreamBuilder<PlaybackState>(
                   stream: player.playbackState,
                   builder: (context, snapshot) {
@@ -864,7 +888,7 @@ class _Dome extends StatelessWidget {
                     final shuffle = state?.shuffleMode == AudioServiceShuffleMode.all;
                     final repeat = state?.repeatMode ?? AudioServiceRepeatMode.none;
                     return SizedBox(
-                      height: 104,
+                      height: compact ? 80 : 104,
                       child: Row(
                         children: [
                           IconButton(
@@ -899,7 +923,13 @@ class _Dome extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                _BigPlay(playing: playing, loading: loading, onPressed: player.togglePlay),
+                                compact
+                                    ? SizedBox.square(
+                                        dimension: 80,
+                                        child: FittedBox(
+                                            child: _BigPlay(playing: playing, loading: loading, onPressed: player.togglePlay)),
+                                      )
+                                    : _BigPlay(playing: playing, loading: loading, onPressed: player.togglePlay),
                               ],
                             ),
                           ),
@@ -948,13 +978,15 @@ class _Dome extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (!Platform.isAndroid) _VolumeBar(app: app),
+                if (!Platform.isAndroid && !compact) _VolumeBar(app: app),
               ],
             ),
           ),
         ),
-      ),
-    );
+      );
+    return compact
+        ? ClipRRect(borderRadius: BorderRadius.circular(_round), child: glass)
+        : ClipPath(clipper: const _DomeShape(_rise), child: glass);
   }
 }
 
@@ -1013,10 +1045,13 @@ class _DomeShape extends CustomClipper<Path> {
 /// The dome's glass: darker as it goes down, a glow where the play button
 /// sits, and a light edge along the top.
 class _DomePainter extends CustomPainter {
-  const _DomePainter({required this.edge, required this.glow, required this.fill});
+  const _DomePainter({required this.edge, required this.glow, required this.fill, this.round = 0});
   final Color edge;
   final Color glow;
   final Color fill;
+
+  /// The corners of a compact dome's panel, edged all round; 0 for the dome.
+  final double round;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1041,7 +1076,9 @@ class _DomePainter extends CustomPainter {
         ).createShader(rect),
     );
     canvas.drawPath(
-      _DomeShape.outline(size, _Dome._rise),
+      round > 0
+          ? (Path()..addRRect(RRect.fromRectAndRadius(rect.deflate(0.75), Radius.circular(round))))
+          : _DomeShape.outline(size, _Dome._rise),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5
@@ -1050,7 +1087,8 @@ class _DomePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DomePainter old) => old.edge != edge || old.glow != glow || old.fill != fill;
+  bool shouldRepaint(_DomePainter old) =>
+      old.edge != edge || old.glow != glow || old.fill != fill || old.round != round;
 }
 
 /// Play / pause in rings of light that move with the song (beat.dart): the

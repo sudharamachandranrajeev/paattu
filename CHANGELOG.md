@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.22.0 — Smooth video, steady faces, Now Playing on its side
+
+Which file: the same as before (`Paattu-0.22.0-android.apk`,
+`Paattu-0.22.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh --dev`, then
+`omarchy restart shell`.
+
+- **Video mode no longer stutters.** The picture is kept in step with the
+  sound by running it a little faster or slower. Before, once it was sped
+  up or slowed down it never switched the other way, so it drifted until
+  it had to jump every few seconds. Now it runs as much faster or slower
+  as it is out, in steps of 2%. On the phone the video is no longer also
+  blurred behind its own card every frame.
+- **Faces stay whole in the 3D cover.** The subject now leans as one
+  piece at one depth, so a face is never stretched across. Only what is
+  behind the subject stretches round its edge. Covers seen before are
+  worked out again.
+- **Now Playing on a phone on its side fits the screen, with nothing to
+  scroll.** The cover (or the video, with the words under it) is on the
+  left as tall as it goes. The controls sit beside it in a flat glass
+  panel, with the same buttons, seek bar and actions. The side rail of the
+  home screen shrinks to fit as well.
+
 ## 0.21.0 — Video mode on Omarchy
 
 Which file: the same as before. On Omarchy, `git pull`, then
