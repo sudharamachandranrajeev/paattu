@@ -22,6 +22,8 @@ FloatingWindow {
   readonly property string nowPlayingStyle: store.config.nowPlayingStyle || "cover"
   // The song's video is showing behind Now Playing.
   readonly property bool videoShown: videoLoader.item ? videoLoader.item.shown && !videoLoader.item.over : false
+  // The video's picture (VideoBackdrop), for Now Playing's card in video mode.
+  readonly property var videoTexture: videoLoader.item ? videoLoader.item.texture : null
   readonly property string fontFamily: Style.font.family
   property int artRevision: 0
 
@@ -421,7 +423,12 @@ FloatingWindow {
 
   function syncUser(id) { jobs.run(["user", "sync", id], "Checking for new playlists…", function() { refreshArt() }) }
   function removeUser(id) { jobs.run(["user", "remove", id], "Unfollowing…", function() { navigate("users") }) }
-  function setConfig(key, value) { quick.run(["config", "set", key, typeof value === "string" ? value : JSON.stringify(value)], "") }
+  function setConfig(key, value, done) {
+    quick.run(["config", "set", key, typeof value === "string" ? value : JSON.stringify(value)], "", done)
+  }
+  // Video mode on or off: saved first, so the engine reads the same when it
+  // changes the song playing to the video's sound (or back).
+  function setVideoMode(on) { setConfig("videoMode", on, function() { win.player.setVideoMode(on) }) }
   function watchVideo() { quick.run(["watch"], "Opening in Brave…") }
 
   Timer {
@@ -523,7 +530,8 @@ FloatingWindow {
     Loader {
       id: videoLoader
       anchors.fill: parent
-      active: win.view === "playing" && win.store.config.videoBackground !== false && GraphicsInfo.api !== GraphicsInfo.Software
+      active: win.view === "playing" && (win.store.config.videoBackground !== false || win.store.config.videoMode === true)
+        && GraphicsInfo.api !== GraphicsInfo.Software
       // Brighter when the video is the picture.
       opacity: win.nowPlayingStyle === "video" ? 0.85 : win.nowPlayingStyle === "full" ? 0.7 : 0.55
       Behavior on opacity { NumberAnimation { duration: 400 } }

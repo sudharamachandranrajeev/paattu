@@ -174,6 +174,9 @@ def video_details(vid):
 # background (about 1 MB a minute), and every player can show it.
 SMALL_VIDEO = "wv*[vcodec^=avc1][protocol=https][height>=100]/wv*[vcodec^=avc1][protocol=https]"
 
+# Video mode's picture: the tallest H.264 up to a height, else the smallest.
+BIG_VIDEO = "bv*[vcodec^=avc1][protocol=https][height<=%d]/wv*[vcodec^=avc1][protocol=https]"
+
 # Below this many kbps the picture doesn't move: a YouTube Music song's own
 # video is often an "art track", its cover held still (about 10 kbps at
 # 144p, where a video runs at about 100). Keep in step with the app.
@@ -184,13 +187,23 @@ def small_video(vid):
     """Where to stream a video's smallest picture: {"id", "url", "duration",
     "expires"} (expires: Unix time the link stops working, or None). None
     when the picture is a still (STILL_KBPS)."""
-    data = _run(watch_url(vid), timeout=60, extra=("-f", SMALL_VIDEO))
+    return _picture(vid, SMALL_VIDEO, still=True)
+
+
+def video_picture(vid, height):
+    """Where to stream a video's picture, without sound, the tallest H.264
+    up to `height` lines (video mode: big enough to watch), as small_video."""
+    return _picture(vid, BIG_VIDEO % height, still=False)
+
+
+def _picture(vid, formats, still):
+    data = _run(watch_url(vid), timeout=60, extra=("-f", formats))
     chosen = (data.get("requested_formats") or [data])[0]
     url = chosen.get("url") or ""
     if not url:
         raise YouTubeError("that video has no picture to show")
     kbps = chosen.get("tbr") or chosen.get("vbr")
-    if kbps is not None and kbps < STILL_KBPS:
+    if still and kbps is not None and kbps < STILL_KBPS:
         return None
     expires = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query).get("expire", [None])[0]
     return {"id": vid, "url": url, "duration": data.get("duration"),

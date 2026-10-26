@@ -38,6 +38,8 @@ Item {
   // The sleep timer (engine/paattu.lua): {mode: "time", at: epoch seconds},
   // {mode: "end"}, or {} when it's off.
   property var sleep: ({})
+  // Video mode: the YouTube video whose sound the engine plays ("" for none).
+  property string video: ""
 
   // The stream's audio, for the quality badge.
   property string audioCodec: ""
@@ -109,6 +111,7 @@ Item {
   }
   // 30 (minutes), "+5", "end" (of this song) or "off".
   function setSleep(value) { return send(["script-message", "paattu-sleep", String(value)]) }
+  function setVideoMode(on) { return send(["script-message", "paattu-video-mode", on ? "on" : "off"]) }
   function cycleRepeat() { setRepeat(Model.nextRepeat(repeat)) }
 
   // ---------- events ----------
@@ -116,7 +119,7 @@ Item {
     "idle-active", "pause", "path", "media-title", "duration", "volume", "mute", "playlist-pos",
     "playlist-count", "playlist", "loop-file", "loop-playlist", "paused-for-cache",
     "user-data/paattu/shuffle", "user-data/paattu/source", "user-data/paattu/radio",
-    "user-data/paattu/sleep"
+    "user-data/paattu/sleep", "user-data/paattu/video"
   ]
 
   function subscribe() {
@@ -151,6 +154,7 @@ Item {
     case "user-data/paattu/source": source = value || ({}); break
     case "user-data/paattu/radio": radio = value || ({}); break
     case "user-data/paattu/sleep": sleep = value || ({}); break
+    case "user-data/paattu/video": video = value || ""; break
     }
   }
 

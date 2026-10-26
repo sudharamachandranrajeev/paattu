@@ -288,6 +288,35 @@ class SongVideoTest(unittest.TestCase):
         with mock.patch.object(youtube, "_run", lambda *a, **k: self.small(96.9)):
             self.assertEqual(youtube.small_video("isDo6u7QQ74")["id"], "isDo6u7QQ74")
 
+    def test_video_mode_picture_is_as_tall_as_asked(self):
+        asked = []
+
+        def run(target, timeout=180, extra=()):
+            asked.append(extra)
+            return self.small(10.4)  # a still passes: only the small picture is judged
+
+        with mock.patch.object(youtube, "_run", run):
+            self.assertEqual(youtube.video_picture("isDo6u7QQ74", 720)["id"], "isDo6u7QQ74")
+        self.assertIn("[height<=720]", asked[-1][1])
+
+    def test_a_songs_video_is_remembered(self):
+        found = []
+
+        def video_for(track):
+            found.append(track["id"])
+            return {"id": "S3oq6IwPWBw", "url": "u"} if track["id"] == "a" else None
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(paths, "VIDEOS", pathlib.Path(tmp) / "videos.json"), \
+                mock.patch.object(sources, "video_for", video_for):
+            self.assertEqual(sources.video_id_for({"id": "a"}, now=1000), ("S3oq6IwPWBw", {"id": "S3oq6IwPWBw", "url": "u"}))
+            self.assertEqual(sources.video_id_for({"id": "a"}, now=2000), ("S3oq6IwPWBw", None))
+            self.assertEqual(sources.video_id_for({"id": "b"}, now=2000), (None, None))
+            self.assertEqual(sources.video_id_for({"id": "b"}, now=3000), (None, None))
+            # None found is asked again after a day; a video found, after a month.
+            sources.video_id_for({"id": "b"}, now=2000 + sources.NO_VIDEO_KEPT + 1)
+            self.assertEqual(found, ["a", "b", "b"])
+
     def test_an_art_track_gets_a_video_found_by_search(self):
         still = {"NAkQVL61BRI", "rcdWUeVKFnA"}
         tried = []

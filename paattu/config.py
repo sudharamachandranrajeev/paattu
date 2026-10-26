@@ -37,6 +37,9 @@ DEFAULTS = {
     "sound": sound.DEFAULTS,
     # Now Playing shows the song's video, blurred and silent, behind it (paattu video).
     "videoBackground": True,
+    # Video mode: Now Playing shows the song's video and the engine plays the
+    # video's own sound, so the singing matches the lips.
+    "videoMode": False,
     # How Now Playing looks: the cover with the video behind it, the video in
     # place of the cover, the full picture, or the cover on a turning record.
     "nowPlayingStyle": "cover",
@@ -121,7 +124,7 @@ def validate(key, value):
         raise ValueError("desktop.workspace is a workspace number")
     if key in ("desktop.scale", "desktop.opacity") and not isinstance(value, (int, float)):
         raise ValueError(key + " is a number")
-    if key in ("videoBackground", "coverColors", "coverDepth") and not isinstance(value, bool):
+    if key in ("videoBackground", "videoMode", "coverColors", "coverDepth") and not isinstance(value, bool):
         raise ValueError(key + " is true or false")
     if key == "nowPlayingStyle" and value not in NOW_PLAYING_STYLES:
         raise ValueError("nowPlayingStyle is one of: " + ", ".join(NOW_PLAYING_STYLES))

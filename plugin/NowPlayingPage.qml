@@ -8,7 +8,8 @@ import "Model.js" as Model
 // window (AppWindow draws it), or the cover on a turning record. AppWindow
 // shows the song's video behind it all, blurred (VideoBackdrop). The cover in
 // 3D moves with the song: its rhythm (`paattu rhythm`, paattu/rhythm.py) is
-// followed as it plays.
+// followed as it plays. Video mode (the Audio | Video switch) shows the song's
+// video in a wide card in the cover's place, the engine playing its sound.
 Item {
   id: root
 
@@ -21,6 +22,7 @@ Item {
   readonly property var upNext: Model.queueRows(player.playlist, app.store.tracks)
     .filter(function(row) { return row.index > player.index }).slice(0, 6)
   readonly property bool videoOn: app.store.config.videoBackground !== false
+  readonly property bool videoMode: app.store.config.videoMode === true
   readonly property real artSize: Math.max(160, Math.min(420, height - 64, (width - 84) * 0.45))
   // The song as the library has it (year, language, views...), when it does.
   readonly property var known: (track.id && app.store.tracks[track.id]) || ({})
@@ -39,7 +41,7 @@ Item {
   property real positionAt: Date.now()
   property int beatFrame: -1
   readonly property bool beating: rhythm !== null && rhythmFor === player.path && player.playing
-    && depth && style !== "record" && style !== "full" && visible
+    && depth && style !== "record" && style !== "full" && !videoMode && visible
   onBeatingChanged: if (!beating) { beatLevel = 0; beatPunch = 0; beatFrame = -1 }
 
   Connections {
@@ -99,18 +101,18 @@ Item {
     id: art
     x: 28
     anchors.verticalCenter: parent.verticalCenter
-    visible: root.style !== "full"
-    width: visible ? root.artSize : 0
-    height: root.artSize
+    visible: root.videoMode || root.style !== "full"
+    width: !visible ? 0 : root.videoMode ? Math.min(root.artSize * 16 / 9, (root.width - 84) * 0.58) : root.artSize
+    height: root.videoMode ? width * 9 / 16 : root.artSize
     // The video takes the cover's place once it shows.
-    opacity: root.style === "video" && root.app.videoShown ? 0 : 1
+    opacity: !root.videoMode && root.style === "video" && root.app.videoShown ? 0 : 1
     Behavior on opacity { NumberAnimation { duration: 900; easing.type: Easing.InOutQuad } }
 
     Rectangle {
       anchors.fill: parent
       anchors.margins: 18
       anchors.topMargin: 36
-      radius: root.style === "record" ? width / 2 : 40
+      radius: root.style === "record" && !root.videoMode ? width / 2 : 40
       color: root.pal.accent
       opacity: 0.55
       visible: GraphicsInfo.api !== GraphicsInfo.Software
@@ -124,7 +126,7 @@ Item {
     }
     Cover {
       anchors.fill: parent
-      visible: root.style !== "record" && !root.depth
+      visible: root.videoMode || (root.style !== "record" && !root.depth)
       radius: 32
       source: visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
       revision: root.app.artRevision
@@ -135,7 +137,7 @@ Item {
     }
     Loader {
       anchors.fill: parent
-      active: root.style !== "record" && root.style !== "full" && root.depth
+      active: !root.videoMode && root.style !== "record" && root.style !== "full" && root.depth
       sourceComponent: DepthCover {
         app: root.app
         beatLevel: root.beatLevel
@@ -149,7 +151,7 @@ Item {
     }
     Record {
       anchors.fill: parent
-      visible: root.style === "record"
+      visible: !root.videoMode && root.style === "record"
       source: visible && root.track.id ? root.app.store.artFor("v", root.track.id) : ""
       revision: root.app.artRevision
       spinning: visible && root.player.playing
@@ -158,6 +160,31 @@ Item {
       glyphColor: root.pal.accentText
       holeColor: root.pal.background
       fontFamily: root.app.fontFamily
+    }
+    // Video mode: the video, sharp, over the cover once it plays.
+    Item {
+      anchors.fill: parent
+      visible: root.videoMode && root.app.videoTexture !== null
+      opacity: root.app.videoShown ? 1 : 0
+      Behavior on opacity { NumberAnimation { duration: 600 } }
+      layer.enabled: visible
+      layer.effect: MultiEffect {
+        maskEnabled: true
+        maskSource: videoMask
+      }
+      Rectangle { anchors.fill: parent; color: "black" }
+      ShaderEffect {
+        // The picture is 16 by 9; fitted into the card it fills it.
+        anchors.fill: parent
+        property var source: root.app.videoTexture
+      }
+    }
+    Rectangle {
+      id: videoMask
+      anchors.fill: parent
+      radius: 32
+      visible: false
+      layer.enabled: true
     }
   }
 
@@ -170,6 +197,8 @@ Item {
     y: root.style === "full" ? 8 : art.y
     width: root.style === "full" ? Math.min(560, root.width - 56) : root.artSize
     height: root.style === "full" ? 200 : root.artSize
+    // Not over the video: the Lyrics chip shows them beside it.
+    visible: !root.videoMode
     z: 1
   }
 
@@ -182,14 +211,42 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     spacing: 10
 
-    Text {
-      textFormat: Text.PlainText
-      text: "NOW PLAYING"
-      color: root.pal.accent
-      font.family: root.app.fontFamily
-      font.pixelSize: 11
-      font.weight: Font.Bold
-      font.letterSpacing: 2
+    Row {
+      spacing: 14
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "NOW PLAYING"
+        color: root.pal.accent
+        font.family: root.app.fontFamily
+        font.pixelSize: 11
+        font.weight: Font.Bold
+        font.letterSpacing: 2
+      }
+      // Audio | Video: video mode shows the song's video and plays its sound.
+      Row {
+        spacing: 4
+        Chip {
+          text: "Audio"
+          glyph: Model.GLYPH_NOTE
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          selected: !root.videoMode
+          fontSize: 12
+          fontFamily: root.app.fontFamily
+          onClicked: if (root.videoMode) root.app.setVideoMode(false)
+        }
+        Chip {
+          text: "Video"
+          glyph: Model.GLYPH_VIDEO
+          textColor: root.pal.foreground
+          accent: root.pal.accent
+          selected: root.videoMode
+          fontSize: 12
+          fontFamily: root.app.fontFamily
+          onClicked: if (!root.videoMode) root.app.setVideoMode(true)
+        }
+      }
     }
     Text {
       width: parent.width
@@ -253,7 +310,7 @@ Item {
       }
       Chip {
         anchors.verticalCenter: parent.verticalCenter
-        text: "Video"
+        text: "Blurred video"
         glyph: Model.GLYPH_VIDEO
         textColor: root.pal.foreground
         accent: root.pal.accent

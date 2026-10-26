@@ -21,6 +21,12 @@
 --    once the song playing has finished. The state is in
 --    user-data/paattu/sleep ({mode = "time", at = epoch seconds} or
 --    {mode = "end"}; {} when off) for the bar and the CLI.
+--  * Video mode (config.json "videoMode"): a song that has a video
+--    (`paattu video --id`) plays the video's own sound, so the singing
+--    matches the lips of the video Now Playing shows; the video's id is in
+--    user-data/paattu/video ("" for none). A video that won't play gives way
+--    to the song's own sound. `script-message paattu-video-mode on|off`
+--    changes the song playing where it is.
 
 local utils = require "mp.utils"
 
@@ -31,7 +37,7 @@ local TICK = 0.1
 local LEAD = 0.3
 
 local DATA = (os.getenv("XDG_DATA_HOME") or (os.getenv("HOME") .. "/.local/share")) .. "/paattu"
-local settings = { fade = 3, autoRadio = true, offlineDir = DATA .. "/offline" }
+local settings = { fade = 3, autoRadio = true, offlineDir = DATA .. "/offline", videoMode = false }
 
 local function read_settings()
     local f = io.open(CONFIG, "r")
@@ -43,6 +49,7 @@ local function read_settings()
     local fade = tonumber(parsed.fade)
     settings.fade = fade and math.max(0, math.min(12, fade)) or 3
     settings.autoRadio = parsed.autoRadio ~= false
+    settings.videoMode = parsed.videoMode == true
     local dir = type(parsed.offline) == "table" and parsed.offline.dir or ""
     if type(dir) ~= "string" or dir == "" then
         settings.offlineDir = DATA .. "/offline"
@@ -63,6 +70,12 @@ local function run(args, done)
         end
         if done then done(fine, result.stdout or "") end
     end)
+end
+
+local function last_line(text)
+    local last = nil
+    for line in (text or ""):gmatch("[^\n]+") do last = line end
+    return last
 end
 
 local function entry_by_id(id)
@@ -124,11 +137,56 @@ local function read_kept()
     end
 end
 
--- Before yt-dlp looks at it (its hook runs at 10), so a kept song needs no network.
+-- ---------------------------------------------------------------- video mode
+
+local video_off = {}       -- links whose video wouldn't play: their own sound
+local swapped = false      -- whether the song playing is its video's sound
+local resume_at = nil      -- where a song changing to (or from) its video starts
+local switching = nil      -- the listen carried over by that change
+
+local function publish_video(id)
+    mp.set_property_native("user-data/paattu/video", id or "")
+end
+
+-- The id of the song's video, or nil. It waits (the song is loading anyway):
+-- quick once the song's video is known, a search the first time.
+local function video_of(url)
+    local result = mp.command_native({
+        name = "subprocess", playback_only = false, capture_stdout = true, capture_stderr = true,
+        args = { "timeout", "15", PAATTU, "--json", "video", "--id", "--", url },
+    })
+    local found = result and result.status == 0 and utils.parse_json(last_line(result.stdout) or "") or nil
+    return type(found) == "table" and type(found.id) == "string" and found.id ~= "" and found.id or nil
+end
+
+-- Before yt-dlp looks at it (its hook runs at 10), so a kept song needs no
+-- network, and a song in video mode is its video's link when yt-dlp sees it.
 mp.add_hook("on_load", 5, function()
+    if resume_at then
+        mp.set_property("file-local-options/start", tostring(resume_at))
+        resume_at = nil
+    end
+    swapped = false
     local url = mp.get_property("stream-open-filename", "")
-    if not url:find("://", 1, true) then return end
+    if not url:find("://", 1, true) then
+        publish_video(nil)
+        return
+    end
     read_settings()
+    if settings.videoMode and not video_off[url] then
+        local id = video_of(url)
+        publish_video(id)
+        if id then
+            if id ~= youtube_id(url) then
+                swapped = true
+                mp.set_property("stream-open-filename", "https://www.youtube.com/watch?v=" .. id)
+                mp.msg.info("video mode: playing the sound of video " .. id)
+            end
+            return
+        end
+    else
+        publish_video(nil)
+    end
     read_kept()
     local id = youtube_id(url)
     local file = kept.files[url] or (id and kept.files["youtube:" .. id])
@@ -156,12 +214,6 @@ end
 -- ---------------------------------------------------------------- failover
 
 local replaced = {} -- links played in place of another (not failed over again)
-
-local function last_line(text)
-    local last = nil
-    for line in (text or ""):gmatch("[^\n]+") do last = line end
-    return last
-end
 
 local function fail_over(entry_id)
     local _, entry = entry_by_id(entry_id)
@@ -258,6 +310,22 @@ local function fall_asleep()
     mp.set_property_bool("pause", true)
 end
 
+mp.register_script_message("paattu-video-mode", function(arg)
+    settings.videoMode = arg == "on"
+    if not song or mp.get_property_bool("idle-active") then return end
+    local video = mp.get_property_native("user-data/paattu/video") or ""
+    -- Off: back to the song's own sound if it was its video's. On: to its
+    -- video's, unless it already is (a YouTube song that is its own video).
+    if settings.videoMode and video ~= "" then return end
+    if not settings.videoMode and not swapped then
+        publish_video(nil)
+        return
+    end
+    switching = song.heard
+    resume_at = mp.get_property_number("time-pos")
+    mp.commandv("playlist-play-index", "current")
+end)
+
 mp.register_script_message("paattu-sleep", function(arg)
     arg = arg or "off"
     local now = os.time()
@@ -297,8 +365,9 @@ mp.register_event("file-loaded", function()
         url = mp.get_property("path") or "",
         title = mp.get_property("media-title") or "",
         length = mp.get_property_number("duration"),
-        heard = 0,
+        heard = switching or 0,
     }
+    switching = nil
     -- Fade in only after a song that played to its end (not a skip or a pick).
     fade_in = last_end == "eof"
     applied = -1
@@ -307,6 +376,24 @@ mp.register_event("file-loaded", function()
 end)
 
 mp.register_event("end-file", function(event)
+    -- The song's video wouldn't play: its own sound, from where it was.
+    if event.reason == "error" and swapped and event.playlist_entry_id then
+        local index, entry = entry_by_id(event.playlist_entry_id)
+        if index then
+            video_off[entry.filename] = true
+            swapped = false
+            switching = song and song.heard or nil
+            resume_at = mp.get_property_number("time-pos")
+            song = nil
+            mp.commandv("playlist-play-index", tostring(index))
+            return
+        end
+    end
+    -- Changing to (or from) its video's sound is the same listen.
+    if switching then
+        song = nil
+        return
+    end
     if song then
         song.length = song.length or mp.get_property_number("duration")
         note_play()

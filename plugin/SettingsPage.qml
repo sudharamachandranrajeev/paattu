@@ -268,7 +268,33 @@ Flickable {
         width: 110
         anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
-        text: "Video"
+        text: "Video mode"
+        color: root.pal.muted
+        font.family: root.app.fontFamily
+        font.pixelSize: 12
+      }
+      Chip {
+        readonly property bool on: root.app.store.config.videoMode === true
+        text: on ? "On" : "Off"
+        glyph: on ? Model.GLYPH_CHECK : Model.GLYPH_CLOSE
+        textColor: root.pal.foreground; accent: root.pal.accent
+        selected: on
+        fontSize: 12; fontFamily: root.app.fontFamily
+        onClicked: root.app.setVideoMode(!on)
+      }
+    }
+    Hint {
+      app: root.app
+      width: column.width
+      text: "Shows the song's video and plays its own sound, so the singing matches the lips (up to 720p, about 10 MB a minute). Also Audio | Video on Now Playing."
+    }
+    Row {
+      spacing: 8
+      Text {
+        width: 110
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: "Blurred video"
         color: root.pal.muted
         font.family: root.app.fontFamily
         font.pixelSize: 12
