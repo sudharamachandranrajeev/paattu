@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.18.0 — Now Playing that fills a big window
+
+Which file: the same as before (`Paattu-0.18.0-android.apk`,
+`Paattu-0.18.0-windows-x64-setup.exe`, the AppImage or the tarball).
+
+- **Room to breathe on a desktop.** In a big window (Windows or the Linux
+  app, maximised) Now Playing used to sit in a narrow column in the middle.
+  Now the cover (or record, or picture), with the words over it, takes the
+  left as big as the height allows, and the right has what plays next as a
+  list (cover, singers, length; a tap plays it), the song's details and the
+  controls. Phones and smaller windows look as before.
+
 ## 0.17.0 — A cleaner cover in 3D
 
 Which file: the same as before (`Paattu-0.17.0-android.apk`,
