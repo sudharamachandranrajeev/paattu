@@ -2,7 +2,8 @@
 // (MainActivity.kt's "power" channel): Wi-Fi held awake while playing, the
 // notification permission (Android 13+), and being left out of battery
 // optimisation on phones that stop apps in the background. Also writing to a
-// folder picked for the kept songs.
+// folder picked for the kept songs, and the screen kept on while Paattu is
+// in front.
 
 import 'dart:io';
 
@@ -23,6 +24,21 @@ Future<void> androidKeepAwake(bool on) async {
     await _channel.invokeMethod<void>('keepAwake', {'on': on});
   } catch (error) {
     problemLog.warn('keeping Wi-Fi awake: $error');
+  }
+}
+
+bool? _screen;
+
+/// Keep the screen on while Paattu is in front, if [on]. Android only does
+/// it while the app is showing, so it lets the screen sleep as usual
+/// whenever another app or the lock screen is in front.
+Future<void> androidScreenAwake(bool on) async {
+  if (!Platform.isAndroid || _screen == on) return;
+  _screen = on;
+  try {
+    await _channel.invokeMethod<void>('screenAwake', {'on': on});
+  } catch (error) {
+    problemLog.warn('keeping the screen on: $error');
   }
 }
 

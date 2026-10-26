@@ -125,6 +125,7 @@ Future<void> main() async {
       ..keepListened = settings.offlineAutoSave && !settings.saveData;
     // The folder or the space allowed changed while running.
     fire(offline.moveTo(keptSongsDirectory(settings.offlineDir, dir), allowed: settings.offlineLimitMb << 20));
+    fire(androidScreenAwake(settings.screenAwake));
   }
 
   playback();

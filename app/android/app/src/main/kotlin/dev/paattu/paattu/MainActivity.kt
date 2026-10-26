@@ -16,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.core.content.FileProvider
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -37,6 +38,16 @@ class MainActivity : AudioServiceActivity() {
                 when (call.method) {
                     "keepAwake" -> {
                         keepWifi(applicationContext, call.argument<Boolean>("on") == true)
+                        result.success(null)
+                    }
+                    // A window flag: Android honours it only while this
+                    // activity is showing.
+                    "screenAwake" -> {
+                        if (call.argument<Boolean>("on") == true) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                         result.success(null)
                     }
                     "notificationsAllowed" -> result.success(notificationsAllowed())

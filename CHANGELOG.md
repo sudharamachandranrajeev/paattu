@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19.0 — The screen stays on while Paattu is open
+
+Which file: the same as before (`Paattu-0.19.0-android.apk`,
+`Paattu-0.19.0-windows-x64-setup.exe`, the AppImage or the tarball).
+
+- **No more dimming mid-song on Android.** While Paattu is open in front,
+  the phone's screen stays on, so the words, the cover and the controls stay
+  in sight. Switch to another app or lock the phone and the screen sleeps as
+  usual. Settings › Playback › Keep the screen on turns it off.
+
 ## 0.18.0 — Now Playing that fills a big window
 
 Which file: the same as before (`Paattu-0.18.0-android.apk`,
