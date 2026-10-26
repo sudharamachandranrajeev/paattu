@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.0.0 — The radio listens, your numbers, Android TV
+
+Which file: the same as before, and now `Paattu-1.0.0-android-tv.apk` for
+an Android TV. On Omarchy, `git pull`, then `./install.sh --dev`, then
+`omarchy restart shell`.
+
+- **Take songs out of the radio's Up next, and it learns.** The cross on
+  Up next (in the app and on Omarchy) takes a song out. That song is
+  turned down until you play it to the end, and its singers, composers and
+  film count against it, more than a skip does. One taken out three times
+  in 90 days, and liked less than skipped on the whole, is left out of the
+  radio. *Settings › Playback › What the radio learned* (or
+  `paattu radio taste`) ranks them all and lets one back in
+  (`paattu radio forgive`).
+- **The radio ranks what it plays you.** Best first: songs you play again
+  and again, your favourites and songs very like them, songs in your
+  playlists and from their films, then singers and composers, themes
+  (love, sad, dance, devotional and more) and languages you play a lot.
+- **Your music in numbers.** A new page (Home in the app, *Your numbers*
+  on Omarchy, `paattu stats`) counts plays, hours, songs, skips and your
+  longest run of days for a week, a month, three months or all time. It
+  ranks your songs, singers and films, charts the hour you listen, and
+  hands out titles such as *Stuck on repeat*, *Night owl* and *Picky DJ*.
+  In the app it also sets you beside this week's charts in your languages
+  and beside what the whole ListenBrainz community plays.
+- **Interface sounds.** A soft tap for buttons, a breath between pages and
+  a small bell when you change the song, low and quiet under the music.
+  They never pause or duck it. Settings › Sound turns them off.
+- **Video mode melts into the page.** The video fills its card with no
+  black bars, its edges fade into the page, and it leans and drifts like
+  the cover in 3D, swelling a touch on the beat. On a tall phone the
+  background picture no longer leaves a line across Now Playing.
+- **Android TV.** The app is on the TV's home screen with a banner, and
+  the remote moves round it and picks. A TV keeps no songs offline unless
+  you turn it on (and then 512 MB), readies three songs ahead instead of
+  eight, and keeps fewer pictures in memory. Its updater takes the TV
+  build.
+
 ## 0.23.1 — Steadier video on Windows
 
 Which file: the same as before.

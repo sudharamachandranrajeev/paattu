@@ -63,6 +63,11 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Fades and crossfades** – songs fade into each other; the app readies the next song 25 s early
   and downloads the next two in pieces.
 * **Sleep timer** – minutes or *end of this song*, with an 8-second fade-out.
+* **Your music in numbers** – plays, hours, most played songs, singers and films, the hour you
+  listen most, and titles your listening earns (*Stuck on repeat*, *Night owl*, *Picky DJ*…), set
+  beside this week's charts in your languages and what the whole ListenBrainz community plays.
+* **Interface sounds** – a soft tap, a breath between pages and a small bell for another song,
+  low and quiet under the music (Settings turns them off).
 * **Songs kept on this device** – songs you play to the end are kept for playing offline
   (2 GB by default, least recently played go first), and take over when the internet goes.
 * **Plays follow you (ListenBrainz)** – scrobbles carry your history between the phone, the
@@ -196,6 +201,9 @@ Download from [Releases](../../releases); each release also has `SHA256SUMS.txt`
   info → Run anyway**.
 * **Android** – `Paattu-…-android.apk`. Allow your browser or file manager to install unknown apps
   when asked.
+* **Android TV** – `Paattu-…-android-tv.apk`, the same app on the TV's home screen, run with the
+  remote. A TV keeps no songs offline unless you turn it on (512 MB when you do), readies three
+  songs ahead instead of eight and keeps fewer pictures in memory.
 * **Linux** – the AppImage brings its own mpv and uses your desktop's GTK 3 (`chmod +x` it and run
   it). The tarball (`…-linux-x64.tar.gz`) also needs mpv's library, libmpv.so.2 (`mpv` on Arch,
   `libmpv2` on Debian 12+ / Ubuntu 24.04+, `mpv-libs` on Fedora; on older systems use the AppImage).
@@ -503,6 +511,11 @@ Windows, Linux) and on Omarchy:
   with the song's details over it.
 - **Record**: the cover is the label of a turning record.
 
+**Video mode** (the Audio | Video switch at the top of Now Playing) plays
+the song's video sharp, with its own sound. The video fills its card with no
+black bars, its edges melt into the page, and it leans a little and swells
+on the beat like the cover in 3D.
+
 **Video blur** sets how soft the video is, from none to 100 (30 by default).
 **Cover colours** gives Now Playing and the player bar the colours of the
 song's cover, changing slowly from one song to the next and keeping the
@@ -702,6 +715,7 @@ paattu radio remove N                   # take queue entry N out (the radio lear
 paattu radio taste                      # what the radio learned: singers, composers, films
 paattu radio forgive by:NAME            # let one it leaves out back in (or film:NAME)
 paattu made                             # Daily mix, Weekly discovery, Monthly top
+paattu stats [--days 30]                # your music in numbers, and the titles it earned
 paattu made daily --play [--refresh]    # play today's (--refresh: a new one)
 paattu describe "Ilaiyaraaja melodies, rain songs, Premam" --play [--save NAME]
 paattu charts                           # the charts for your languages
@@ -756,6 +770,24 @@ songs, and what you skip.
 - **Describe a playlist**: "songs from Premam, rain songs and Ilaiyaraaja"
   looks up each part and takes their songs in turn, topped up from each
   part's radio.
+
+**Your music in numbers** (*Your music in numbers* on Home in the app, *Your
+numbers* in the Omarchy window's sidebar, `paattu stats`) counts the last
+week, month, three months or all of it: plays, time listened, songs,
+singers and composers, skips, the longest run of days, your most played
+songs, singers and films, the hour you play most, and the themes and
+languages. Your listening earns titles: *Stuck on repeat* (one song five
+times or more), *Night owl*, *Itchy skip finger*, *Explorer* or *Creature of
+habit*, *Picky DJ* (three songs taken out of the radio) and more. In the app,
+*You and everyone else* sets you against this week's top songs in your
+languages (how mainstream you are) and against the artists the whole
+ListenBrainz community played most this month.
+
+**Interface sounds**: a soft drop when you tap a button, a breath when a page
+opens or closes, and a small singing bowl when you change the song, all low
+and well under the music. In the app they take no audio focus, so they never
+pause or duck the song. Turn them off in Settings › Sound (Look & settings
+on Omarchy, or `paattu config set uiSounds false`).
 
 **Fades**: each song fades out over its last seconds and the next fades in
 (3 seconds by default; *Look & settings → Between songs* on Omarchy,
