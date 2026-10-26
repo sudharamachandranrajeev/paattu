@@ -275,31 +275,65 @@ class NowPlayingPage extends StatelessWidget {
             ),
           ),
           SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
-                child: LayoutBuilder(builder: (context, box) {
-                  final room = box.maxHeight - _barHeight - _domeHeight;
-                  final info = settings.songInfo && room - _infoHeight > 120;
-                  final arc = room - _arcHeight - (info ? _infoHeight : 0) > 120;
-                  if (room < 40) {
-                    // A short window (a phone on its side): scroll instead.
-                    return SingleChildScrollView(
-                      child: Column(children: [bar, SizedBox(height: 260, child: card), dome]),
+            child: LayoutBuilder(builder: (context, page) {
+              // A big window (a desktop's, maximised): the picture on the
+              // left as big as the height allows, the song and what's next
+              // on the right.
+              if (page.maxWidth >= 1100 && page.maxHeight >= 620 && page.maxWidth > page.maxHeight * 1.25) {
+                return Column(
+                  children: [
+                    bar,
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: Padding(padding: const EdgeInsets.fromLTRB(32, 8, 8, 32), child: card)),
+                          SizedBox(
+                            width: min(560.0, page.maxWidth * 0.38),
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 24),
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Expanded(child: _UpNextList(player: app.player)),
+                                  if (settings.songInfo) ...[const SizedBox(height: 8), _SongInfo(app: app, track: track)],
+                                  dome,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: wide ? 560 : double.infinity),
+                  child: LayoutBuilder(builder: (context, box) {
+                    final room = box.maxHeight - _barHeight - _domeHeight;
+                    final info = settings.songInfo && room - _infoHeight > 120;
+                    final arc = room - _arcHeight - (info ? _infoHeight : 0) > 120;
+                    if (room < 40) {
+                      // A short window (a phone on its side): scroll instead.
+                      return SingleChildScrollView(
+                        child: Column(children: [bar, SizedBox(height: 260, child: card), dome]),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        bar,
+                        Expanded(child: card),
+                        if (info) _SongInfo(app: app, track: track),
+                        if (arc) _UpcomingArc(player: app.player),
+                        dome,
+                      ],
                     );
-                  }
-                  return Column(
-                    children: [
-                      bar,
-                      Expanded(child: card),
-                      if (info) _SongInfo(app: app, track: track),
-                      if (arc) _UpcomingArc(player: app.player),
-                      dome,
-                    ],
-                  );
-                }),
-              ),
-            ),
+                  }),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -608,6 +642,87 @@ class _SongInfo extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// What plays after this song, as a list (Now Playing in a big window): each
+/// with its cover, singers and length; a tap plays it.
+class _UpNextList extends StatelessWidget {
+  const _UpNextList({required this.player});
+  final PaattuAudioHandler player;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return StreamBuilder<List<Json>>(
+      stream: Rx.combineLatest2(player.queueTracks, player.current, (queue, _) => queue),
+      initialData: player.queueTracks.value,
+      builder: (context, snapshot) {
+        final queue = snapshot.data ?? const <Json>[];
+        final first = player.index + 1;
+        if (first >= queue.length) return const SizedBox();
+        return Glass(
+          radius: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+                child: Text('Up next', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                  itemCount: queue.length - first,
+                  itemBuilder: (context, k) {
+                    final index = first + k, song = queue[index];
+                    final length = toInt(song['duration']) ?? 0;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => player.skipToQueueItem(index),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              child: Text('${k + 1}',
+                                  style: theme.textTheme.labelMedium
+                                      ?.copyWith(color: scheme.secondary, fontWeight: FontWeight.w700)),
+                            ),
+                            TrackCover(song, size: 44, radius: 10),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(trackTitle(song),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                  Text(trackSubtitle(song),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                            if (length > 0)
+                              Text(formatTime(length),
+                                  style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
