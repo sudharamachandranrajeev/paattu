@@ -477,7 +477,10 @@ Item {
             compact: true
             track: root.app.store.tracks[modelData.id] || { id: modelData.id, title: modelData.title, movie: modelData.movie }
             number: modelData.index + 1
+            removable: true
+            removeTip: root.player.radioOn ? "Take out: the radio plays less like it" : "Take out"
             onActivated: root.player.playIndex(modelData.index)
+            onRemoveRequested: root.app.removeFromQueue(modelData.index)
           }
         }
       }

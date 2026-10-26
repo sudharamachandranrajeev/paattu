@@ -216,6 +216,16 @@ FloatingWindow {
     if (!track || !track.id) return
     quick.run(Model.queueSongArgs(track.id, next), "", function(ok, e) { showToast(e.message) })
   }
+  // Queue entry index out. With the radio on, one still to come goes by way
+  // of the CLI, which notes it in the history if the radio queued it, so the
+  // radio plays less like it.
+  function removeFromQueue(index) {
+    if (!player.radioOn || index <= player.index) {
+      player.removeIndex(index)
+      return
+    }
+    quick.run(["radio", "remove", String(index + 1)], "", function(ok, e) { if (!ok) showToast(e.message) })
+  }
 
   // ---------- favourites & your playlists ----------
   readonly property var nowTrack: Model.nowPlaying(store.tracks, player.path, player.mediaTitle)

@@ -28,7 +28,7 @@ import 'src/sources/jiosaavn.dart';
 import 'src/ui/settings_page.dart' show offerUpdate;
 import 'src/ui/shell.dart';
 import 'src/update.dart';
-import 'src/util.dart' show nowStamp;
+import 'src/util.dart' show asString, nowStamp;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,7 +106,15 @@ Future<void> main() async {
     ..cache = songs
     ..offline = offline
     ..rhythms = rhythms
-    ..radioSongs = SongRadio(history).next
+    ..radioSongs = SongRadio(
+      history,
+      favourites: () => library.playlistTracks(favouritesId),
+      playlists: () => [
+        for (final p in library.ownPlaylists())
+          if (p['id'] != favouritesId) ...library.playlistTracks(asString(p['id'])),
+      ],
+      languageOf: library.playedLanguage,
+    ).next
     ..onPlayed = ((track, heard, length) {
       history.played(track, heard, length: length);
       // A song played to the end joins its language's played playlist.
@@ -114,7 +122,8 @@ Future<void> main() async {
         library.changed();
       }
       if (scrobbles({'heard': heard, 'length': length ?? 0})) fire(listenBrainz.sync());
-    });
+    })
+    ..onRemovedFromRadio = history.removedFromRadio;
   void playback() {
     jiosaavnSaveData = settings.saveData;
     player

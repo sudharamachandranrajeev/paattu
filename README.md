@@ -698,6 +698,9 @@ answers 404 to everybody else about a private one, so while it's private,
 ```
 paattu radio start [SONG]               # songs like SONG (or the one playing), without end
 paattu radio stop                       # the radio's songs still to come go
+paattu radio remove N                   # take queue entry N out (the radio learns from it)
+paattu radio taste                      # what the radio learned: singers, composers, films
+paattu radio forgive by:NAME            # let one it leaves out back in (or film:NAME)
 paattu made                             # Daily mix, Weekly discovery, Monthly top
 paattu made daily --play [--refresh]    # play today's (--refresh: a new one)
 paattu describe "Ilaiyaraaja melodies, rain songs, Premam" --play [--save NAME]
@@ -717,6 +720,25 @@ carries on as a radio of its last song, unless repeat is on or you turned
 the radio off. What you play shapes it: songs by the singers and composers,
 and from the films, you play to the end come first, ones you skip drop back,
 and a couple of your own favourites like the station's song join it.
+
+**Taking a song out of the radio's Up next** (the cross on Up next, or a
+swipe on the Queue page in the app) teaches it. That song is turned down
+until you play it to the end. Its singers, composers and film count against
+it, more than a skip does. One taken out three times in 90 days, and liked
+less than skipped on the whole, is left out of the radio. *Settings ›
+Playback › What the radio learned* (or `paattu radio taste`) ranks them all
+by that score, and lets one back in.
+
+**Each helping is ranked** before your taste orders it, best first:
+1. songs you play again and again (two or more plays), most played first;
+2. your favourites, and songs very like one (its film and a singer or
+   composer);
+3. songs in your other playlists, and songs from their films;
+4. songs by a singer or composer you play a lot (three plays in 90 days);
+5. songs of a theme you play a lot (love, sad, dance, devotional, calm,
+   wedding, festival, rap, from the words in their titles);
+6. songs in a language you play a lot;
+7. then the rest, as YouTube Music gave them.
 
 **Made for you** (on Home) comes from what you play: how long you listened
 (a play counts after half a song or 30 seconds), how often, how lately

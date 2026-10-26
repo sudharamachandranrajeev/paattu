@@ -4,7 +4,9 @@
 // ~/.local/share/paattu/history.json (paattu/history.py):
 //
 //     plays   [{id, at (seconds since 1970), heard (seconds), length}], oldest first
-//     tracks  id -> the song, for the ids in plays and made
+//     removed [{id, at}], oldest first: songs the radio queued that you took
+//             out of Up next before they played
+//     tracks  id -> the song, for the ids in plays, removed and made
 //     made    daily|weekly|monthly -> {key, tracks[ids]}: the playlist made
 //             for that day, week or month
 
@@ -21,6 +23,9 @@ import 'util.dart';
 
 /// Plays kept; older ones are dropped.
 const historyLimit = 3000;
+
+/// Songs taken out of the radio kept.
+const removedLimit = 500;
 
 /// A play that counts: half the song, or 30 seconds of a long one.
 bool counted(Json play) {
@@ -51,11 +56,29 @@ class History extends ChangeNotifier {
   static Json _empty() => {
     'version': 1,
     'plays': <dynamic>[],
+    'removed': <dynamic>[],
     'tracks': <String, dynamic>{},
     'made': <String, dynamic>{},
   };
 
   List<Json> get plays => asList(data['plays']).map(asJson).toList();
+
+  /// The plays with the songs taken out of the radio among them (as plays of
+  /// nothing, marked removed), oldest first: what the radio and the playlists
+  /// made for you learn from. A song taken out is turned down (turnedDown)
+  /// until it is played to the end.
+  List<Json> get signals {
+    final all = [
+      ...plays,
+      for (final r in asList(data['removed']).map(asJson))
+        if (asString(r['id']).isNotEmpty)
+          <String, dynamic>{'id': asString(r['id']), 'at': toInt(r['at']) ?? 0, 'heard': 0, 'removed': true},
+    ];
+    final order = [for (var i = 0; i < all.length; i++) (toInt(all[i]['at']) ?? 0, i)]
+      ..sort((a, b) => a.$1 != b.$1 ? a.$1.compareTo(b.$1) : a.$2.compareTo(b.$2));
+    return [for (final (_, i) in order) all[i]];
+  }
+
   Json get _tracks => asJson(data['tracks']);
   Json get _made => asJson(data['made']);
 
@@ -69,7 +92,9 @@ class History extends ChangeNotifier {
         for (final key in ['tracks', 'made']) {
           if (data[key] is! Map) data[key] = <String, dynamic>{};
         }
-        if (data['plays'] is! List) data['plays'] = <dynamic>[];
+        for (final key in ['plays', 'removed']) {
+          if (data[key] is! List) data[key] = <dynamic>[];
+        }
       }
     } catch (error) {
       debugPrint('history: $error');
@@ -93,6 +118,30 @@ class History extends ChangeNotifier {
     _tracks[id] = storedTrack(track);
     _prune();
     _changed();
+  }
+
+  /// [track], which the radio queued, taken out of Up next before it played.
+  void removedFromRadio(Json track, {DateTime? at}) {
+    final id = trackId(track);
+    if (id.isEmpty) return;
+    final list = asList(data['removed']);
+    list.add(<String, dynamic>{'id': id, 'at': epochSeconds(at ?? DateTime.now())});
+    if (list.length > removedLimit) list.removeRange(0, list.length - removedLimit);
+    _tracks[id] = storedTrack(track);
+    _prune();
+    _changed();
+  }
+
+  /// Forget the songs with [feature] (a singer, composer or film, as features
+  /// gives it) taken out of the radio, so it is no longer shunned. Returns how
+  /// many.
+  int forgive(String feature) {
+    final list = asList(data['removed']);
+    final before = list.length;
+    list.removeWhere((r) => r is Map && features(track(asString(r['id'])) ?? const {}).contains(feature));
+    _prune();
+    _changed();
+    return before - list.length;
   }
 
   /// The playlist made for [kind] ('daily', 'weekly', 'monthly') and the
@@ -135,6 +184,7 @@ class History extends ChangeNotifier {
   void _prune() {
     final used = <String>{
       for (final p in asList(data['plays'])) asString(asJson(p)['id']),
+      for (final r in asList(data['removed'])) asString(asJson(r)['id']),
       for (final m in _made.values) ...asStrings(asJson(m)['tracks']),
     };
     _tracks.removeWhere((id, _) => !used.contains(id));
@@ -214,8 +264,9 @@ List<String> features(Json song) => [
 
 /// What you like, from what you played lately: for each singer, composer and
 /// film, the songs of theirs played to the end, less half for each one
-/// skipped (a play that counts but stopped short is worth a quarter), each
-/// worth less the older it is.
+/// skipped and one for each one taken out of the radio (a play that counts but
+/// stopped short is worth a quarter), each worth less the older it is. [plays]
+/// can be History.signals.
 Map<String, double> taste(List<Json> plays, Json? Function(String id) track,
     {required DateTime now, int days = 90, double halfLife = 30}) {
   final likes = <String, double>{};
@@ -225,12 +276,57 @@ Map<String, double> taste(List<Json> plays, Json? Function(String id) track,
     final song = at >= since ? track(asString(play['id'])) : null;
     if (song == null) continue;
     final worth = pow(0.5, (epochSeconds(now) - at) / 86400 / halfLife).toDouble();
-    final value = fullyPlayed(play) ? worth : counted(play) ? worth / 4 : -worth / 2;
+    final value = play['removed'] == true
+        ? -worth
+        : fullyPlayed(play)
+        ? worth
+        : counted(play)
+        ? worth / 4
+        : -worth / 2;
     for (final feature in features(song)) {
       likes[feature] = (likes[feature] ?? 0) + value;
     }
   }
   return likes;
+}
+
+/// The singers, composers and films you keep taking out of the radio: at
+/// least [times] songs of theirs in [days], and liked less than skipped on the
+/// whole ([likes] from taste). The radio leaves their songs out.
+Set<String> shunned(List<Json> plays, Json? Function(String id) track, Map<String, double> likes,
+    {required DateTime now, int days = 90, int times = 3}) => {
+  for (final MapEntry(:key, value: n) in removals(plays, track, now: now, days: days).entries)
+    if (n >= times && (likes[key] ?? 0) < 0) key,
+};
+
+/// For each singer, composer and film, how many songs of theirs were taken
+/// out of the radio in [days].
+Map<String, int> removals(List<Json> plays, Json? Function(String id) track, {required DateTime now, int days = 90}) {
+  final since = epochSeconds(now) - days * 86400;
+  final out = <String, int>{};
+  for (final play in plays) {
+    if (play['removed'] != true || (toInt(play['at']) ?? 0) < since) continue;
+    final song = track(asString(play['id']));
+    for (final feature in song == null ? const <String>[] : features(song)) {
+      out[feature] = (out[feature] ?? 0) + 1;
+    }
+  }
+  return out;
+}
+
+/// A singer, composer or film as the radio sees it: [score] from taste,
+/// [removed] the times it was taken out of the radio.
+typedef TasteRank = ({String feature, double score, int removed, bool shunned});
+
+/// Your taste as the radio sees it, best liked first.
+List<TasteRank> tasteRanking(List<Json> plays, Json? Function(String id) track, {required DateTime now}) {
+  final likes = taste(plays, track, now: now);
+  final taken = removals(plays, track, now: now);
+  final shun = shunned(plays, track, likes, now: now);
+  return [
+    for (final f in {...likes.keys, ...taken.keys})
+      (feature: f, score: ((likes[f] ?? 0) * 1000).round() / 1000, removed: taken[f] ?? 0, shunned: shun.contains(f)),
+  ]..sort((a, b) => a.score != b.score ? b.score.compareTo(a.score) : a.feature.compareTo(b.feature));
 }
 
 /// How much [song] is like what you like, -2 to 2.

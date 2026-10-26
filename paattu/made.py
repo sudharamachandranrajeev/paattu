@@ -171,8 +171,9 @@ class MadeForYou:
         top = top_songs(plays, self._track, now, days=28 if kind == "weekly" else 30)
         favourites = library.playlist_tracks(self.data, library.FAVOURITES)
         mine = favourites + library.playlist_tracks(self.data, library.SAVED)
-        skipped = skipped_often(plays, now) | turned_down(
-            plays, lambda tid: song_identity(self._track(tid) or {"id": tid}))
+        signals = self.history.signals
+        skipped = skipped_often(signals, now) | turned_down(
+            signals, lambda tid: song_identity(self._track(tid) or {"id": tid}))
         if kind == "monthly":
             most = sorted(top, key=lambda t: (-t[2], -t[1]))
             avoid = set(skipped)

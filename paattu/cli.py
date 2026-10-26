@@ -1110,8 +1110,12 @@ def _extend_radio(e, data, station, out, count=10):
         if _songs_left(e) > 2:
             return _songs_left(e)
         queue = [_entry_track(data, entry) for entry in e.get("playlist") or []]
+        favourites = library.playlist_tracks(data, library.FAVOURITES)
+        kept = [t for p in library.own_playlists(data) if p["id"] != library.FAVOURITES
+                for t in library.playlist_tracks(data, p["id"])]
         with history.editing() as h:  # only read, but not while it's half written
-            songs = radio.SongRadio(h, state).next(station, queue, count)
+            songs = radio.SongRadio(h, state, favourites, kept,
+                                    lambda s: library.played_language(data, s)).next(station, queue, count)
         if songs:
             sources.remember(songs)
             engine.enqueue(e, songs)
@@ -1173,10 +1177,51 @@ def cmd_radio(args, out):
                 e.set("user-data/paattu/radio", history.stored_track(station))
             left = _extend_radio(e, data, station, out)
         out.done("Radio: %s to come" % _plural(left, "song"), count=left)
+    elif args.action == "remove":
+        _radio_remove(data, args.target, out)
+    elif args.action == "taste":
+        with history.editing() as h:  # only read, but not while it's half written
+            rows = history.taste_ranking(h.signals, h.track, time.time())
+        if args.json:
+            out.data(rows)
+            return
+        for row in rows:
+            print("%7.2f  %s%s%s" % (row["score"], row["feature"],
+                                     "  (taken out %s)" % _plural(row["removed"], "time") if row["removed"] else "",
+                                     "  left out of the radio" if row["shunned"] else ""))
+    elif args.action == "forgive":
+        if not args.target:
+            raise SourceError("say which singer, composer or film: by:NAME or film:NAME (see paattu radio taste)")
+        with history.editing() as h:
+            count = h.forgive(args.target.strip().lower())
+        out.done("The radio forgot %s taken out for %s" % (_plural(count, "song"), args.target), count=count)
     else:
         with engine.Engine(autostart=False) as e:
             station = _station(e) if engine.running() else None
         out.data({"radio": station}, "Radio: songs like %s" % station.get("title") if station else "Radio off")
+
+
+def _radio_remove(data, target, out):
+    """Take queue entry target (from 1, as paattu queue numbers them) out. One
+    the radio queued that hasn't played yet is noted in the history, so the
+    radio learns from it."""
+    try:
+        index = int(target or "") - 1
+    except ValueError:
+        raise SourceError("say which queue entry: paattu radio remove N") from None
+    with engine.Engine(autostart=False) as e, radio.session() as state:
+        entries = e.get("playlist") or []
+        if not 0 <= index < len(entries):
+            raise SourceError("there's no queue entry %d" % (index + 1))
+        entry = entries[index]
+        added = state.get("added") or []
+        learned = index > e.get("playlist-pos", -1) and entry.get("filename") in added
+        e.send(["playlist-remove", index])
+        if learned:
+            state["added"] = [url for url in added if url != entry.get("filename")]
+            with history.editing() as h:
+                h.removed_from_radio(_entry_track(data, entry))
+    out.done("Took out %s" % (_entry_track(data, entry).get("title") or "the song"), learned=learned)
 
 
 def cmd_played(args, out):
@@ -2197,9 +2242,12 @@ def build_parser():
     a.add_argument("index", type=int)
     a.set_defaults(func=cmd_jump)
 
-    a = sub.add_parser("radio", help="songs like a song, without end: start [song] | stop | more | status")
-    a.add_argument("action", nargs="?", default="status", choices=("start", "stop", "more", "status"))
-    a.add_argument("target", nargs="?", help="the song (a link or id); the one playing when left out")
+    a = sub.add_parser("radio", help="songs like a song, without end: start [song] | stop | more | status | "
+                                     "remove N (from Up next, so the radio learns) | taste | forgive FEATURE")
+    a.add_argument("action", nargs="?", default="status",
+                   choices=("start", "stop", "more", "status", "remove", "taste", "forgive"))
+    a.add_argument("target", nargs="?", help="start: the song (a link or id), the one playing when left out; "
+                                             "remove: the queue entry; forgive: by:NAME or film:NAME")
     a.set_defaults(func=cmd_radio)
     a = sub.add_parser("played", help="note a play in the history (the engine does this)")
     a.add_argument("url")

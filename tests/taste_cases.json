@@ -303,5 +303,543 @@
   "film:3": -0.224482,
   "film:premam": 0.797888,
   "film:thattathin marayathu": 0.437101
+ },
+ "removals": {
+  "comment": "Songs taken out of the radio's Up next. r1-r3 share Shunned Singer, taken out three times in 90 days and liked less than skipped, so the singer is shunned. Film Hit was taken out three times too, but h1 of it is played to the end often, so it isn't. old was taken out too long ago to count. h1 was taken out the same second it was played: the play comes first.",
+  "history": {
+   "version": 1,
+   "plays": [
+    {
+     "id": "h1",
+     "at": 998272000,
+     "heard": 200,
+     "length": 210
+    },
+    {
+     "id": "h1",
+     "at": 998617600,
+     "heard": 200,
+     "length": 210
+    },
+    {
+     "id": "h1",
+     "at": 998963200,
+     "heard": 200,
+     "length": 210
+    },
+    {
+     "id": "h1",
+     "at": 999222400,
+     "heard": 200,
+     "length": 210
+    },
+    {
+     "id": "h1",
+     "at": 999395200,
+     "heard": 200,
+     "length": 210
+    },
+    {
+     "id": "h1",
+     "at": 999568000,
+     "heard": 200,
+     "length": 210
+    }
+   ],
+   "removed": [
+    {
+     "id": "old",
+     "at": 982720000
+    },
+    {
+     "id": "old",
+     "at": 982806400
+    },
+    {
+     "id": "old",
+     "at": 982892800
+    },
+    {
+     "id": "r1",
+     "at": 998704000
+    },
+    {
+     "id": "r2",
+     "at": 999136000
+    },
+    {
+     "id": "r4",
+     "at": 999308800
+    },
+    {
+     "id": "h1",
+     "at": 999568000
+    },
+    {
+     "id": "r3",
+     "at": 999827200
+    }
+   ],
+   "tracks": {
+    "r1": {
+     "id": "r1",
+     "title": "Onnu",
+     "movie": "Hit",
+     "credits": [
+      "Shunned Singer"
+     ]
+    },
+    "r2": {
+     "id": "r2",
+     "title": "Randu",
+     "movie": "Hit",
+     "credits": [
+      "Shunned Singer"
+     ]
+    },
+    "r3": {
+     "id": "r3",
+     "title": "Moonu",
+     "movie": "Flop",
+     "credits": [
+      "Shunned Singer"
+     ]
+    },
+    "r4": {
+     "id": "r4",
+     "title": "Naalu",
+     "movie": "Hit",
+     "credits": [
+      "Kept Singer"
+     ]
+    },
+    "h1": {
+     "id": "h1",
+     "title": "Anchu",
+     "movie": "Hit",
+     "credits": [
+      "Kept Singer"
+     ]
+    },
+    "old": {
+     "id": "old",
+     "title": "Aaru",
+     "movie": "Gone",
+     "credits": [
+      "Old Singer"
+     ]
+    }
+   },
+   "made": {}
+  },
+  "signals": [
+   [
+    "old",
+    true
+   ],
+   [
+    "old",
+    true
+   ],
+   [
+    "old",
+    true
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "r1",
+    true
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "r2",
+    true
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "r4",
+    true
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "h1",
+    false
+   ],
+   [
+    "h1",
+    true
+   ],
+   [
+    "r3",
+    true
+   ]
+  ],
+  "turnedDown": [
+   "old",
+   "r1",
+   "r2",
+   "r3",
+   "r4"
+  ],
+  "taste": {
+   "by:kept singer": 2.910457,
+   "by:shunned singer": -2.455649,
+   "film:flop": -0.954842,
+   "film:hit": 1.40965
+  },
+  "shunned": [
+   "by:shunned singer"
+  ],
+  "ranking": [
+   {
+    "feature": "by:kept singer",
+    "score": 2.91,
+    "removed": 2,
+    "shunned": false
+   },
+   {
+    "feature": "film:hit",
+    "score": 1.41,
+    "removed": 4,
+    "shunned": false
+   },
+   {
+    "feature": "film:flop",
+    "score": -0.955,
+    "removed": 1,
+    "shunned": false
+   },
+   {
+    "feature": "by:shunned singer",
+    "score": -2.456,
+    "removed": 3,
+    "shunned": true
+   }
+  ],
+  "forgiven": {
+   "feature": "by:shunned singer",
+   "count": 3,
+   "shunned": [],
+   "removed": [
+    "old",
+    "old",
+    "old",
+    "r4",
+    "h1"
+   ]
+  }
+ },
+ "affinity": {
+  "comment": "Affinity's tiers (paattu/radio.py, radio.dart): 0 played again and again, 1 favourites and songs very like them, 2 songs in your playlists and close to them, 3 artist, 4 theme, 5 language you play a lot, 6 none. A lot is 3 counted plays in 90 days, again is 2; p4's skip doesn't count.",
+  "tracks": {
+   "p1": {
+    "id": "p1",
+    "title": "Thaniye",
+    "movie": "Guppy",
+    "credits": [
+     "Vishnu Vijay"
+    ],
+    "language": "malayalam"
+   },
+   "p2": {
+    "id": "p2",
+    "title": "Pularoli",
+    "movie": "Kumbalangi",
+    "credits": [
+     "Sushin Shyam"
+    ],
+    "rawTitle": "Pularoli Romantic Melody Song"
+   },
+   "p3": {
+    "id": "p3",
+    "title": "Uyire",
+    "movie": "Bombay",
+    "credits": [
+     "A R Rahman"
+    ],
+    "rawTitle": "Uyire Love Song"
+   },
+   "p4": {
+    "id": "p4",
+    "title": "Kannana",
+    "movie": "Mazhai",
+    "credits": [
+     "Devi Sri Prasad"
+    ],
+    "language": "tamil"
+   }
+  },
+  "plays": [
+   {
+    "id": "p1",
+    "at": 999136000,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p1",
+    "at": 999049600,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p1",
+    "at": 998963200,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p1",
+    "at": 998876800,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p2",
+    "at": 999049600,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p2",
+    "at": 998963200,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p2",
+    "at": 998876800,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p3",
+    "at": 998963200,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p3",
+    "at": 998876800,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p3",
+    "at": 998790400,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p4",
+    "at": 998876800,
+    "heard": 200,
+    "length": 210
+   },
+   {
+    "id": "p4",
+    "at": 999913600,
+    "heard": 5,
+    "length": 210
+   }
+  ],
+  "favourites": [
+   {
+    "id": "f1",
+    "title": "Malare",
+    "movie": "Premam",
+    "credits": [
+     "Vijay Yesudas",
+     "Rajesh Murugesan"
+    ]
+   }
+  ],
+  "playlists": [
+   {
+    "id": "k1",
+    "title": "Kalippu",
+    "movie": "Ustad Hotel",
+    "credits": [
+     "Gopi Sundar"
+    ]
+   }
+  ],
+  "songs": [
+   {
+    "id": "s-lang",
+    "title": "Pennale",
+    "movie": "Other",
+    "credits": [
+     "Nobody"
+    ],
+    "language": "Malayalam"
+   },
+   {
+    "id": "s-none",
+    "title": "Random",
+    "movie": "Nowhere",
+    "credits": [
+     "Nobody"
+    ]
+   },
+   {
+    "id": "s-theme",
+    "title": "Love Theme",
+    "movie": "Else",
+    "credits": [
+     "Nobody"
+    ]
+   },
+   {
+    "id": "s-artist",
+    "title": "Another",
+    "movie": "Someplace",
+    "credits": [
+     "Vishnu Vijay"
+    ]
+   },
+   {
+    "id": "s-kept-film",
+    "title": "Appangal",
+    "movie": "Ustad Hotel",
+    "credits": [
+     "Someone"
+    ]
+   },
+   {
+    "id": "s-kept",
+    "title": "Kalippu",
+    "movie": "Ustad Hotel",
+    "credits": [
+     "Gopi Sundar"
+    ]
+   },
+   {
+    "id": "s-fav-like",
+    "title": "Aluva Puzha",
+    "movie": "Premam",
+    "credits": [
+     "Rajesh Murugesan"
+    ]
+   },
+   {
+    "id": "s-fav-film-only",
+    "title": "Kalippu",
+    "movie": "Premam",
+    "credits": [
+     "Murali Gopy"
+    ]
+   },
+   {
+    "id": "s-fav",
+    "title": "Malare",
+    "movie": "Premam",
+    "credits": [
+     "Vijay Yesudas"
+    ]
+   },
+   {
+    "id": "p2-video",
+    "title": "Pularoli",
+    "movie": "Kumbalangi",
+    "credits": [
+     "Sushin Shyam"
+    ]
+   },
+   {
+    "id": "p1-audio",
+    "title": "Thaniye",
+    "movie": "Guppy",
+    "credits": [
+     "Vishnu Vijay"
+    ]
+   }
+  ],
+  "themes": {
+   "p1": [],
+   "p2": [
+    "calm",
+    "love"
+   ],
+   "p3": [
+    "love"
+   ],
+   "p4": []
+  },
+  "ranks": {
+   "s-lang": [
+    5,
+    4
+   ],
+   "s-none": [
+    6,
+    0
+   ],
+   "s-theme": [
+    4,
+    6
+   ],
+   "s-artist": [
+    3,
+    4
+   ],
+   "s-kept-film": [
+    2,
+    1
+   ],
+   "s-kept": [
+    2,
+    2
+   ],
+   "s-fav-like": [
+    1,
+    1
+   ],
+   "s-fav-film-only": [
+    6,
+    0
+   ],
+   "s-fav": [
+    1,
+    2
+   ],
+   "p2-video": [
+    0,
+    3
+   ],
+   "p1-audio": [
+    0,
+    4
+   ]
+  },
+  "order": [
+   "p1-audio",
+   "p2-video",
+   "s-fav",
+   "s-fav-like",
+   "s-kept",
+   "s-kept-film",
+   "s-artist",
+   "s-theme",
+   "s-lang",
+   "s-none",
+   "s-fav-film-only"
+  ]
  }
 }

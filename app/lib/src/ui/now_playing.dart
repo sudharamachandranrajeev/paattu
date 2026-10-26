@@ -678,7 +678,8 @@ class _SongInfo extends StatelessWidget {
 }
 
 /// What plays after this song, as a list (Now Playing in a big window): each
-/// with its cover, singers and length; a tap plays it.
+/// with its cover, singers and length; a tap plays it, and the cross takes it
+/// out (one the radio queued teaches the radio what not to play).
 class _UpNextList extends StatelessWidget {
   const _UpNextList({required this.player});
   final PaattuAudioHandler player;
@@ -743,6 +744,13 @@ class _UpNextList extends StatelessWidget {
                             if (length > 0)
                               Text(formatTime(length),
                                   style: theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              visualDensity: VisualDensity.compact,
+                              color: scheme.onSurfaceVariant,
+                              tooltip: song['_radio'] == true ? 'Take out: the radio plays less like it' : 'Take out',
+                              onPressed: () => player.removeQueueItemAt(index),
+                            ),
                           ],
                         ),
                       ),

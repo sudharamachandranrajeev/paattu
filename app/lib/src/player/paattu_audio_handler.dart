@@ -175,6 +175,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   /// A song was played (or skipped): how many seconds of how long it is.
   void Function(Json track, int heard, int? length)? onPlayed;
 
+  /// A song the radio queued was taken out of Up next before it played.
+  void Function(Json track)? onRemovedFromRadio;
+
   /// Songs in play order, and where the queue was before shuffling.
   final List<Json> _queue = [];
   List<Json>? _unshuffled;
@@ -330,6 +333,10 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       }
     } else {
       _publishQueue();
+      if (removed['_radio'] == true) {
+        onRemovedFromRadio?.call(removed);
+        await _extendRadio();
+      }
     }
   }
 

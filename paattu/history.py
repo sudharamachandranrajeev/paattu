@@ -4,7 +4,9 @@ the radio from repeating itself. The app keeps the same file beside its
 library (app/lib/src/history.dart):
 
     plays   [{id, at (seconds since 1970), heard (seconds), length}], oldest first
-    tracks  id -> the song, for the ids in plays and made
+    removed [{id, at}], oldest first: songs the radio queued that you took
+            out of Up next before they played
+    tracks  id -> the song, for the ids in plays, removed and made
     made    daily|weekly|monthly -> {key, tracks[ids]}: the playlist made
             for that day, week or month
 
@@ -26,6 +28,8 @@ FILE = paths.DATA / "history.json"
 
 # Plays kept; older ones are dropped.
 LIMIT = 3000
+# Songs taken out of the radio kept.
+REMOVED_LIMIT = 500
 
 
 def counted(play):
@@ -59,7 +63,7 @@ def stored_track(track):
 
 
 def _empty():
-    return {"version": 1, "plays": [], "tracks": {}, "made": {}}
+    return {"version": 1, "plays": [], "removed": [], "tracks": {}, "made": {}}
 
 
 class History:
@@ -78,8 +82,9 @@ class History:
                 for key in ("tracks", "made"):
                     if not isinstance(history.data.get(key), dict):
                         history.data[key] = {}
-                if not isinstance(history.data.get("plays"), list):
-                    history.data["plays"] = []
+                for key in ("plays", "removed"):
+                    if not isinstance(history.data.get(key), list):
+                        history.data[key] = []
         except (FileNotFoundError, json.JSONDecodeError):
             pass
         return history
@@ -87,6 +92,38 @@ class History:
     @property
     def plays(self):
         return [p for p in self.data["plays"] if isinstance(p, dict)]
+
+    @property
+    def signals(self):
+        """The plays with the songs taken out of the radio among them (as
+        plays of nothing, marked removed), oldest first: what the radio and
+        the playlists made for you learn from. A song taken out is turned
+        down (turned_down) until it is played to the end."""
+        removed = [{"id": r.get("id") or "", "at": int(r.get("at") or 0), "heard": 0, "removed": True}
+                   for r in self.data["removed"] if isinstance(r, dict) and r.get("id")]
+        return sorted(self.plays + removed, key=lambda p: int(p.get("at") or 0))
+
+    def removed_from_radio(self, track, at=None):
+        """track, which the radio queued, taken out of Up next before it played."""
+        tid = track.get("id") or ""
+        if not tid:
+            return
+        removed = self.data["removed"]
+        removed.append({"id": tid, "at": int(at if at is not None else time.time())})
+        del removed[:-REMOVED_LIMIT]
+        self.data["tracks"][tid] = stored_track(track)
+        self._prune()
+
+    def forgive(self, feature):
+        """Forget the songs with feature (a singer, composer or film, as
+        features gives it) taken out of the radio, so it is no longer shunned.
+        Returns how many."""
+        kept = [r for r in self.data["removed"]
+                if not isinstance(r, dict) or feature not in features(self.track(r.get("id") or "") or {})]
+        count = len(self.data["removed"]) - len(kept)
+        self.data["removed"] = kept
+        self._prune()
+        return count
 
     def track(self, tid):
         found = self.data["tracks"].get(tid)
@@ -130,6 +167,7 @@ class History:
     def _prune(self):
         """Forget songs nothing refers to any more."""
         used = {p.get("id") for p in self.plays}
+        used.update(r.get("id") for r in self.data["removed"] if isinstance(r, dict))
         for entry in self.data["made"].values():
             if isinstance(entry, dict):
                 used.update(entry.get("tracks") or [])
@@ -236,8 +274,9 @@ def features(song):
 def taste(plays, track, now, days=90, half_life=30):
     """What you like, from what you played lately: for each singer, composer
     and film, the songs of theirs played to the end, less half for each one
-    skipped (a play that counts but stopped short is worth a quarter), each
-    worth less the older it is. track(id) gives the song."""
+    skipped and one for each one taken out of the radio (a play that counts
+    but stopped short is worth a quarter), each worth less the older it is.
+    plays can be History.signals. track(id) gives the song."""
     likes = {}
     since = now - days * 86400
     for play in plays:
@@ -246,10 +285,41 @@ def taste(plays, track, now, days=90, half_life=30):
         if not song:
             continue
         worth = 0.5 ** ((now - at) / 86400 / half_life)
-        value = worth if fully_played(play) else worth / 4 if counted(play) else -worth / 2
+        value = (-worth if play.get("removed") else worth if fully_played(play)
+                 else worth / 4 if counted(play) else -worth / 2)
         for feature in features(song):
             likes[feature] = likes.get(feature, 0) + value
     return likes
+
+
+def removals(plays, track, now, days=90):
+    """For each singer, composer and film, how many songs of theirs were
+    taken out of the radio in days."""
+    since = now - days * 86400
+    out = {}
+    for play in plays:
+        song = track(play.get("id") or "") if play.get("removed") and int(play.get("at") or 0) >= since else None
+        for feature in features(song) if song else ():
+            out[feature] = out.get(feature, 0) + 1
+    return out
+
+
+def shunned(plays, track, likes, now, days=90, times=3):
+    """The singers, composers and films you keep taking out of the radio: at
+    least times songs of theirs in days, and liked less than skipped on the
+    whole (likes from taste). The radio leaves their songs out."""
+    return {f for f, n in removals(plays, track, now, days).items() if n >= times and likes.get(f, 0) < 0}
+
+
+def taste_ranking(plays, track, now):
+    """Your taste as the radio sees it, best liked first: [{feature, score
+    (taste), removed (times taken out of the radio), shunned}]."""
+    likes = taste(plays, track, now)
+    taken = removals(plays, track, now)
+    shun = shunned(plays, track, likes, now)
+    rows = [{"feature": f, "score": round(likes.get(f, 0), 3), "removed": taken.get(f, 0), "shunned": f in shun}
+            for f in set(likes) | set(taken)]
+    return sorted(rows, key=lambda r: (-r["score"], r["feature"]))
 
 
 def fit(song, likes):

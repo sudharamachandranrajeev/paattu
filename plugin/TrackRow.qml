@@ -14,6 +14,7 @@ Rectangle {
   property bool current: false
   property bool playing: false
   property bool removable: false
+  property string removeTip: "Remove from this playlist"
   // A search result: not in the library yet.
   property bool found: false
   // In a narrow list (Now Playing's up next): no film or kind columns.
@@ -217,7 +218,7 @@ Rectangle {
     size: 30
     color: root.pal.muted
     fontFamily: root.app.fontFamily
-    tooltip: "Remove from this playlist"
+    tooltip: root.removeTip
     onClicked: root.removeRequested()
   }
 }

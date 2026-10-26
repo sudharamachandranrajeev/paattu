@@ -23,6 +23,7 @@ import '../util.dart';
 import 'glass.dart';
 import 'offline_page.dart';
 import 'sound_page.dart';
+import 'taste_page.dart';
 import 'widgets.dart';
 
 /// The top of the "space allowed" slider, in MB (32 GB).
@@ -185,6 +186,14 @@ class SettingsPage extends StatelessWidget {
                   subtitle: const Text('When the songs you picked run out, carry on with songs like them'),
                   value: settings.autoRadio,
                   onChanged: (on) => settings.autoRadio = on,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.insights),
+                  title: const Text('What the radio learned'),
+                  subtitle: const Text('The singers, composers and films it plays more and less of'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TastePage())),
                 ),
                 if (Platform.isAndroid)
                   FutureBuilder<bool>(

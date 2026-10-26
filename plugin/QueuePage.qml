@@ -67,7 +67,7 @@ ListView {
       color: root.pal.muted
       fontFamily: root.app.fontFamily
       visible: !row.modelData.current
-      onClicked: root.app.player.removeIndex(row.modelData.index)
+      onClicked: root.app.removeFromQueue(row.modelData.index)
     }
   }
 }
