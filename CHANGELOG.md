@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.1 — Steadier video on Windows
+
+Which file: the same as before.
+
+- **Video mode keeps a steady speed.** To stay in step with the sound the
+  picture runs a little faster or slower. It read how far out it was four
+  times a second and changed its speed by up to 6% on each reading, and a
+  reading is out by tens of milliseconds. On Windows every change of speed
+  jolts the picture. Now the readings are averaged, nothing changes within
+  60 ms, steps are 1% (4% at most), and the speed changes at most every
+  2 seconds. If it still jumps, the problem log notes each time the video
+  is moved back in line.
+
 ## 0.23.0 — Surround
 
 Which file: the same as before. On Omarchy, `git pull`, then

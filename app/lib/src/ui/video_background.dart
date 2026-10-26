@@ -133,6 +133,11 @@ class SongVideoCard extends StatelessWidget {
 
 /// The one player behind SongVideo and SongVideoCard: which video, and
 /// keeping it in time with the music.
+/// The speed (times the music's) for a picture [drift] ms ahead of its own
+/// sound: as it is out, 1% for each 50 ms, up to 4%, and nothing within
+/// 60 ms, so the speed doesn't wander with the readings.
+double videoNudge(double drift) => drift.abs() < 60 ? 1.0 : 1 - (drift / 50).round().clamp(-4, 4) / 100;
+
 class _SongVideoPlayer extends ChangeNotifier {
   _SongVideoPlayer(this.app) {
     _sound = _player.playingVideo.listen((_) => _soundChanged());
@@ -152,6 +157,11 @@ class _SongVideoPlayer extends ChangeNotifier {
   bool _checking = false;
   double _rate = 1;
   double _nudge = 1;
+  DateTime _nudged = DateTime(0);
+
+  /// How far ahead the picture is (ms), smoothed over the last few checks:
+  /// one check's reading is out by tens of ms either way.
+  double? _drift;
   DateTime _settled = DateTime(0);
   bool _disposed = false;
 
@@ -219,6 +229,7 @@ class _SongVideoPlayer extends ChangeNotifier {
     this.playback = playback;
     _rate = _player.speed;
     _nudge = 1;
+    _drift = null;
     if (_rate != 1) await playback.setRate(_rate);
     _playing = _player.playingStream.listen((on) => fire(on ? playback.play() : playback.pause()));
     _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => fire(_keepInStep()));
@@ -260,20 +271,25 @@ class _SongVideoPlayer extends ChangeNotifier {
       // After a seek, give the video time to get there before checking again.
       if (!_player.playing || DateTime.now().isBefore(_settled)) {
         if (rate != _rate) await _setRate(rate, 1);
+        _drift = null;
         return;
       }
       final ahead = (await playback.position() - _player.position).inMilliseconds;
       if (playback != this.playback) return;
       if (ahead.abs() > (_exact ? 600 : 350)) {
+        problemLog.info('video ${ahead}ms out: seeking it to the music');
         _settled = DateTime.now().add(const Duration(seconds: 3));
+        _drift = null;
         await _setRate(rate, 1);
         fire(playback.seek(_player.position + const Duration(milliseconds: 150)));
         return;
       }
-      // As much faster or slower as it is out (in steps of 2%, so the speed
-      // changes only a few times as it comes back in line, not every check).
-      final nudge = !_exact || ahead.abs() < 40 ? 1.0 : 1 - ((ahead / 2000).clamp(-0.06, 0.06) * 50).round() / 50;
-      if (rate != _rate || nudge != _nudge) await _setRate(rate, nudge);
+      final drift = _drift = _drift == null ? ahead.toDouble() : _drift! * 0.7 + ahead * 0.3;
+      final nudge = _exact ? videoNudge(drift) : 1.0;
+      // Each change of speed jolts the picture a little (on Windows most), so
+      // it changes at most every 2 s, except back to normal once in line.
+      final settledIn = nudge == 1 || DateTime.now().difference(_nudged) > const Duration(seconds: 2);
+      if (rate != _rate || (nudge != _nudge && settledIn)) await _setRate(rate, nudge);
     } catch (_) {
       // the video is closing; the next check sees
     } finally {
@@ -282,6 +298,7 @@ class _SongVideoPlayer extends ChangeNotifier {
   }
 
   Future<void> _setRate(double rate, double nudge) async {
+    if (nudge != _nudge) _nudged = DateTime.now();
     _rate = rate;
     _nudge = nudge;
     await playback?.setRate(rate * nudge);
