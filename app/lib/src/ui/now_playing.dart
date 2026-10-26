@@ -219,8 +219,9 @@ class NowPlayingPage extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
-              child: Text('Now Playing',
-                  textAlign: TextAlign.center, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              child: Center(
+                child: _ModeSwitch(video: settings.videoMode, onChanged: (video) => settings.videoMode = video),
+              ),
             ),
             GlassIconButton(
               icon: Icons.more_vert,
@@ -257,19 +258,24 @@ class NowPlayingPage extends StatelessWidget {
       NowPlayingStyle.full => const SizedBox.expand(),
       NowPlayingStyle.record => square(_Record(track: track, playing: playing)),
     };
-    final card = settings.lyricsShown
-        ? _WithWords(square: style != NowPlayingStyle.full, words: CoverLyrics(app: app, track: track), child: shownCard)
-        : shownCard;
-    return Scaffold(
+    final words = settings.lyricsShown ? CoverLyrics(app: app, track: track) : null;
+    final card = settings.videoMode
+        ? _VideoCard(
+            words: words,
+            cover: TrackCover(track, size: null, large: true, radius: 0),
+          )
+        : words != null
+            ? _WithWords(square: style != NowPlayingStyle.full, words: words, child: shownCard)
+            : shownCard;
+    final page = Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: Stack(
         children: [
           Positioned.fill(
             child: _Background(
-              app: app,
               track: track,
               wide: wide,
-              sharp: style == NowPlayingStyle.full,
+              sharp: !settings.videoMode && style == NowPlayingStyle.full,
               video: settings.videoBackground,
               blur: settings.videoBlur * (wide ? 1.2 : 0.4),
             ),
@@ -338,6 +344,13 @@ class NowPlayingPage extends StatelessWidget {
         ],
       ),
     );
+    return SongVideoHost(
+      app: app,
+      track: track,
+      enabled: settings.videoBackground || settings.videoMode,
+      big: settings.videoMode,
+      child: page,
+    );
   }
 }
 
@@ -346,14 +359,12 @@ class NowPlayingPage extends StatelessWidget {
 /// by [blur], fades in over the picture once it plays.
 class _Background extends StatelessWidget {
   const _Background({
-    required this.app,
     required this.track,
     required this.wide,
     required this.sharp,
     required this.video,
     required this.blur,
   });
-  final AppState app;
   final Json track;
   final bool wide;
   final bool sharp;
@@ -364,7 +375,7 @@ class _Background extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final art = TrackCover(track, size: null, large: true, radius: 0);
-    final moving = video ? SongVideo(app: app, track: track, blur: blur) : const SizedBox.expand();
+    final moving = video ? SongVideo(blur: blur) : const SizedBox.expand();
     return LayoutBuilder(builder: (context, box) {
       // How much of the height the square picture covers.
       final cover = wide ? 1.0 : (box.maxWidth / max(1, box.maxHeight)).clamp(0.3, 1.0);
@@ -1277,4 +1288,96 @@ class QueuePage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Audio | Video, in Now Playing's top bar: video mode shows the song's video
+/// and plays its own sound.
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({required this.video, required this.onChanged});
+  final bool video;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget side(String label, IconData icon, bool on) => Semantics(
+          button: true,
+          selected: on,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => onChanged(label == 'Video'),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: on ? scheme.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: on ? scheme.onPrimary : scheme.onSurface),
+                  const SizedBox(width: 6),
+                  Text(label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: on ? scheme.onPrimary : scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          )),
+                ],
+              ),
+            ),
+          ),
+        );
+    return Glass(
+      radius: 999,
+      blur: true,
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          side('Audio', Icons.music_note, !video),
+          side('Video', Icons.movie_outlined, video),
+        ],
+      ),
+    );
+  }
+}
+
+/// Video mode's card: the song's video, 16 by 9, as wide as there is room
+/// for, its [cover] until it plays (and for a song without one), with the
+/// [words] under it when they fit.
+class _VideoCard extends StatelessWidget {
+  const _VideoCard({required this.cover, this.words});
+  final Widget cover;
+  final Widget? words;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final width = max(0.0, box.maxWidth - 32);
+        // The video as wide as it goes; the words only where two lines or
+        // so fit under it.
+        final height = min(width * 9 / 16, max(0.0, box.maxHeight - 16));
+        final words = box.maxHeight - 16 - height >= 84 ? this.words : null;
+        final video = SizedBox(
+          width: height * 16 / 9,
+          height: height,
+          child: Material(
+            elevation: 12,
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: SongVideoCard(cover: cover),
+          ),
+        );
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            mainAxisAlignment: words == null ? MainAxisAlignment.center : MainAxisAlignment.start,
+            children: [
+              video,
+              if (words != null) Expanded(child: Padding(padding: const EdgeInsets.only(top: 12), child: words)),
+            ],
+          ),
+        );
+      });
 }

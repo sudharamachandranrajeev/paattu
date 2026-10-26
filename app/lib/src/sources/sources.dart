@@ -254,28 +254,47 @@ String? _youTubeId(Json track) {
   return url.isNotEmpty && isYouTube(url) ? videoId(url) : null;
 }
 
-final _videos = <String, ResolvedStream?>{};
+/// A song's video: its YouTube id and its picture.
+typedef FoundVideo = ({String id, ResolvedStream picture});
+
+final _videos = <String, Future<FoundVideo?>>{};
 
 /// How many videos found by search are tried for a song's picture.
 const videoTries = 3;
 
-/// A silent picture to blur behind Now Playing: the song's own video, unless
-/// that is its cover held still (a YouTube Music art track), else the first
-/// YouTube video found by search that is about as long and whose picture
-/// moves (most film songs are there as a lyric or video song). Null when
-/// there's none; looked up once a session. Same as video_for on the desktop.
-Future<ResolvedStream?> videoFor(Json track) async {
+/// The song's video: its own, unless that is its cover held still (a
+/// YouTube Music art track), else the first YouTube video found by search
+/// that is about as long and whose picture moves (most film songs are there
+/// as a lyric or video song). Its picture is the smallest, for the blur
+/// behind Now Playing ([videoYouTube] gets a bigger one). Null when there's
+/// none; looked up once a session (the picture again when its link runs
+/// out). Same as video_for on the desktop.
+Future<FoundVideo?> videoFor(Json track) async {
   final key = '${track['site']}:${track['id']}';
-  if (_videos.containsKey(key)) {
-    final known = _videos[key];
-    if (known == null || known.fresh) return known;
+  final asked = _videos[key];
+  if (asked != null) {
+    try {
+      final known = await asked;
+      if (known == null || known.picture.fresh) return known;
+      final picture = await videoYouTube(known.id);
+      if (picture != null) return (id: known.id, picture: picture);
+    } catch (_) {
+      // asked again below
+    }
+    if (identical(_videos[key], asked)) _videos.remove(key);
   }
-  return _videos[key] = await findVideo(track, searchYouTube, videoYouTube);
+  final found = _videos[key] ??= findVideo(track, searchYouTube, videoYouTube);
+  try {
+    return await found;
+  } catch (_) {
+    if (identical(_videos[key], found)) _videos.remove(key);
+    rethrow;
+  }
 }
 
 /// [videoFor] with its two lookups given: [search] YouTube, and a [video]'s
 /// moving picture (null for a still).
-Future<ResolvedStream?> findVideo(
+Future<FoundVideo?> findVideo(
   Json track,
   Future<List<Json>> Function(String query, {int limit}) search,
   Future<ResolvedStream?> Function(String id) video,
@@ -283,7 +302,7 @@ Future<ResolvedStream?> findVideo(
   final own = _youTubeId(track);
   if (own != null) {
     final picture = await video(own);
-    if (picture != null) return picture;
+    if (picture != null) return (id: own, picture: picture);
   }
   final seconds = toInt(track['duration']);
   final credits = asStrings(track['credits']);
@@ -300,13 +319,23 @@ Future<ResolvedStream?> findVideo(
   for (final id in near.take(videoTries)) {
     try {
       final picture = await video(id);
-      if (picture != null) return picture;
+      if (picture != null) return (id: id, picture: picture);
     } catch (_) {
       // That one won't play here; try the next.
     }
   }
   return null;
 }
+
+/// [track] as its video [id], for video mode to play the video's own sound
+/// (so the singing matches the lips); the song's title and singers stay.
+Json videoSong(Json track, String id) => {
+      ...track,
+      'id': id,
+      'site': 'youtube',
+      'url': 'https://www.youtube.com/watch?v=$id',
+      'video': true,
+    };
 
 /// How many different ways [streamFor] can try for a song.
 int streamAttempts(Json track) => switch (asString(track['site'])) {

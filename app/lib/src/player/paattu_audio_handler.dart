@@ -148,6 +148,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Carry on with songs like the last one when the queue runs out.
   bool autoRadio = true;
 
+  /// Video mode: a song that has a video plays the video's own sound, so the
+  /// singing matches the lips on Now Playing (setVideoMode).
+  bool _videoMode = false;
+
+  /// The YouTube video whose sound is playing (video mode), or null.
+  final playingVideo = BehaviorSubject<String?>.seeded(null);
+
   /// Whether the internet can be reached (a test gives its own).
   Future<bool> Function() online = reachable;
 
@@ -355,7 +362,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
 
   // ---------------------------------------------------------------- playing
 
-  Future<void> _playAt(int index, {bool autoplay = true, Duration? from}) async {
+  Future<void> _playAt(int index, {bool autoplay = true, Duration? from, bool switching = false}) async {
     if (index < 0 || index >= _queue.length) return;
     final problem = playbackUnavailable;
     if (problem != null) {
@@ -367,11 +374,14 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final track = _queue[index];
     _playIntent = autoplay;
     // A new song (or the same one picked again) starts with its own stream;
-    // resuming one that broke part way carries on with the next way.
-    final resuming = from != null && identical(track, _waysFor);
+    // resuming one that broke part way carries on with the next way. One
+    // switching to its video's sound or back starts its ways afresh, but is
+    // still the same listen.
+    final resuming = !switching && from != null && identical(track, _waysFor);
     if (!resuming) {
-      _listened();
+      if (!switching) _listened();
       _startWays(track);
+      playingVideo.add(null);
     }
     _index = index;
     // Ready on the other deck: it starts at once.
@@ -389,6 +399,12 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     loading.add(true);
     _broadcast(_player.playbackEvent);
 
+    if (!resuming) {
+      final video = await _videoOf(track);
+      if (generation != _generation) return;
+      // Its video's sound first, then the song's own ways.
+      if (video != null) _ways.insertAll(0, [_Way(video, 0), _Way(video, 1)]);
+    }
     final deck = _deck;
     while (true) {
       if (_way >= _ways.length) {
@@ -425,6 +441,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         _loading = false;
         loading.add(false);
         _failures = 0;
+        playingVideo.add(way.track['video'] == true ? trackId(way.track) : null);
         problemLog.info('playing ${_describe(track)}: ${way.describe}, ${stream.label}, '
             '${deck.saved != null ? 'kept on this device' : deck.cached != null ? 'downloaded' : stream.uri.host}');
         if (autoplay) unawaited(deck.player.play());
@@ -456,6 +473,38 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         }
       }
     }
+  }
+
+  /// In video mode, [track] as its video (sources.videoSong), if it has one
+  /// found in good time; else null.
+  Future<Json?> _videoOf(Json track) async {
+    if (!_videoMode) return null;
+    try {
+      final found = await videoFor(track).timeout(const Duration(seconds: 8));
+      return found == null ? null : videoSong(track, found.id);
+    } catch (error) {
+      problemLog.warn('no video for ${_describe(track)}: ${errorText(error)}');
+      return null;
+    }
+  }
+
+  /// Turn video mode on or off. The song playing changes to its video's sound
+  /// (or back to its own) where it is, unless that is the same stream.
+  Future<void> setVideoMode(bool on) async {
+    if (on == _videoMode) return;
+    _videoMode = on;
+    _dropReady();
+    if (_index < 0 || _index >= _queue.length || _loading) return;
+    final track = _queue[_index];
+    final video = await _videoOf(track);
+    if (on != _videoMode || _loading || _index >= _queue.length || !identical(_queue[_index], track)) return;
+    final wanted = video ?? track;
+    if (_deck.source == _streamKey(wanted)) {
+      playingVideo.add(video == null ? null : trackId(video));
+      return;
+    }
+    if (!on && playingVideo.value == null) return;
+    await _playAt(_index, autoplay: _playIntent, from: _player.position, switching: true);
   }
 
   void _startWays(Json track) {
@@ -542,6 +591,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     _loading = false;
     loading.add(false);
     _failures = 0;
+    playingVideo.add(ready.video);
     _showSong(ready.track, ready.label);
     problemLog.info('playing ${_describe(ready.track)} (ready${fade ? ', fading in' : ''}): ${ready.label}');
     if (fade) {
@@ -666,9 +716,11 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
     final deck = _spare;
     final ready = _ready = _Ready(index, track, deck);
     _triedReady = track;
-    final way = _Way(track, 0);
     try {
-      final stream = await _resolve(track, 0);
+      final video = await _videoOf(track);
+      if (_ready != ready) return;
+      final way = _Way(video ?? track, 0);
+      final stream = await _resolve(way.track, 0);
       if (_ready != ready) return;
       await deck.player.setVolume(0);
       await deck.player.setAudioSource(_source(deck, way, stream)).timeout(const Duration(seconds: 15));
@@ -676,6 +728,7 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       _loaded(deck);
       ready
         ..label = stream.label
+        ..video = video == null ? null : trackId(video)
         ..loaded = true;
     } on PlayerInterruptedException {
       // dropped meanwhile
@@ -820,7 +873,9 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   /// them (one at a time) unless saving data.
   Future<void> _prefetch() async {
     final generation = _generation;
-    for (final next in _upcoming(2)) {
+    for (final song in _upcoming(2)) {
+      if (generation != _generation) return;
+      final next = await _videoOf(song) ?? song;
       if (generation != _generation) return;
       final key = _streamKey(next);
       // Already kept on this device: it plays from there, nothing to fetch.
@@ -1225,7 +1280,7 @@ class _Way {
   final Json track;
   final int attempt;
 
-  String get describe => '${trackSite(track)} way ${attempt + 1}';
+  String get describe => '${track['video'] == true ? 'its video' : trackSite(track)} way ${attempt + 1}';
 }
 
 /// One of the two players, with the phone's equaliser and loudness enhancer
@@ -1280,4 +1335,7 @@ class _Ready {
   final _Deck deck;
   bool loaded = false;
   String label = '';
+
+  /// The video whose sound it plays (video mode), or null.
+  String? video;
 }
