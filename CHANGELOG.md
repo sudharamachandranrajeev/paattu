@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.21.0 — Video mode on Omarchy
+
+Which file: the same as before. On Omarchy, `git pull`, then
+`./install.sh --dev`, `paattu engine restart`, then `omarchy restart shell`.
+
+- **Audio | Video on Now Playing, as in the app.** In video mode the song's
+  video plays sharp in a wide card in the cover's place (up to 720p), and
+  the engine plays the video's own sound, so the singing matches the lips.
+  A song whose own video is only its cover held still gets one found on
+  YouTube (remembered a month in `~/.cache/paattu/videos.json`); a song
+  without a video, or a video that won't play, plays as usual. The picture
+  is held to the sound by running a touch faster or slower, and Settings ›
+  Video mode and `paattu config set videoMode true` do the same.
+- Switching mode mid-song changes the sound where the song is, and counts
+  as one listen.
+
 ## 0.20.0 — Video mode
 
 Which file: the same as before (`Paattu-0.20.0-android.apk`,

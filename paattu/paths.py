@@ -15,6 +15,8 @@ CONFIG_FILE = CONFIG / "config.json"
 THEMES = CONFIG / "themes"
 ART = CACHE / "art"
 SEARCH = CACHE / "search.json"
+# Songs' videos found (sources.video_id_for).
+VIDEOS = CACHE / "videos.json"
 SOCKET = RUNTIME / "mpv.sock"
 MPV_CONFIG = CONFIG / "mpv"
 CLIAMP_PLAYLISTS = Path(os.environ.get("CLIAMP_CONFIG_DIR") or HOME / ".config/cliamp") / "playlists"

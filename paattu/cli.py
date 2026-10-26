@@ -1672,7 +1672,17 @@ def cmd_browse_play(args, out):
 def cmd_video(args, out):
     tid = sources.track_id(args.target)
     track = _known(library.load(), tid) or {"id": tid}
-    video = sources.video_for(track)
+    vid, video = sources.video_id_for(track)
+    if args.id:
+        if args.json:
+            out.done("", id=vid)
+        else:
+            print(vid or "No video for that song")
+        return
+    if vid and args.height > 144:
+        video = youtube.video_picture(vid, args.height)
+    elif vid and not video:
+        video = youtube.small_video(vid)
     if args.json:
         out.done("", video=video)
     else:
@@ -2234,8 +2244,10 @@ def build_parser():
     a.add_argument("--title", help="what the engine called it")
     a.set_defaults(func=cmd_failover)
 
-    a = sub.add_parser("video", help="where to stream a song's video, small and silent (for a background)")
+    a = sub.add_parser("video", help="where to stream a song's video, silent (small for a background)")
     a.add_argument("target", help="the song: a link or id")
+    a.add_argument("--height", type=int, default=144, help="the tallest picture wanted (video mode: 720)")
+    a.add_argument("--id", action="store_true", help="only the video's YouTube id (the engine's video mode)")
     a.set_defaults(func=cmd_video)
 
     a = sub.add_parser("depth", help="a song's cover's depth map (the cover in 3D in Now Playing)")

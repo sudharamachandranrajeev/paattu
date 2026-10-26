@@ -22,6 +22,7 @@ import json
 import os
 import re
 import tempfile
+import time
 import unicodedata
 import urllib.parse
 import urllib.request
@@ -256,6 +257,45 @@ def video_for(track):
         if video:
             return video
     return None
+
+
+# How long a song's video found (or not) is remembered, in seconds.
+VIDEO_KEPT = 30 * 86400
+NO_VIDEO_KEPT = 86400
+
+
+def video_id_for(track, now=None):
+    """The YouTube id of the song's video (video_for), remembered in
+    ~/.cache/paattu/videos.json so the engine (video mode, which plays the
+    video's own sound) and the app's picture agree, and so a song played
+    again needs no search. Returns (id or None, the small picture if it was
+    just found, else None)."""
+    now = time.time() if now is None else now
+    key = track.get("id") or ""
+    known = _read_json(paths.VIDEOS, {})
+    entry = known.get(key)
+    if isinstance(entry, dict) and now - (entry.get("at") or 0) < (VIDEO_KEPT if entry.get("id") else NO_VIDEO_KEPT):
+        return entry.get("id"), None
+    video = video_for(track)
+    known = {k: v for k, v in _read_json(paths.VIDEOS, {}).items()
+             if isinstance(v, dict) and now - (v.get("at") or 0) < VIDEO_KEPT}
+    known[key] = {"id": video["id"] if video else None, "at": int(now)}
+    _write_json(paths.VIDEOS, known)
+    return (video["id"] if video else None), video
+
+
+def _read_json(path, default):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return default
+
+
+def _write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp%d" % os.getpid())
+    tmp.write_text(json.dumps(data))
+    os.replace(tmp, path)
 
 
 def _thumbnail(thumbnails, prefer=("t500x500", "crop", "t300x300", "original")):
