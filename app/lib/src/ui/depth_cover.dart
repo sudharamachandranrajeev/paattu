@@ -1,12 +1,13 @@
 // A song's cover in 3D. It tilts as the phone moves (on a computer, as the
-// pointer moves over it), drifting slowly when nothing moves it, and its
-// subject (found by subject.dart) stands out of the picture: sharp, a little
-// bigger and nearer, with a shadow on the rest of the picture, softened
-// behind it. A cover without a subject to lift only tilts. On Now Playing
-// the subject also moves with the song (beat.dart): it swells and rises a
-// little on each beat, glowing softly at its edges, while the picture behind
-// breathes with the loudness — always within the margin the lifted subject
-// already covers, so the picture's own copy of it never shows.
+// pointer moves over it), drifting slowly when nothing moves it, and the
+// picture has depth: depth.dart makes a soft map of how near each point of
+// it is, and a shader (shaders/depth_cover.frag) moves each point by that as
+// the cover leans, so its subject (found by subject.dart) glides over what
+// is behind it in one piece, with no cut-out edge to show. A cover without a
+// subject is taken as layers of its own colours, which also drift slowly
+// past each other under a slow sheen. On Now Playing (beat.dart) the near
+// parts swell a little on each beat while the rest breathes with the
+// loudness. The effect eases in over the plain cover once the map is ready.
 
 import 'dart:async';
 import 'dart:io';
@@ -18,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+import '../log.dart';
 import '../subject.dart';
 import '../track.dart';
 import '../util.dart';
@@ -36,8 +38,13 @@ class DepthCover extends StatefulWidget {
 class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker(_tick);
   final _tilt = ValueNotifier(Offset.zero);
-  _Layers? _layers;
+  // Seconds, for the drift, and how far the effect has come in, 0 to 1.
+  final _clock = ValueNotifier(0.0);
+  final _strength = ValueNotifier(0.0);
+  CoverDepth? _depth;
+  ui.FragmentShader? _shader;
   String? _art;
+  bool _still = false;
 
   // Where the phone or the pointer would have the cover tilt, and when it
   // last moved: after a few still seconds the cover drifts on its own.
@@ -47,10 +54,18 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
   StreamSubscription<AccelerometerEvent>? _motion;
   Offset? _held;
 
+  static Future<ui.FragmentProgram>? _program;
+
   @override
   void initState() {
     super.initState();
     _find();
+    (_program ??= ui.FragmentProgram.fromAsset('shaders/depth_cover.frag')).then((program) {
+      if (mounted) setState(() => _shader = program.fragmentShader());
+    }, onError: (Object error) {
+      _program = null;
+      problemLog.warn("couldn't load the cover in 3D's shader: ${errorText(error)}");
+    });
     if (Platform.isAndroid) {
       _motion = accelerometerEventStream(samplingPeriod: SensorInterval.uiInterval)
           .listen(_phoneMoved, onError: (Object _) {}, cancelOnError: true);
@@ -60,8 +75,8 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Still, for those who turn animations off.
-    final still = MediaQuery.disableAnimationsOf(context);
+    // Still, for those who turn animations off: the depth without the motion.
+    final still = _still = MediaQuery.disableAnimationsOf(context);
     if (still && _ticker.isActive) {
       _ticker.stop();
       _tilt.value = Offset.zero;
@@ -69,6 +84,7 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
       _last = Duration.zero;
       _ticker.start();
     }
+    if (still && _depth != null) _strength.value = 1;
   }
 
   @override
@@ -76,7 +92,7 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     super.didUpdateWidget(old);
     if (trackArt(old.track, large: true) != trackArt(widget.track, large: true)) {
       // The last cover's pictures go with the old card as it fades out.
-      _layers = null;
+      _depth = null;
       _find();
     }
   }
@@ -86,19 +102,18 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     _ticker.dispose();
     _motion?.cancel();
     _tilt.dispose();
+    _clock.dispose();
+    _strength.dispose();
+    _shader?.dispose();
     super.dispose();
   }
 
   Future<void> _find() async {
     final art = _art = trackArt(widget.track, large: true);
-    final subject = await subjectOf(widget.track);
-    if (subject == null || !mounted || art != _art) return;
-    final layers = await _Layers.of(subject);
-    if (!mounted || art != _art) {
-      layers.dispose();
-      return;
-    }
-    setState(() => _layers = layers);
+    final depth = await depthOf(widget.track);
+    if (depth == null || !mounted || art != _art) return;
+    _strength.value = _still ? 1 : 0;
+    setState(() => _depth = depth);
   }
 
   /// Gravity across and down the screen, against how the phone is usually
@@ -127,15 +142,19 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     final aim = still ? Offset(sin(t * 0.45) * 0.35, cos(t * 0.31) * 0.25) : _aim;
     final next = _tilt.value + (aim - _tilt.value) * (1 - exp(-seconds * 5));
     if ((next - _tilt.value).distance > 0.0004) _tilt.value = next;
+    if (_depth != null) {
+      _clock.value = t;
+      if (_strength.value < 1) _strength.value = min(1.0, _strength.value + seconds / 1.2);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final layers = _layers;
+    final depth = _depth, shader = _shader;
     final radius = BorderRadius.circular(widget.radius);
     final card = AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
-      child: layers == null
+      child: depth == null || shader == null
           ? Material(
               key: const ValueKey('flat'),
               elevation: 12,
@@ -144,7 +163,7 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
               child: TrackCover(widget.track, size: null, large: true, radius: widget.radius),
             )
           : Stack(
-              key: ValueKey(layers),
+              key: ValueKey(depth),
               fit: StackFit.expand,
               children: [
                 DecoratedBox(
@@ -153,7 +172,9 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
                     boxShadow: const [BoxShadow(color: Color(0x73000000), blurRadius: 28, offset: Offset(0, 12))],
                   ),
                 ),
-                CustomPaint(painter: _DepthPainter(layers, _tilt, BeatDriver.of(context), widget.radius, Theme.of(context).colorScheme.primary)),
+                CustomPaint(
+                  painter: _DepthPainter(depth, shader, _tilt, _clock, _strength, BeatDriver.of(context), widget.radius),
+                ),
               ],
             ),
     );
@@ -176,111 +197,46 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
   }
 }
 
-/// The pictures the 3D cover is drawn from, made once per cover.
-class _Layers {
-  _Layers(this.subject, this.back, this.shadow);
-
-  final CoverSubject subject;
-
-  /// The cover softened and darkened a little, behind the subject.
-  final ui.Image back;
-
-  /// The subject's shadow.
-  final ui.Image shadow;
-
-  static Future<_Layers> of(CoverSubject subject) async {
-    Future<ui.Image> draw(ui.Image from, ui.ImageFilter filter, {Color? tint, ColorFilter? colour}) async {
-      final w = from.width, h = from.height;
-      final box = Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder)..saveLayer(box, Paint()..imageFilter = filter);
-      canvas.drawImage(from, Offset.zero, Paint()..colorFilter = colour);
-      if (tint != null) canvas.drawRect(box, Paint()..color = tint);
-      canvas.restore();
-      final picture = recorder.endRecording();
-      try {
-        return await picture.toImage(w, h);
-      } finally {
-        picture.dispose();
-      }
-    }
-
-    final side = subject.picture.width / 720;
-    final back = await draw(subject.picture, ui.ImageFilter.blur(sigmaX: 3 * side, sigmaY: 3 * side, tileMode: TileMode.clamp),
-        tint: const Color(0x26000000));
-    final shadow = await draw(subject.mask, ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7, tileMode: TileMode.decal),
-        colour: const ColorFilter.mode(Color(0x8C000000), BlendMode.srcIn));
-    return _Layers(subject, back, shadow);
-  }
-
-  void dispose() {
-    back.dispose();
-    shadow.dispose();
-  }
-}
-
+/// The cover drawn by shaders/depth_cover.frag (its uniforms in order).
 class _DepthPainter extends CustomPainter {
-  _DepthPainter(this.layers, this.tilt, this.beat, this.radius, this.glow)
-      : super(repaint: Listenable.merge([tilt, beat]));
+  _DepthPainter(this.depth, this.shader, this.tilt, this.clock, this.strength, this.beat, this.radius)
+      : super(repaint: Listenable.merge([tilt, clock, strength, beat]));
 
-  final _Layers layers;
+  final CoverDepth depth;
+  final ui.FragmentShader shader;
   final ValueListenable<Offset> tilt;
+  final ValueListenable<double> clock;
+  final ValueListenable<double> strength;
   final Beat? beat;
   final double radius;
-  final Color glow;
-
-  static Rect _all(ui.Image image) => Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
 
   @override
   void paint(Canvas canvas, Size size) {
-    final subject = layers.subject;
-    final box = Offset.zero & size;
-    final smooth = Paint()..filterQuality = FilterQuality.medium;
-    final t = tilt.value;
-    final punch = beat?.punch ?? 0, level = beat?.level ?? 0;
-    // The subject is nearer than the picture: it moves further as the cover
-    // tilts, and its shadow falls the other way. On a beat it rises and
-    // swells, its shadow dropping further.
-    final rise = Offset(0, -size.shortestSide * 0.008 * punch);
-    final lift = t * size.shortestSide * subjectLean;
-    final centre = Offset(subject.centre.dx * size.width, subject.centre.dy * size.height);
-
-    canvas.save();
-    canvas.clipRRect(RRect.fromRectAndRadius(box, Radius.circular(radius)));
-    // The picture breathes with the loudness, about the subject.
-    final breath = 1 + 0.012 * level;
-    canvas.translate(centre.dx, centre.dy);
-    canvas.scale(breath);
-    canvas.translate(-centre.dx, -centre.dy);
-    canvas.drawImageRect(layers.back, _all(layers.back), box, smooth);
-    canvas.drawImageRect(layers.shadow, _all(layers.shadow),
-        box.shift(-lift * 0.8 + Offset(0, size.height * (0.015 + 0.01 * punch))), smooth);
-    // A soft light behind the subject on the beat, in the cover's colour.
-    if (punch > 0.02) {
-      canvas.translate(centre.dx + lift.dx, centre.dy + lift.dy);
-      canvas.scale(subjectLift * (1 + 0.05 * punch) / breath);
-      canvas.translate(-centre.dx, -centre.dy);
-      canvas.drawImageRect(layers.shadow, _all(layers.shadow), box, Paint()
-        ..filterQuality = FilterQuality.medium
-        ..blendMode = BlendMode.plus
-        ..colorFilter = ColorFilter.mode(glow.withValues(alpha: 0.45 * punch), BlendMode.srcIn));
+    if (size.isEmpty) return;
+    final t = tilt.value, s = strength.value;
+    final values = [
+      size.width, size.height,
+      t.dx, t.dy,
+      depth.centre.dx, depth.centre.dy,
+      s * s * (3 - 2 * s),
+      beat?.punch ?? 0,
+      beat?.level ?? 0,
+      clock.value,
+      // A subject stands still but for a breath; layers drift.
+      depth.subject ? 0.25 : 1.0,
+      min(0.5, radius / size.width),
+      size.width,
+    ];
+    for (var i = 0; i < values.length; i++) {
+      shader.setFloat(i, values[i]);
     }
-    canvas.restore();
-
-    canvas.save();
-    canvas.translate(centre.dx + lift.dx + rise.dx, centre.dy + lift.dy + rise.dy);
-    canvas.scale(subjectLift * (1 + 0.03 * punch + 0.008 * level));
-    canvas.translate(-centre.dx, -centre.dy);
-    canvas.saveLayer(box.inflate(size.shortestSide * 0.05), Paint());
-    canvas.drawImageRect(subject.picture, _all(subject.picture), box, smooth);
-    canvas.drawImageRect(subject.mask, _all(subject.mask), box, Paint()
-      ..filterQuality = FilterQuality.medium
-      ..blendMode = BlendMode.dstIn);
-    canvas.restore();
-    canvas.restore();
+    shader
+      ..setImageSampler(0, depth.picture, filterQuality: FilterQuality.medium)
+      ..setImageSampler(1, depth.depth, filterQuality: FilterQuality.low);
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
   bool shouldRepaint(_DepthPainter old) =>
-      old.layers != layers || old.radius != radius || old.beat != beat || old.glow != glow;
+      old.depth != depth || old.shader != shader || old.radius != radius || old.beat != beat;
 }

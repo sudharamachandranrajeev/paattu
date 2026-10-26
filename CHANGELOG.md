@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.15.0 — A cover in 3D that flows
+
+Which file: the same as before (`Paattu-0.15.0-android.apk`,
+`Paattu-0.15.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **No more cut-out.** The cover in 3D used to cut the subject out and lay
+  it over a softened copy of the picture, so a rough cut showed as a halo
+  and the beat's pop looked like a distortion. Now the cover is drawn whole:
+  a soft map of how near each point is moves the picture as it leans, so the
+  subject glides over what is behind it in one piece, catching the light on
+  the side facing it, its shadow sliding on the picture behind.
+- **On the beat** the near parts swell smoothly instead of jumping, and the
+  rest breathes with the loudness.
+- **Covers without a subject** get depth too: the cover's own sections (the
+  few colours it is made of) become layers that drift slowly past each other
+  under a slow sheen. Before, such a cover only tilted.
+- **It eases in.** Once the depth map is ready the effect grows out of the
+  plain cover instead of swapping pictures.
+- `paattu depth` gives the cover and its depth map (`picture`, `depth`,
+  `subject`, `centre`).
+
 ## 0.14.0 — A fifteen-band equaliser that lands where you put it
 
 Which file: the same as before (`Paattu-0.14.0-android.apk`,

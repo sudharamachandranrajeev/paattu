@@ -242,7 +242,7 @@ class SettingsPage extends StatelessWidget {
                   secondary: const Icon(Icons.view_in_ar_outlined),
                   title: const Text('Cover in 3D'),
                   subtitle: Text(
-                    "Lifts what's in the picture out of it, tilting as you "
+                    "Gives the picture depth, what's in it gliding as you "
                     '${Platform.isAndroid ? 'move the phone' : 'move the pointer over it'} '
                     '(the Cover and Video first looks)',
                   ),

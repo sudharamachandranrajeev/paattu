@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from paattu import depth  # noqa: E402
 
+ROOT = Path(__file__).resolve().parent.parent
+
 SIDE = 50
 
 
@@ -80,6 +82,72 @@ class CoverClipTest(unittest.TestCase):
 
     def test_square(self):
         self.assertEqual(depth.cover_clip(500, 500), (0, 0, 500, 500))
+
+
+class DepthMapTest(unittest.TestCase):
+    """The same cases as app/test/depth_test.dart (depth_cases.json): the app
+    and the desktop Paattu give the same covers the same depth."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cases = json.loads((ROOT / "tests" / "depth_cases.json").read_text())
+
+    def close(self, got, want):
+        self.assertEqual(len(got), len(want))
+        for a, b in zip(got, want):
+            self.assertAlmostEqual(a, b, places=7)
+
+    def test_regions(self):
+        c = self.cases
+        labels, colours = depth.regions(c["rgb"], c["side"])
+        self.assertEqual(labels, c["labels"])
+        for got, want in zip(colours, c["colours"]):
+            self.close(got, want)
+
+    def test_region_depth(self):
+        c = self.cases
+        got = depth.region_depth(c["rgb"], c["side"])
+        self.close(got, c["regionDepth"])
+        # The red disc in the middle is the nearest layer, the yellow along
+        # the top edge the furthest, the blue around them between.
+        side = c["side"]
+        self.assertEqual(got[7 * side + 6], 1.0)
+        self.assertLess(got[0], got[11 * side])
+        self.assertLess(got[11 * side], 1.0)
+
+    def test_a_flat_picture_is_all_one_depth(self):
+        self.assertEqual(set(depth.region_depth([90, 90, 90] * 64, 8)), {0.5})
+
+    def test_blur_and_shrink(self):
+        b, s = self.cases["blur"], self.cases["shrink"]
+        self.close(depth.blur(b["values"], b["side"], b["sigma"]), b["out"])
+        self.close(depth.shrink(s["values"], s["side"], s["to"]), s["out"])
+
+    def test_depth_map(self):
+        c = self.cases
+        for name, subject in (("withSubject", c["subject"]), ("withoutSubject", None)):
+            want = c[name]
+            d, shadow, lifted = depth.depth_map(c["rgb"], c["side"], subject)
+            self.close(d, want["depth"])
+            self.close(shadow, want["shadow"])
+            self.close(lifted, want["subject"])
+            self.close(depth.depth_centre(d, c["side"]), want["centre"])
+            self.assertEqual(list(depth.depth_pixels(d, shadow, lifted)), want["pixels"])
+        self.assertEqual(set(c["withoutSubject"]["shadow"]), {0.0})
+
+
+class ShaderTest(unittest.TestCase):
+    def test_the_apps_draw_the_cover_alike(self):
+        def shared(path):
+            text = (ROOT / path).read_text()
+            return text[text.index("// shared from here"):text.index("// shared to here")]
+        self.assertEqual(shared("plugin/shaders/DepthCover.frag"), shared("app/shaders/depth_cover.frag"))
+
+    def test_the_built_shader_is_there(self):
+        # Built with qsb (see the top of plugin/shaders/DepthCover.frag).
+        built = ROOT / "plugin" / "DepthCover.frag.qsb"
+        self.assertTrue(built.exists())
+        self.assertGreaterEqual(built.stat().st_mtime, (ROOT / "plugin/shaders/DepthCover.frag").stat().st_mtime - 1)
 
 
 class LiftTest(unittest.TestCase):

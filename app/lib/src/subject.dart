@@ -1,5 +1,5 @@
-// The subject of a song's cover (the people in it, mostly) cut out of the
-// picture, for Now Playing to lift out of it in 3D. Android asks ML Kit's
+// The subject of a song's cover (the people in it, mostly) found in the
+// picture, for Now Playing to give it depth (depth.dart) in 3D. Android asks ML Kit's
 // subject segmentation (part of Google Play services); Windows and Linux run
 // U²-Net's small model (models/u2netp.onnx, bundled beside the app) with
 // ONNX Runtime. Nothing leaves the device.
@@ -16,6 +16,7 @@ import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:google_mlkit_subject_segmentation/google_mlkit_subject_segmentation.dart' as mlkit;
 import 'package:path_provider/path_provider.dart';
 
+import 'depth.dart';
 import 'log.dart';
 import 'track.dart';
 import 'util.dart';
@@ -27,18 +28,22 @@ const maskSide = 320;
 /// YouTube thumbnail's height).
 const _pictureSide = 720;
 
-/// A cover with its subject found.
-class CoverSubject {
-  CoverSubject({required this.picture, required this.mask, required this.centre});
+/// A cover with its depth map.
+class CoverDepth {
+  CoverDepth({required this.picture, required this.depth, required this.centre, required this.subject});
 
   /// The cover, cut square as the app shows it.
   final ui.Image picture;
 
-  /// The subject: opaque where it is, see-through elsewhere ([maskSide] square).
-  final ui.Image mask;
+  /// How near each point of it is ([depthPixels], [depthSide] square).
+  final ui.Image depth;
 
-  /// The subject's middle, 0 to 1 across and down the picture.
+  /// The middle of the subject (or of the nearest layers), 0 to 1 across and
+  /// down the picture.
   final Offset centre;
+
+  /// Whether a subject stood out; without one the cover's layers drift.
+  final bool subject;
 }
 
 /// A guess at the subject, cleaned up for lifting out of the picture.
@@ -55,23 +60,23 @@ class SubjectMask {
   final double area;
 }
 
-/// How the subject is shown (depth_cover.dart, and the Omarchy app's
-/// DepthCover.qml): this much bigger, about its centre, moving up to
-/// [subjectLean] of the cover's side as it leans, on a cover rounded about
-/// [_corner] of its side.
+/// How the cover is shown (the shader of depth_cover.dart and the Omarchy
+/// app's DepthCover.qml): this much bigger, with its nearest points moving up
+/// to about [subjectLean] of its side as it leans, rounded about [_corner] of
+/// its side.
 const subjectLift = 1.06;
 const subjectLean = 0.02;
 const _corner = 0.08;
 
 /// What [raw] (a [side] by [side] guess at how much each pixel is the
 /// subject) leaves to lift: stretched to 0–1 and made firmer (the guess is
-/// often unsure inside the subject, which would let the picture behind show
-/// through). Unsure patches the subject closes around (a shirt the model half
-/// missed) are filled; what it is sure is background (the gap between an arm
-/// and the body) is kept. The subject is shown a little bigger and moves as
-/// the cover leans, so it fades out before the cover's (rounded) edge
-/// wherever it is shown: a subject cut off by the frame would otherwise stick
-/// out past it. paattu/depth.py does the same for the Omarchy app. Null when
+/// often unsure inside the subject, which would leave dips in its depth).
+/// Unsure patches the subject closes around (a shirt the model half missed)
+/// are filled; what it is sure is background (the gap between an arm and the
+/// body) is kept. The cover is shown a little bigger and its subject moves
+/// most as the cover leans, so the subject fades out before the cover's
+/// (rounded) edge: a subject cut off by the frame would otherwise pull in
+/// what is outside the picture. paattu/depth.py does the same for the Omarchy app. Null when
 /// the guess is no good: nothing stands out, the subject is a speck or most
 /// of the picture, or it is a haze, not a shape.
 SubjectMask? cleanMask(List<double> raw, int side) {
@@ -187,12 +192,11 @@ Float32List modelInput(Uint8List rgba) {
 }
 
 // Covers seen lately, by picture address: a song played again, or Now
-// Playing opened again, finds its subject at once.
-final _found = LinkedHashMap<String, Future<CoverSubject?>>();
+// Playing opened again, finds its depth map at once.
+final _found = LinkedHashMap<String, Future<CoverDepth?>>();
 
-/// The subject of [track]'s cover, or null for a cover without one to lift
-/// (or none at all).
-Future<CoverSubject?> subjectOf(Json track) async {
+/// [track]'s cover with its depth map, or null for a song without a cover.
+Future<CoverDepth?> depthOf(Json track) async {
   final url = trackArt(track, large: true);
   if (url == null || url.isEmpty) return null;
   final found = _found.remove(url) ?? _find(url, trackArtFallback(track));
@@ -204,16 +208,16 @@ Future<CoverSubject?> subjectOf(Json track) async {
     return await found;
   } catch (error) {
     // A failure (no network, ML Kit still fetching its model) is tried again
-    // next time; a cover without a subject is not.
+    // next time.
     if (identical(_found[url], found)) {
       _found.remove(url);
-      problemLog.warn("couldn't find the subject of ${trackTitle(track)}'s cover: ${errorText(error)}");
+      problemLog.warn("couldn't make the depth map of ${trackTitle(track)}'s cover: ${errorText(error)}");
     }
     return null;
   }
 }
 
-Future<CoverSubject?> _find(String url, String? fallback) async {
+Future<CoverDepth?> _find(String url, String? fallback) async {
   ui.Image cover;
   try {
     cover = await _load(url);
@@ -229,13 +233,14 @@ Future<CoverSubject?> _find(String url, String? fallback) async {
     } finally {
       small.dispose();
     }
-    if (raw == null) return null;
-    final mask = cleanMask(raw, maskSide);
-    if (mask == null) return null;
-    return CoverSubject(
+    final mask = raw == null ? null : cleanMask(raw, maskSide);
+    final rgb = await _rgb(cover, depthSide);
+    final map = depthMap(rgb, depthSide, mask == null ? null : shrink(mask.alpha, maskSide, depthSide));
+    return CoverDepth(
       picture: await _square(cover, min(_pictureSide, min(cover.width, cover.height))),
-      mask: await _maskImage(mask.alpha),
-      centre: mask.centre,
+      depth: await _depthImage(depthPixels(map)),
+      centre: mask?.centre ?? depthCentre(map.depth, depthSide),
+      subject: mask != null,
     );
   } finally {
     cover.dispose();
@@ -273,16 +278,24 @@ Future<ui.Image> _square(ui.Image image, int side) async {
   }
 }
 
-Future<ui.Image> _maskImage(Float32List alpha) {
-  final pixels = Uint8List(alpha.length * 4);
-  for (var i = 0; i < alpha.length; i++) {
-    // Only the alpha counts; the same value in every channel reads the same
-    // whether the pixels are taken as premultiplied or not.
-    final a = (alpha[i] * 255).round().clamp(0, 255);
-    pixels[i * 4] = pixels[i * 4 + 1] = pixels[i * 4 + 2] = pixels[i * 4 + 3] = a;
+/// The middle square of [image], [side] pixels across, as RGB bytes.
+Future<List<int>> _rgb(ui.Image image, int side) async {
+  final square = await _square(image, side);
+  try {
+    final pixels = await square.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (pixels == null) throw StateError("couldn't read the cover's pixels");
+    return [
+      for (var i = 0; i < side * side; i++)
+        for (var c = 0; c < 3; c++) pixels.getUint8(i * 4 + c),
+    ];
+  } finally {
+    square.dispose();
   }
+}
+
+Future<ui.Image> _depthImage(Uint8List pixels) {
   final done = Completer<ui.Image>();
-  ui.decodeImageFromPixels(pixels, maskSide, maskSide, ui.PixelFormat.rgba8888, done.complete);
+  ui.decodeImageFromPixels(pixels, depthSide, depthSide, ui.PixelFormat.rgba8888, done.complete);
   return done.future;
 }
 
