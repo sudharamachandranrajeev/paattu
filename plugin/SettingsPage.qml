@@ -385,22 +385,29 @@ Flickable {
       spacing: 8
       Text {
         width: 110
-        anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
         text: "Each line"
         color: root.pal.muted
         font.family: root.app.fontFamily
         font.pixelSize: 12
+        topPadding: 6
       }
-      Repeater {
-        model: [{ key: "3d", label: "Pops out in 3D" }, { key: "fade", label: "Fades in" }, { key: "plain", label: "Plain" }]
-        Chip {
-          required property var modelData
-          text: modelData.label
-          textColor: root.pal.foreground; accent: root.pal.accent
-          selected: (root.lyrics.effect || "3d") === modelData.key
-          fontSize: 12; fontFamily: root.app.fontFamily
-          onClicked: root.set("lyrics.effect", modelData.key)
+      // Six choices: they wrap rather than run off the page.
+      Flow {
+        width: column.width - 118
+        spacing: 8
+        Repeater {
+          model: [{ key: "3d", label: "Pops out in 3D" }, { key: "comic", label: "Comic pop" },
+                  { key: "karaoke", label: "Karaoke" }, { key: "glow", label: "Glows in" },
+                  { key: "fade", label: "Fades in" }, { key: "plain", label: "Plain" }]
+          Chip {
+            required property var modelData
+            text: modelData.label
+            textColor: root.pal.foreground; accent: root.pal.accent
+            selected: (root.lyrics.effect || "3d") === modelData.key
+            fontSize: 12; fontFamily: root.app.fontFamily
+            onClicked: root.set("lyrics.effect", modelData.key)
+          }
         }
       }
     }

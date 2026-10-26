@@ -65,7 +65,7 @@ DEFAULTS = {
 
 STYLES = ("vinyl", "card", "minimal")
 NOW_PLAYING_STYLES = ("cover", "video", "full", "record")
-LYRIC_EFFECTS = ("3d", "fade", "plain")
+LYRIC_EFFECTS = ("3d", "comic", "karaoke", "glow", "fade", "plain")
 SITES = ("jiosaavn", "youtube", "soundcloud")
 POSITIONS = ("top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right")
 

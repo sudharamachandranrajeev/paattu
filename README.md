@@ -54,8 +54,8 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
   (cover, video first, full picture, record), colours from the cover, and the cover in 3D: its
   subject gliding over the picture in one piece (or its layers drifting) and moving with the song's rhythm.
-* **Lyrics over the cover** – the line being sung pops out of the cover in 3D, filled with the
-  cover's colours moving through it, with how it sounds in English letters under it (Malayalam,
+* **Lyrics over the cover** – the line being sung pops out of the cover in 3D (or bursts in
+  comic-book style, fills as it's sung, or glows in), filled with the cover's colours moving through it, with how it sounds in English letters under it (Malayalam,
   Tamil, Hindi, Telugu, Kannada); all the words in place of Up next, and a bar with the film, year,
   singers, language and plays.
 * **Sound** – a fifteen-band equaliser (ISO 2/3-octave, each slider the level you get there) with presets (Melody, Kuthu, Bass boost, Late night…), preamp,
@@ -543,17 +543,25 @@ of the cover on Now Playing, with how it sounds in English letters under it
 (for Malayalam, Tamil, Hindi, Telugu and Kannada). The **Lyrics** button
 shows all the words in place of Up next, the line being sung lit up.
 
-The words come from [LRCLIB](https://lrclib.net) (in the song's own script,
-timed to the song) or, when it has none, YouTube Music (the words without
-timing; then only the Lyrics button shows them). The English letters are
+The words come from [LRCLIB](https://lrclib.net) or YouTube Music, in the
+song's own script and timed line by line where they have them so. Words
+timed to another upload of the song than the one playing (a music video with
+a longer start, say) are put in step with it: the two uploads' loudness over
+time is lined up and the lines moved by how far apart they are. Words that
+can't be timed show only through the Lyrics button. The English letters are
 worked out on the device from the script. What was found is kept for each
-song, and a song with no words is asked about again after three days.
+song; a song with no words is asked about again after three days, and one
+looked up while a site was down after an hour.
 
 Settings › Lyrics:
 
 - **Over the cover** shows the line being sung (on by default).
-- **Each line** comes in **popping out in 3D** (the default), **fading in**,
-  or **plain**.
+- **Each line** comes in **popping out in 3D** (the default, with a glow of
+  the song's colours, and bursting into them as it goes), as a **comic pop**
+  (on a starburst, white letters outlined dark, popping away in a burst), as
+  **karaoke** (filling with the colours as it's sung), **glowing in** (out of
+  a blur, rising away into one), **fading in**, or **plain**. The colours are
+  the ones Now Playing takes from the cover.
 - **Cover's colours** fills the words with the cover's colours, moving slowly
   through them; off, they're one colour.
 - **English letters** shows how each line sounds under it.
@@ -830,7 +838,7 @@ paattu config set coverColors true      # Now Playing in the cover's colours
 paattu config set coverDepth false      # a flat cover in Now Playing
 paattu config set songInfo false        # no bar about the song above Up next
 paattu config set lyrics.show false     # no words over the cover
-paattu config set lyrics.effect fade    # 3d | fade | plain
+paattu config set lyrics.effect fade    # 3d | comic | karaoke | glow | fade | plain
 paattu config set lyrics.gradient false # the words in one colour
 paattu config set lyrics.transliterate false  # no English letters under them
 ```

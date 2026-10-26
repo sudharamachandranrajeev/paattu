@@ -245,6 +245,9 @@ enum NowPlayingStyle {
 /// what the desktop Paattu's config keeps (lyrics.effect).
 enum LyricEffect {
   pop('3d', 'Pop out in 3D', 'Each line turns towards you out of the cover and settles'),
+  comic('comic', 'Comic pop', 'Each line bursts in on a starburst, comic-book style, and pops away'),
+  karaoke('karaoke', 'Karaoke', 'Each line fills with colour as it is sung'),
+  glow('glow', 'Glow', 'Each line glows into focus and drifts up as it goes'),
   fade('fade', 'Fade', 'Each line fades in as the last fades out'),
   plain('plain', 'Plain', 'Each line simply takes the place of the last');
 

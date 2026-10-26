@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.16.0 — Lyrics in step, and three new ways for them to come in
+
+Which file: the same as before (`Paattu-0.16.0-android.apk`,
+`Paattu-0.16.0-windows-x64-setup.exe`, the AppImage or the tarball). On
+Omarchy, `git pull`, then `./install.sh`, then `omarchy restart shell`.
+
+- **Timed on more songs.** YouTube Music's words are now asked for as its
+  Android app asks, which gives them timed, in the song's own script. Songs
+  LRCLIB had only untimed words for, or none, are timed now.
+- **In step with the upload playing.** Words timed to another upload of the
+  song (a music video with a longer start, say) used to play early or late,
+  or show untimed. Now the two uploads' loudness over time is lined up and
+  the lines moved by how far apart they are, to a tenth of a second. LRCLIB's
+  timing is taken as it is only when its length is within 2 seconds of the
+  song's.
+- **A busy site doesn't stick.** A song looked up while LRCLIB or YouTube
+  Music was down is asked again after an hour rather than kept untimed, and
+  what the last version kept is looked up again once.
+- **Comic pop**: each line springs in a little askew on a starburst of the
+  song's colours, white letters outlined dark, and pops away bigger in a
+  burst of stars.
+- **Karaoke**: each line fills with the song's colours as it's sung.
+- **Glow**: each line glows into focus out of a blur and rises away into one.
+- **3D** lines now glow in the song's colours as they come and burst into
+  them as they go.
+- **The song's colours.** In the app, the words' colours are now the ones
+  Now Playing takes from the cover, so the two match.
+- Lone music notes in timed words show as a break, not as "♪".
+
 ## 0.15.0 — A cover in 3D that flows
 
 Which file: the same as before (`Paattu-0.15.0-android.apk`,
