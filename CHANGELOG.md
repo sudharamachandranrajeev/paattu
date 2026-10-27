@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.0.1 — Smoother, steadier, and a way back
+
+Which file: the same as before. On Omarchy, `git pull`, then
+`./install.sh --dev`, then `omarchy restart shell`.
+
+- **No more lag and stutter on Windows.** Three things slowed the app the
+  longer it ran, and the music with it. The radio worked out each song's
+  language by reading every playlist in the library, on every song (now
+  once). Each position bar left a timer running behind it when it went,
+  and each song made more of them (now one stream for all). And every few
+  milliseconds the player told Windows' media controls where the song had
+  got to (now only when something changes).
+- **Less drawn for nothing.** Video mode's card and the cover in 3D sit
+  still while the song is paused and the pointer is away, the lyrics'
+  colours stop with the song, the blurred picture behind Now Playing is
+  worked out once, and the Library page sorts its shelves once per change.
+  On Omarchy the video card in Now Playing rests too.
+- **The song playing has room first.** Its rhythm (what the cover moves
+  with) is downloaded only once the player is well ahead, so the two don't
+  share a slow connection at the start of a song.
+- **Interface sounds are gone.** They added nothing to the music.
+- **Go back to an earlier version.** *Settings › About › Go back to an
+  earlier version* (or `paattu update rollback` on Omarchy) installs an
+  earlier release, checked like an update, back to 0.23.1. Your library,
+  plays and settings stay; Android needs an uninstall first and says how.
+  Songs taken out of the radio from now on keep their details across
+  the trip, so the radio still knows why.
+- **The title bar in the app's colours on Windows 11**, and in the song's
+  cover's colours with *Colours from the cover* on. Windows 10 takes a
+  dark or light frame.
+- **Nothing lost on closing.** The library, plays, settings and kept-songs
+  index are saved as the app closes or goes to the background, and before
+  an update installs. Saves never cross, a file that won't read is set
+  aside instead of written over (here and on Omarchy), and Windows runs one
+  Paattu at a time.
+- **Space allowed asks first.** Dragging the slider takes no songs off on
+  the way; a limit smaller than what's kept asks before taking any.
+- **Fixes on Omarchy.** Taking a song out of Up next twice, or while the
+  queue moves, no longer takes out the song after it. *Your numbers*
+  shows the period you picked when you click fast, and says when it
+  couldn't count. Two songs with one title are two in Most played (in the
+  app too). Reinstalling clears files an older version left in the plugin.
+
 ## 1.0.0 — The radio listens, your numbers, Android TV
 
 Which file: the same as before, and now `Paattu-1.0.0-android-tv.apk` for

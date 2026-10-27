@@ -18,6 +18,7 @@ import 'player/download.dart';
 import 'sources/http.dart';
 import 'track.dart';
 import 'util.dart';
+import 'save.dart';
 
 /// The index beside the songs.
 const offlineIndex = 'paattu-offline.json';
@@ -386,6 +387,11 @@ class OfflineLibrary extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// An index write that's waiting, done now (save.dart's saveEverything).
+  Future<void> flush() async {
+    if (_indexTimer?.isActive ?? false) await _writeIndex();
+  }
+
   Future<void> _writeIndex() async {
     _indexTimer?.cancel();
     if (!_ready) return;
@@ -394,9 +400,7 @@ class OfflineLibrary extends ChangeNotifier {
         'version': 1,
         'songs': {for (final e in _songs.values) e.key: e.toJson()},
       });
-      final tmp = File('${_indexFile.path}.tmp');
-      await tmp.writeAsString(text);
-      await tmp.rename(_indexFile.path);
+      await writeWhole(_indexFile, text);
     } catch (error) {
       problemLog.warn('offline: writing the index: ${errorText(error)}');
     }

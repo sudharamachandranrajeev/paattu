@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'titles.dart';
 import 'track.dart';
 import 'util.dart';
+import 'save.dart';
 
 const libraryVersion = 1;
 const favouritesId = 'paattu-favourites';
@@ -112,13 +113,20 @@ class Library extends ChangeNotifier {
     } catch (error) {
       // A damaged file is kept aside rather than overwritten.
       debugPrint('library: $error');
-      try {
-        await file.copy('${file.path}.damaged');
-      } catch (_) {}
+      await setAside(file);
       data = emptyLibrary();
     }
     _loaded = true;
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    // Every change to the library tells its listeners: what was worked out
+    // from it is worked out again when next asked.
+    _votes = null;
+    _shelves = null;
+    super.notifyListeners();
   }
 
   /// Something changed: tell the UI now, write the file shortly.
@@ -132,11 +140,12 @@ class Library extends ChangeNotifier {
 
   Future<void> save() async {
     _saveTimer?.cancel();
-    final text = jsonEncode(data);
-    await file.parent.create(recursive: true);
-    final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(text, flush: true);
-    await tmp.rename(file.path);
+    await writeWhole(file, jsonEncode(data));
+  }
+
+  /// A save that's waiting, done now (save.dart's saveEverything).
+  Future<void> flush() async {
+    if (_saveTimer?.isActive ?? false) await save();
   }
 
   String export() => const JsonEncoder.withIndent(' ').convert(data);
@@ -205,8 +214,12 @@ class Library extends ChangeNotifier {
     return null;
   }
 
-  /// Saved playlists from YouTube (not your own ones), by language.
-  Map<String, List<Json>> shelves() {
+  /// Saved playlists from YouTube (not your own ones), by language. Worked
+  /// out once till the library next changes: the pages ask on every build.
+  Map<String, List<Json>> shelves() => _shelves ??= _sortShelves();
+  Map<String, List<Json>>? _shelves;
+
+  Map<String, List<Json>> _sortShelves() {
     final out = <String, List<Json>>{};
     for (final value in playlists.values) {
       final p = asJson(value);
@@ -689,15 +702,8 @@ class Library extends ChangeNotifier {
     final own = asString(track['language']);
     final titled = own.isEmpty ? '' : own[0].toUpperCase() + own.substring(1).toLowerCase();
     if (_playedLanguages.contains(titled)) return titled;
-    final id = trackId(track);
-    final votes = <String, int>{};
-    for (final p in playlists.values.map(asJson)) {
-      final language = asString(p['language']);
-      if (_playedLanguages.contains(language) && p['local'] != true && asStrings(p['tracks']).contains(id)) {
-        votes[language] = (votes[language] ?? 0) + 1;
-      }
-    }
-    if (votes.isNotEmpty) {
+    final votes = _languageVotes()[trackId(track)];
+    if (votes != null) {
       // The first of the most (as Python's max).
       return _playedLanguages.reduce((a, b) => (votes[b] ?? 0) > (votes[a] ?? 0) ? b : a);
     }
@@ -708,6 +714,24 @@ class Library extends ChangeNotifier {
       ...asStrings(track['credits']),
     ]);
   }
+
+  /// Song id -> how many of the library's (not your own) Malayalam and Tamil
+  /// playlists hold it, by language. Made once, not for every song asked
+  /// about: the radio asks for every song played and every one it finds, and
+  /// a library of YouTube profiles has thousands of playlists.
+  Map<String, Map<String, int>> _languageVotes() => _votes ??= () {
+        final out = <String, Map<String, int>>{};
+        for (final p in playlists.values.map(asJson)) {
+          final language = asString(p['language']);
+          if (!_playedLanguages.contains(language) || p['local'] == true) continue;
+          for (final id in asStrings(p['tracks']).toSet()) {
+            final votes = out[id] ??= {};
+            votes[language] = (votes[language] ?? 0) + 1;
+          }
+        }
+        return out;
+      }();
+  Map<String, Map<String, int>>? _votes;
 
   /// A song played to the end goes to the front of its language's played
   /// playlist (made the first time, and put in that language's mix if there

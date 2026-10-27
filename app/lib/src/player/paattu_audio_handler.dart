@@ -44,6 +44,7 @@ String? playbackUnavailable;
 class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   PaattuAudioHandler() {
     _decks.forEach(_watch);
+    _liveDeck.listen((deck) => _positions.add(deck.player.position));
     Timer.periodic(_tickEvery, (_) => _tick());
   }
 
@@ -72,6 +73,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
         if (deck == _deck && item != null && duration != null && item.duration != duration) {
           mediaItem.add(item.copyWith(duration: duration));
         }
+      }),
+      // The player's one position stream, for as long as it lives (see
+      // positionStream).
+      p
+          .createPositionStream(minPeriod: const Duration(milliseconds: 16), maxPeriod: const Duration(milliseconds: 200))
+          .listen((position) {
+        if (deck == _deck) _positions.add(position);
       }),
     ];
   }
@@ -241,7 +249,13 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   AudioServiceRepeatMode get repeat => _repeat;
   Duration get position => _player.position;
   double get speed => _player.speed;
-  Stream<Duration> get positionStream => _liveDeck.switchMap((d) => d.player.positionStream);
+  /// The live song's position, as just_audio's positionStream paces it. One
+  /// stream fed by each deck's for good: just_audio's own leaves a timer
+  /// running each time its last listener goes and a new one comes, which a
+  /// change of song or a rebuilt widget does, and the app slowed the longer
+  /// it ran.
+  Stream<Duration> get positionStream => _positions.stream;
+  final _positions = BehaviorSubject<Duration>.seeded(Duration.zero);
   Stream<Duration> get bufferedStream => _liveDeck.switchMap((d) => d.player.bufferedPositionStream);
   Stream<Duration?> get durationStream => _liveDeck.switchMap((d) => d.player.durationStream);
   Stream<bool> get playingStream => _liveDeck.switchMap((d) => d.player.playingStream);
@@ -873,8 +887,26 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       if (cached != null || !cacheAhead) return cached;
       final known = _streams[key];
       final stream = known != null && known.fresh ? known : key == own ? await _resolve(track, 0) : null;
-      return stream == null ? null : songs.fetch(key, stream);
+      if (stream == null) return null;
+      if (identical(track, current.value)) await _leadFirst();
+      return songs.fetch(key, stream);
     });
+  }
+
+  /// Before the song playing is downloaded beside its own stream (for its
+  /// rhythm): the player well ahead of it first, so the two don't share a
+  /// slow connection while the song has little in hand, and it stutters.
+  /// 15 seconds at most.
+  Future<void> _leadFirst() async {
+    for (var i = 0; i < 60; i++) {
+      final player = _player, end = player.duration;
+      final lead = player.bufferedPosition - player.position;
+      if (player.processingState == ProcessingState.ready &&
+          (lead >= const Duration(seconds: 20) || (end != null && player.bufferedPosition >= end))) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
   }
 
   /// Find the next two songs' streams while this one plays, and download
@@ -1235,7 +1267,8 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
   void _broadcast(PlaybackEvent event) {
     final playing = _player.playing || _playIntent;
     unawaited(androidKeepAwake(playing));
-    playbackState.add(playbackState.value.copyWith(
+    final was = playbackState.value;
+    final state = was.copyWith(
       controls: [
         MediaControl.skipToPrevious,
         if (playing) MediaControl.pause else MediaControl.play,
@@ -1267,7 +1300,20 @@ class PaattuAudioHandler extends BaseAudioHandler with SeekHandler {
       queueIndex: _index < 0 ? null : _index,
       repeatMode: _repeat,
       shuffleMode: _shuffle ? AudioServiceShuffleMode.all : AudioServiceShuffleMode.none,
-    ));
+    );
+    // Only news goes on: each state is a call into the system's media
+    // controls (on Windows, on the window's own thread), and one that only
+    // moves the position as it was going is none.
+    if (state.playing == was.playing &&
+        state.processingState == was.processingState &&
+        state.speed == was.speed &&
+        state.queueIndex == was.queueIndex &&
+        state.repeatMode == was.repeatMode &&
+        state.shuffleMode == was.shuffleMode &&
+        (state.updatePosition - was.position).abs() < const Duration(seconds: 1)) {
+      return;
+    }
+    playbackState.add(state);
   }
 
   /// A queue mix: songs from these playlists' tracks, one upload per song.

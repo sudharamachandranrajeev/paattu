@@ -15,6 +15,10 @@ Flickable {
     { days: 90, label: "3 months" }, { days: 0, label: "All time" }]
   property int days: 30
   property var stats: null
+  // The period the numbers running (or last run) are for; a click while they
+  // run waits for them, then the newest period runs. problem: why they failed.
+  property int ran: -1
+  property string problem: ""
   readonly property int peak: stats ? Math.max.apply(null, stats.hours.concat([1])) : 1
 
   clip: true
@@ -23,6 +27,8 @@ Flickable {
   ScrollBar.vertical: ScrollBar {}
 
   function load() {
+    if (statsProc.running) return
+    ran = days
     statsProc.command = ["paattu", "--json", "stats"].concat(days ? ["--days", String(days)] : [])
     statsProc.running = true
   }
@@ -35,9 +41,17 @@ Flickable {
       onStreamFinished: {
         var lines = String(text || "").trim().split("\n")
         var e = Model.parseEvent(lines[lines.length - 1])
-        if (e && e.plays !== undefined) root.stats = e
+        if (root.ran !== root.days) return
+        if (e && e.plays !== undefined) {
+          root.stats = e
+          root.problem = ""
+        } else {
+          root.stats = null
+          root.problem = e && e.message ? e.message : "The numbers didn't come. Try again in a moment."
+        }
       }
     }
+    onExited: if (root.ran !== root.days) root.load()
   }
 
   Column {
@@ -71,6 +85,16 @@ Flickable {
           onClicked: root.days = modelData.days
         }
       }
+    }
+    Text {
+      visible: root.problem !== ""
+      width: parent.width
+      textFormat: Text.PlainText
+      wrapMode: Text.WordWrap
+      text: root.problem
+      color: root.pal.muted
+      font.family: root.app.fontFamily
+      font.pixelSize: 13
     }
     Text {
       visible: !!root.stats && root.stats.plays === 0

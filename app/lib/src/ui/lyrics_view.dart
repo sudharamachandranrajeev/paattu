@@ -50,6 +50,8 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
   // How much of the line has been sung, for Karaoke.
   late final _sung = AnimationController(vsync: this);
   StreamSubscription<Duration>? _position;
+  // The colours stand still while the song is paused.
+  StreamSubscription<bool>? _playing;
   String? _for;
   Json? _found;
   (Json?, bool)? _shownFor;
@@ -62,6 +64,9 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
   void initState() {
     super.initState();
     _position = widget.app.player.positionStream.listen(_moved);
+    _playing = widget.app.player.playingStream.distinct().listen((_) {
+      if (mounted) setState(() {});
+    });
     _follow();
   }
 
@@ -74,6 +79,7 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
   @override
   void dispose() {
     _position?.cancel();
+    _playing?.cancel();
     _flow.dispose();
     _sung.dispose();
     super.dispose();
@@ -147,9 +153,9 @@ class _CoverLyricsState extends State<CoverLyrics> with TickerProviderStateMixin
     final settings = widget.app.settings;
     final words = _shown(settings.lyricsTransliterated);
     final moving = settings.lyricGradient && words.found;
-    if (moving && !_flow.isAnimating) {
+    if (moving && widget.app.player.playing && !_flow.isAnimating) {
       _flow.repeat();
-    } else if (!moving && _flow.isAnimating) {
+    } else if ((!moving || !widget.app.player.playing) && _flow.isAnimating) {
       _flow.stop();
     }
     if (!words.found) return const SizedBox.shrink();

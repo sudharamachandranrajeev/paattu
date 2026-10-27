@@ -25,6 +25,7 @@ import 'glass.dart';
 import 'lyrics_view.dart';
 import 'sleep_timer.dart';
 import 'sound_page.dart';
+import 'title_bar.dart';
 import 'video_background.dart';
 import 'widgets.dart';
 
@@ -65,7 +66,10 @@ class MiniPlayer extends StatelessWidget {
     final player = Paattu.of(context).player;
     return PlayerBuilder(builder: (context, track, playing, loading) {
       if (track == null) return const SizedBox.shrink();
-      return CoverTheme(track: track, child: Builder(builder: (context) => _pill(context, player, track, playing, loading)));
+      return CoverTheme(
+        track: track,
+        child: TitleBarColour(child: Builder(builder: (context) => _pill(context, player, track, playing, loading))),
+      );
     });
   }
 
@@ -117,13 +121,21 @@ class MiniPlayer extends StatelessWidget {
   }
 }
 
-class _ThinProgress extends StatelessWidget {
+class _ThinProgress extends StatefulWidget {
   const _ThinProgress({required this.player});
   final PaattuAudioHandler player;
 
   @override
+  State<_ThinProgress> createState() => _ThinProgressState();
+}
+
+class _ThinProgressState extends State<_ThinProgress> {
+  // Made once: the mini player rebuilds with each frame of a change of colours.
+  late final _progress = Rx.combineLatest2(widget.player.positionStream, widget.player.durationStream, (a, b) => (a, b));
+
+  @override
   Widget build(BuildContext context) => StreamBuilder<(Duration, Duration?)>(
-        stream: Rx.combineLatest2(player.positionStream, player.durationStream, (a, b) => (a, b)),
+        stream: _progress,
         builder: (context, snapshot) {
           final (position, duration) = snapshot.data ?? (Duration.zero, null);
           final value = duration == null || duration.inMilliseconds == 0
@@ -187,7 +199,7 @@ class NowPlayingPage extends StatelessWidget {
       }
       return CoverTheme(
         track: track,
-        child: BeatDriver(
+        child: TitleBarColour(child: BeatDriver(
           player: app.player,
           track: track,
           playing: playing,
@@ -196,7 +208,7 @@ class NowPlayingPage extends StatelessWidget {
             listenable: app.settings,
             builder: (context, _) => _page(context, app, track, playing, loading),
           ),
-        ),
+        )),
       );
     });
   }
@@ -237,7 +249,7 @@ class NowPlayingPage extends StatelessWidget {
     Widget square(Widget child) =>
         Center(child: Padding(padding: const EdgeInsets.all(24), child: AspectRatio(aspectRatio: 1, child: child)));
     final cover = square(settings.coverDepth
-        ? DepthCover(track: track)
+        ? DepthCover(track: track, playing: playing)
         : Material(
             elevation: 12,
             borderRadius: BorderRadius.circular(24),
@@ -406,9 +418,13 @@ class _Background extends StatelessWidget {
             if (sharp)
               Opacity(opacity: 0.7, child: art)
             else
-              ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40, tileMode: TileMode.decal),
-                child: Opacity(opacity: 0.6, child: art),
+              // A layer of its own: the blur is worked out once, not with each
+              // frame of what moves over it.
+              RepaintBoundary(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40, tileMode: TileMode.decal),
+                  child: Opacity(opacity: 0.6, child: art),
+                ),
               ),
             Opacity(opacity: sharp ? 0.7 : 0.6, child: moving),
           ] else
@@ -422,10 +438,12 @@ class _Background extends StatelessWidget {
                     if (sharp)
                       art
                     else
-                      ClipRect(
-                        child: ImageFiltered(
-                          imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28, tileMode: TileMode.clamp),
-                          child: art,
+                      RepaintBoundary(
+                        child: ClipRect(
+                          child: ImageFiltered(
+                            imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28, tileMode: TileMode.clamp),
+                            child: art,
+                          ),
                         ),
                       ),
                     moving,
@@ -1204,13 +1222,14 @@ class _SeekBar extends StatefulWidget {
 
 class _SeekBarState extends State<_SeekBar> {
   double? _dragging;
+  late final _progress = Rx.combineLatest3(
+      widget.player.positionStream, widget.player.durationStream, widget.player.bufferedStream, (a, b, c) => (a, b, c));
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return StreamBuilder<(Duration, Duration?, Duration)>(
-      stream: Rx.combineLatest3(
-          widget.player.positionStream, widget.player.durationStream, widget.player.bufferedStream, (a, b, c) => (a, b, c)),
+      stream: _progress,
       builder: (context, snapshot) {
         final (position, duration, buffered) = snapshot.data ?? (Duration.zero, null, Duration.zero);
         final total = duration?.inMilliseconds.toDouble() ?? 0;

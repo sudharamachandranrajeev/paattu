@@ -15,6 +15,7 @@ import 'now_playing.dart';
 import 'playlist_page.dart';
 import 'search_page.dart';
 import 'settings_page.dart';
+import 'title_bar.dart';
 
 class PaattuApp extends StatefulWidget {
   const PaattuApp({super.key, required this.state});
@@ -50,6 +51,8 @@ class _PaattuAppState extends State<PaattuApp> {
             theme: widget.state.settings.theme.data,
             scaffoldMessengerKey: widget.state.messenger,
             navigatorKey: widget.state.navigator,
+            // The window's title bar in the app's colours (Windows).
+            builder: (context, child) => TitleBarColour(fallback: true, child: child!),
             home: const Shell(),
           ),
         ),

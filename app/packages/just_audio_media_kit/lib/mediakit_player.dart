@@ -38,6 +38,14 @@ class MediaKitPlayer extends AudioPlayerPlatform {
   String? _errorMessage;
   Completer<Duration?>? _loadCompleter;
 
+  /// What the last playback event said, so mpv's many position and buffer
+  /// changes (each a few milliseconds apart) go on only when they say
+  /// something new: just_audio works the position out between events.
+  DateTime _sentAt = DateTime(0);
+  Duration _sentPosition = Duration.zero;
+  Duration _sentBuffered = Duration.zero;
+  ProcessingStateMessage _sentState = ProcessingStateMessage.idle;
+
   /// The index that's currently playing
   int _currentIndex = 0;
 
@@ -85,6 +93,14 @@ class MediaKitPlayer extends AudioPlayerPlatform {
         final start = _currentMedia?.start;
         if (start != null) _position -= start;
         if (_position < Duration.zero) _position = Duration.zero;
+        // On a jump (a seek, a stall), or once a second to keep it true.
+        final since = DateTime.now().difference(_sentAt);
+        final expected = _sentPosition + (_playing ? since * _player.state.rate : Duration.zero);
+        if (_processingState == _sentState &&
+            (_position - expected).abs() < const Duration(milliseconds: 500) &&
+            since < const Duration(seconds: 1)) {
+          return;
+        }
         _updatePlaybackEvent();
       }),
       _player.stream.buffering.listen((isBuffering) {
@@ -125,6 +141,10 @@ class MediaKitPlayer extends AudioPlayerPlatform {
           if (_loadCompleter?.isCompleted != true) {
             _loadCompleter?.complete(_duration);
           }
+        }
+        // A second more kept, or less (a seek, a new song): only then.
+        if (_processingState == _sentState && (_bufferedPosition - _sentBuffered).abs() < const Duration(seconds: 1)) {
+          return;
         }
         _updatePlaybackEvent();
       }),
@@ -214,9 +234,13 @@ class MediaKitPlayer extends AudioPlayerPlatform {
 
   /// Updates the playback event
   void _updatePlaybackEvent() {
+    _sentAt = DateTime.now();
+    _sentPosition = _position;
+    _sentBuffered = _bufferedPosition;
+    _sentState = _processingState;
     _eventController.add(PlaybackEventMessage(
       processingState: _processingState,
-      updateTime: DateTime.now(),
+      updateTime: _sentAt,
       updatePosition: _position,
       bufferedPosition: _bufferedPosition,
       duration: _duration,

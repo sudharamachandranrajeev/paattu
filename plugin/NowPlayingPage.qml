@@ -172,7 +172,6 @@ Item {
       readonly property bool fancy: GraphicsInfo.api !== GraphicsInfo.Software
       property point tilt: Qt.point(0, 0)
       property point aim: Qt.point(0, 0)
-      property real movedAt: 0
       transform: [
         Rotation {
           origin.x: stage.width / 2
@@ -206,21 +205,21 @@ Item {
           var at = point.position
           stage.aim = Qt.point(Math.max(-1, Math.min(1, at.x / stage.width * 2 - 1)),
                                Math.max(-1, Math.min(1, at.y / stage.height * 2 - 1)))
-          stage.movedAt = Date.now()
         }
         onHoveredChanged: if (!hovered) stage.aim = Qt.point(0, 0)
       }
       FrameAnimation {
+        // Only while the tilt follows the pointer, never idle: a picture that
+        // moves on its own needs no drift, and each frame of it redraws the
+        // masked card (as the app's FloatingVideo).
         running: stage.visible && root.visible && stage.Window.window !== null && stage.Window.window.visible
+                 && Math.abs(stage.aim.x - stage.tilt.x) + Math.abs(stage.aim.y - stage.tilt.y) > 0
         onTriggered: {
-          // Slower and smaller than the cover's: a picture that moves on its
-          // own needs only a hint of it.
-          var drifting = Date.now() - stage.movedAt > 3000
-          var aim = drifting ? Qt.point(Math.sin(elapsedTime * 0.3) * 0.3, Math.cos(elapsedTime * 0.21) * 0.22) : stage.aim
+          var aim = stage.aim
           var k = 1 - Math.exp(-frameTime * 3)
           var x = stage.tilt.x + (aim.x - stage.tilt.x) * k
           var y = stage.tilt.y + (aim.y - stage.tilt.y) * k
-          if (Math.abs(x - stage.tilt.x) + Math.abs(y - stage.tilt.y) > 0.0004) stage.tilt = Qt.point(x, y)
+          stage.tilt = Math.abs(aim.x - x) + Math.abs(aim.y - y) < 0.002 ? aim : Qt.point(x, y)
         }
       }
 
@@ -561,7 +560,7 @@ Item {
             removable: true
             removeTip: root.player.radioOn ? "Take out: the radio plays less like it" : "Take out"
             onActivated: root.player.playIndex(modelData.index)
-            onRemoveRequested: root.app.removeFromQueue(modelData.index)
+            onRemoveRequested: root.app.removeFromQueue(modelData)
           }
         }
       }

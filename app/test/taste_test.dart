@@ -92,6 +92,20 @@ void main() {
     expect(ids(a.order(songs)), asStrings(c['order']));
   });
 
+  test('songs taken out of the radio outlive 0.23', () async {
+    // 0.23.1 keeps tracks only for plays and made: the song in the entry
+    // brings it back.
+    final dir = await Directory.systemTemp.createTemp('paattu-history');
+    addTearDown(() => dir.delete(recursive: true));
+    final file = File('${dir.path}/history.json');
+    final h = History(file)..removedFromRadio(track('a')!);
+    h.data['tracks'] = <String, dynamic>{};
+    await h.save();
+    final back = History(file);
+    await back.load();
+    expect(back.track('a')?['title'], track('a')!['title']);
+  });
+
   test('loved songs join the radio', () {
     final loved = asJson(cases['loved']);
     final top = [for (final id in asStrings(loved['top'])) track(id)!];

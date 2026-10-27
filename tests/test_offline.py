@@ -116,5 +116,15 @@ class UpdateTest(unittest.TestCase):
         self.assertIsNone(update.newest({"message": "rate limited"}))
 
 
+    def test_earlier_releases_newest_first(self):
+        releases = [{"tag_name": "v1.0.0"}, {"tag_name": "v0.22.0", "prerelease": True},
+                    {"tag_name": "v0.23.1", "prerelease": True}, {"tag_name": "v0.21.0", "draft": True},
+                    {"tag_name": "v1.0.1"}]
+        out = update.earlier(releases, "1.0.0")
+        self.assertEqual([r["version"] for r in out], ["0.23.1"])  # none before OLDEST_TO_GO_BACK_TO
+        self.assertTrue(out[0]["prerelease"])
+        self.assertEqual(update.earlier(None, "1.0.0"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

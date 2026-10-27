@@ -31,6 +31,7 @@ import 'sources/youtube_music.dart';
 import 'track.dart';
 import 'transliterate.dart';
 import 'util.dart';
+import 'save.dart';
 
 const _lrclib = 'https://lrclib.net/api/search';
 const _missKeep = Duration(days: 3);
@@ -450,12 +451,8 @@ class Lyrics {
     }
     final found = await _find(track, language, level: level);
     try {
-      await dir.create(recursive: true);
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(
-          jsonEncode({'version': _version, 'fetched': now.millisecondsSinceEpoch ~/ 1000, 'id': trackKey(track), 'found': found}),
-          flush: true);
-      await tmp.rename(file.path);
+      await writeWhole(
+          file, jsonEncode({'version': _version, 'fetched': now.millisecondsSinceEpoch ~/ 1000, 'id': trackKey(track), 'found': found}));
     } catch (error) {
       problemLog.warn('lyrics: ${errorText(error)}');
     }

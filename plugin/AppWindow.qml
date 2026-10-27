@@ -216,15 +216,23 @@ FloatingWindow {
     if (!track || !track.id) return
     quick.run(Model.queueSongArgs(track.id, next), "", function(ok, e) { showToast(e.message) })
   }
-  // Queue entry index out. With the radio on, one still to come goes by way
-  // of the CLI, which notes it in the history if the radio queued it, so the
-  // radio plays less like it.
-  function removeFromQueue(index) {
-    if (!player.radioOn || index <= player.index) {
-      player.removeIndex(index)
+  // Queue entry row (one of Model.queueRows) out. With the radio on, one still
+  // to come goes by way of the CLI, which notes it in the history if the radio
+  // queued it, so the radio plays less like it. The CLI waits its turn, so it
+  // is told the song as well as the place: a queue that moved meanwhile, or a
+  // second click, loses no other song.
+  property var removing: ({})
+  function removeFromQueue(row) {
+    if (!player.radioOn || row.index <= player.index) {
+      player.removeIndex(row.index)
       return
     }
-    quick.run(["radio", "remove", String(index + 1)], "", function(ok, e) { if (!ok) showToast(e.message) })
+    if (removing[row.filename]) return
+    removing[row.filename] = true
+    quick.run(["radio", "remove", String(row.index + 1), "--entry", row.filename], "", function(ok, e) {
+      delete removing[row.filename]
+      if (!ok) showToast(e.message)
+    })
   }
 
   // ---------- favourites & your playlists ----------

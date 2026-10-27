@@ -1,6 +1,8 @@
 """Where Paattu keeps its files (XDG locations)."""
 
 import os
+import shutil
+import time
 from pathlib import Path
 
 HOME = Path.home()
@@ -25,3 +27,16 @@ CLIAMP_PLAYLISTS = Path(os.environ.get("CLIAMP_CONFIG_DIR") or HOME / ".config/c
 def art_path(kind, ident):
     """Cached artwork: kind is 'v' (video), 'p' (playlist) or 'u' (user)."""
     return ART / kind / f"{ident}.jpg"
+
+
+def set_aside(path):
+    """Copy a file that wouldn't read beside it, as NAME.damaged (the first one
+    kept: a later one's name has the time too), before it is started afresh,
+    so it is never written over."""
+    copy = path.with_name(path.name + ".damaged")
+    if copy.exists():
+        copy = path.with_name("%s.damaged-%d" % (path.name, time.time()))
+    try:
+        shutil.copyfile(path, copy)
+    except OSError:
+        pass

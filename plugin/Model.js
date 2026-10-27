@@ -712,7 +712,7 @@ function queueRows(playlist, tracks) {
     var entry = playlist[i]
     var info = nowPlaying(tracks, entry.filename, entry.title)
     out.push({ index: i, id: info.id, title: info.title || entry.filename, movie: info.movie,
-      current: !!entry.current })
+      filename: entry.filename, current: !!entry.current })
   }
   return out
 }

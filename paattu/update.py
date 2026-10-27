@@ -52,6 +52,25 @@ def newest(releases):
     return best
 
 
+# The oldest version to go back to: it and the ones after it read this
+# version's library, history and settings.
+OLDEST_TO_GO_BACK_TO = "0.23.1"
+
+
+def earlier(releases, current):
+    """The releases older than current, from OLDEST_TO_GO_BACK_TO on (drafts
+    left out), newest first, as newest() gives them."""
+    out = []
+    for release in releases if isinstance(releases, list) else []:
+        version = re.sub(r"^[vV]", "", (release or {}).get("tag_name") or "")
+        if release.get("draft") or not version or not is_newer(current, version) \
+                or is_newer(OLDEST_TO_GO_BACK_TO, version):
+            continue
+        out.append({"version": version, "tag": release["tag_name"], "notes": release.get("body") or "",
+                    "page": release.get("html_url") or "", "prerelease": bool(release.get("prerelease"))})
+    return sorted(out, key=lambda r: version_parts(r["version"]), reverse=True)
+
+
 def dev_checkout():
     """The git checkout a --dev install runs from, or None."""
     if not LIB.is_symlink():
@@ -98,10 +117,36 @@ def apply(say=lambda message: None):
     found = check()
     if not found["available"]:
         raise UpdateError("Paattu %s is the newest" % found["current"])
+    return _install_release(found["tag"], found["latest"], say)
+
+
+def rollback(version=None, say=lambda message: None):
+    """Go back to an earlier Paattu (version, else the one before this); the
+    version installed. Your library, plays and settings stay."""
+    try:
+        releases = earlier(browse._json(RELEASES, headers={"Accept": "application/vnd.github+json"}, timeout=20),
+                           __version__)
+    except Exception as e:  # noqa: BLE001 - offline, or GitHub down
+        raise UpdateError("couldn't ask GitHub about earlier versions (%s)" % e)
+    wanted = re.sub(r"^[vV]", "", version or "")
+    pick = next((r for r in releases if not wanted or r["version"] == wanted), None)
+    if not pick:
+        raise UpdateError("no earlier version %s; there are: %s" % (
+            wanted, ", ".join(r["version"] for r in releases) or "none") if wanted else "there is no earlier version")
+    checkout = dev_checkout()
+    if checkout:
+        # Never move someone's working checkout for them.
+        raise UpdateError("this is a --dev install of %s: git -C %s checkout %s && %s/install.sh --dev" % (
+            checkout, checkout, pick["tag"], checkout))
+    return _install_release(pick["tag"], pick["version"], say)
+
+
+def _install_release(tag, version, say):
+    """Download the source of release tag and run its install.sh."""
     with tempfile.TemporaryDirectory(prefix="paattu-update.") as tmp:
-        say("Downloading Paattu %s…" % found["latest"])
+        say("Downloading Paattu %s…" % version)
         archive = Path(tmp) / "source.tar.gz"
-        request = urllib.request.Request(SOURCE % found["tag"], headers={"User-Agent": browse.BROWSER})
+        request = urllib.request.Request(SOURCE % tag, headers={"User-Agent": browse.BROWSER})
         with urllib.request.urlopen(request, timeout=60) as response, open(archive, "wb") as f:
             f.write(response.read())
         with tarfile.open(archive) as tar:
@@ -111,7 +156,7 @@ def apply(say=lambda message: None):
                 tar.extractall(tmp)
         source = next((p for p in Path(tmp).iterdir() if (p / "install.sh").is_file()), None)
         if not source:
-            raise UpdateError("the download for Paattu %s has no install.sh" % found["latest"])
-        say("Installing Paattu %s…" % found["latest"])
+            raise UpdateError("the download for Paattu %s has no install.sh" % version)
+        say("Installing Paattu %s…" % version)
         _run(["bash", str(source / "install.sh"), "--yes"], cwd=str(source))
     return installed_version()

@@ -4,8 +4,10 @@ the radio from repeating itself. The app keeps the same file beside its
 library (app/lib/src/history.dart):
 
     plays   [{id, at (seconds since 1970), heard (seconds), length}], oldest first
-    removed [{id, at}], oldest first: songs the radio queued that you took
-            out of Up next before they played
+    removed [{id, at, song}], oldest first: songs the radio queued that you
+            took out of Up next before they played (song as in tracks too:
+            0.23 keeps tracks only for plays and made, so going back to it
+            and on again loses none)
     tracks  id -> the song, for the ids in plays, removed and made
     made    daily|weekly|monthly -> {key, tracks[ids]}: the playlist made
             for that day, week or month
@@ -85,8 +87,15 @@ class History:
                 for key in ("plays", "removed"):
                     if not isinstance(history.data.get(key), list):
                         history.data[key] = []
-        except (FileNotFoundError, json.JSONDecodeError):
+                tracks = history.data["tracks"]
+                for r in history.data["removed"]:
+                    tid = r.get("id") if isinstance(r, dict) else None
+                    if tid and isinstance(r.get("song"), dict) and not isinstance(tracks.get(tid), dict):
+                        tracks[tid] = r["song"]
+        except FileNotFoundError:
             pass
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            paths.set_aside(path)
         return history
 
     @property
@@ -109,9 +118,10 @@ class History:
         if not tid:
             return
         removed = self.data["removed"]
-        removed.append({"id": tid, "at": int(at if at is not None else time.time())})
+        song = stored_track(track)
+        removed.append({"id": tid, "at": int(at if at is not None else time.time()), "song": song})
         del removed[:-REMOVED_LIMIT]
-        self.data["tracks"][tid] = stored_track(track)
+        self.data["tracks"][tid] = song
         self._prune()
 
     def forgive(self, feature):

@@ -91,7 +91,7 @@ MusicStats musicStats(
     ..minutes = seconds ~/ 60
     ..songs = songs.length
     ..artists = artists.length
-    ..topSongs = _top({for (final MapEntry(:key, value: n) in songs.entries) titles[key]!: n})
+    ..topSongs = _top(songs, name: (key) => titles[key]!) // by song: two of one title stay two
     ..topArtists = _top(artists)
     ..topFilms = _top(films);
   var run = 0;
@@ -102,10 +102,12 @@ MusicStats musicStats(
   return out;
 }
 
-List<(String, int)> _top(Map<String, int> counts, {int count = 5}) {
+List<(String, int)> _top(Map<String, int> counts, {int count = 5, String Function(String)? name}) {
+  final show = name ?? (key) => key;
   final rows = counts.entries.toList()
-    ..sort((a, b) => a.value != b.value ? b.value.compareTo(a.value) : a.key.toLowerCase().compareTo(b.key.toLowerCase()));
-  return [for (final e in rows.take(count)) (e.key, e.value)];
+    ..sort((a, b) =>
+        a.value != b.value ? b.value.compareTo(a.value) : show(a.key).toLowerCase().compareTo(show(b.key).toLowerCase()));
+  return [for (final e in rows.take(count)) (show(e.key), e.value)];
 }
 
 const themeTitles = {

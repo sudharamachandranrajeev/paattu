@@ -19,6 +19,7 @@ import 'package:http/http.dart' as http;
 
 import 'device.dart';
 import 'log.dart';
+import 'save.dart';
 import 'sources/http.dart' show browserAgent, httpClient;
 import 'util.dart';
 
@@ -51,12 +52,19 @@ class ReleaseAsset {
 
 /// A published release, as far as this device cares.
 class Release {
-  const Release({required this.version, required this.assets, this.notes = '', this.page = ''});
+  const Release({
+    required this.version,
+    required this.assets,
+    this.notes = '',
+    this.page = '',
+    this.prerelease = false,
+  });
 
   factory Release.fromJson(Json json) => Release(
         version: asString(json['tag_name']).replaceFirst(RegExp(r'^[vV]'), ''),
         notes: asString(json['body']),
         page: asString(json['html_url']),
+        prerelease: json['prerelease'] == true,
         assets: {
           for (final raw in asList(json['assets']).map(asJson))
             asString(raw['name']): ReleaseAsset(
@@ -72,6 +80,9 @@ class Release {
   final String notes;
   final String page;
   final Map<String, ReleaseAsset> assets;
+
+  /// Published as a pre-release (every one before 1.0.0 was).
+  final bool prerelease;
 
   /// The file to install on this device, if the release has one for it.
   /// A TV takes the TV's build, or (in a release from before there was one)
@@ -180,6 +191,20 @@ class UpdateManager extends ChangeNotifier {
   /// The newest release on GitHub, or null when it couldn't be read (no
   /// internet, or a repository that isn't public — GitHub answers 404 then).
   Future<Release?> latest() async {
+    final list = await _releases();
+    return list == null ? null : newestRelease(list);
+  }
+
+  /// The versions before this one that have a file for this device, newest
+  /// first, to go back to when this one misbehaves. Null when GitHub
+  /// couldn't be read.
+  Future<List<Release>?> earlier() async {
+    final list = await _releases();
+    return list == null ? null : earlierReleases(list, currentVersion, platform, tv: onTv);
+  }
+
+  /// GitHub's list of releases (the newest 20), or null.
+  Future<Object?> _releases() async {
     final response = await httpClient
         .get(Uri.parse(releaseApiUrl),
             headers: {'User-Agent': browserAgent, 'Accept': 'application/vnd.github+json'})
@@ -188,12 +213,14 @@ class UpdateManager extends ChangeNotifier {
       problemLog.warn('update: GitHub said ${response.statusCode} about the releases');
       return null;
     }
-    return newestRelease(jsonDecode(utf8.decode(response.bodyBytes)));
+    return jsonDecode(utf8.decode(response.bodyBytes));
   }
 
   /// Look for a newer version. [quiet] keeps an "up to date" or a failure to
   /// itself, for the check at start-up.
   Future<void> check({bool quiet = false}) async {
+    // Not over a download or an install going on (going back, say).
+    if (state == UpdateState.downloading || state == UpdateState.installing) return;
     state = UpdateState.checking;
     problem = '';
     notifyListeners();
@@ -228,9 +255,10 @@ class UpdateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Download the new version, check it, and install it.
-  Future<bool> downloadAndInstall() async {
-    final release = available;
+  /// Download the new version (or [release], an earlier one to go back to),
+  /// check it, and install it.
+  Future<bool> downloadAndInstall({Release? release}) async {
+    release ??= available;
     final asset = release?.installerFor(platform, tv: onTv);
     if (release == null || asset == null) {
       state = UpdateState.failed;
@@ -238,12 +266,18 @@ class UpdateManager extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    // What the tile says while it downloads and installs.
+    available = release;
     state = UpdateState.downloading;
     progress = 0;
     problem = '';
     notifyListeners();
     try {
       await dir.create(recursive: true);
+      // The last one's file goes: the folder holds one download at most.
+      await for (final old in dir.list()) {
+        await old.delete(recursive: true).then((_) {}, onError: (Object _) {});
+      }
       final target = File('${dir.path}${Platform.pathSeparator}${asset.name}');
       await _download(asset, target);
       await _verify(asset, release, target);
@@ -251,6 +285,14 @@ class UpdateManager extends ChangeNotifier {
       state = UpdateState.installing;
       notifyListeners();
       await install(target);
+      if (platform == 'android') {
+        // Handed to the phone's installer: if that's cancelled, the tile is
+        // there to try again.
+        final newer = isNewerVersion(release.version, currentVersion);
+        available = newer ? release : null;
+        state = newer ? UpdateState.available : UpdateState.idle;
+        notifyListeners();
+      }
       return true;
     } catch (error) {
       state = UpdateState.failed;
@@ -343,9 +385,11 @@ class UpdateManager extends ChangeNotifier {
         await updateChannel.invokeMethod<bool>('installApk', {'path': file.path});
       case 'windows':
         // The installer closes the running app (CloseApplications) and offers
-        // to start the new one when it's done.
+        // to start the new one when it's done: what waits to be saved first.
+        await saveEverything();
         await Process.start(file.path, ['/CURRENTUSER', '/NORESTART'], mode: ProcessStartMode.detached);
         problemLog.info('update: the installer is running; Paattu is closing');
+        await problemLog.flush();
         exit(0);
       case 'linux':
         await _installLinux(file);
@@ -371,8 +415,13 @@ class UpdateManager extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    await Process.run('chmod', ['+x', file.path]);
-    await file.rename(running);
+    // Copied beside it first: the AppImage may be on another drive than the
+    // download, and a rename only works on the same one.
+    final next = File('$running.new');
+    await file.copy(next.path);
+    await Process.run('chmod', ['+x', next.path]);
+    await next.rename(running);
+    await file.delete().then((_) {}, onError: (Object _) {});
     state = UpdateState.ready;
     problem = 'Open Paattu again to use the new version';
     notifyListeners();
@@ -392,6 +441,25 @@ Map<String, String> parseChecksums(String text) {
     out[name] = sum.toLowerCase();
   }
   return out;
+}
+
+/// The oldest version to go back to: it and the ones after it read this
+/// version's library, plays and settings (and check their downloads).
+const oldestToGoBackTo = '0.23.1';
+
+/// The releases in GitHub's [list] older than [current], from
+/// [oldestToGoBackTo] on, with a file for [os] (drafts left out), newest
+/// first.
+List<Release> earlierReleases(Object? list, String current, String os, {bool tv = false}) {
+  final out = [
+    for (final item in list is List ? list : const [])
+      if (asJson(item)['draft'] != true) Release.fromJson(asJson(item)),
+  ].where((r) =>
+      r.version.isNotEmpty &&
+      isNewerVersion(current, r.version) &&
+      !isNewerVersion(oldestToGoBackTo, r.version) &&
+      r.installerFor(os, tv: tv) != null);
+  return out.toList()..sort((a, b) => isNewerVersion(a.version, b.version) ? -1 : (isNewerVersion(b.version, a.version) ? 1 : 0));
 }
 
 /// The newest version among GitHub's list of releases (pre-releases count;

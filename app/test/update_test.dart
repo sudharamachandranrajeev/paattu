@@ -229,4 +229,33 @@ e0375d7da54d6023e8a14472a3bf4a98ec6693aab9100f17e3122f73460dc18b  Paattu-0.7.1-w
       expect(newestRelease(null), isNull);
     });
   });
+
+  group('earlierReleases', () {
+    Map<String, dynamic> release(String tag, {bool pre = true, bool draft = false, bool windows = true}) => {
+          'tag_name': tag,
+          'prerelease': pre,
+          'draft': draft,
+          'assets': [
+            if (windows)
+              {'name': 'Paattu-${tag.substring(1)}-windows-x64-setup.exe', 'browser_download_url': 'https://x/$tag'},
+          ],
+        };
+    test('older ones with a file for this device, newest first, none before $oldestToGoBackTo', () {
+      final list = [
+        release('v1.0.0', pre: false),
+        release('v0.22.0'),
+        release('v0.23.1'),
+        release('v0.23.0', windows: false),
+        release('v0.21.0', draft: true),
+        release('v1.0.1', pre: false),
+      ];
+      final out = earlierReleases(list, '1.0.0', 'windows');
+      expect([for (final r in out) r.version], ['0.23.1']);
+      expect(out.first.prerelease, isTrue);
+      expect(earlierReleases(list, '1.0.1', 'windows').first.prerelease, isFalse);
+    });
+    test('nothing to read', () {
+      expect(earlierReleases(null, '1.0.0', 'windows'), isEmpty);
+    });
+  });
 }

@@ -24,6 +24,7 @@ import 'src/player/paattu_audio_handler.dart';
 import 'src/player/rhythm.dart';
 import 'src/player/song_cache.dart';
 import 'src/radio.dart';
+import 'src/save.dart';
 import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
 import 'src/ui/settings_page.dart' show offerUpdate;
@@ -91,6 +92,20 @@ Future<void> main() async {
     limitBytes: settings.offlineLimitMb << 20,
   );
   await offline.load();
+
+  // What waits to be saved is saved as the app closes, or as it goes to the
+  // background, where the phone may end it (save.dart).
+  for (final flush in [library.flush, settings.flush, history.flush, offline.flush]) {
+    saveBeforeClosing(flush);
+  }
+  // (The binding keeps the listener.)
+  AppLifecycleListener(
+    onExitRequested: () async {
+      await saveEverything();
+      return AppExitResponse.exit;
+    },
+    onHide: () => fire(saveEverything()),
+  );
 
   // Plays scrobbled to ListenBrainz, and other devices' read back.
   final listenBrainz = ListenBrainz(history, library, settings);
@@ -203,7 +218,7 @@ Future<void> _lookForUpdates(AppState app) async {
   await app.updates.check(quiet: true);
   final release = app.updates.available;
   settings.updateOffered = release?.toJson();
-  if (release == null) return;
+  if (release == null || !isNewerVersion(release.version, settings.updateSkipped)) return;
   // The first page may still be on its way.
   for (var i = 0; i < 50 && app.navigator.currentState?.overlay == null; i++) {
     await Future<void>.delayed(const Duration(milliseconds: 100));

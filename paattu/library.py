@@ -95,6 +95,12 @@ def load():
             data = json.load(f)
     except FileNotFoundError:
         return empty()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        paths.set_aside(paths.LIBRARY)
+        return empty()
+    if not isinstance(data, dict):
+        paths.set_aside(paths.LIBRARY)
+        return empty()
     for key in ("users", "playlists", "tracks", "removed"):
         data.setdefault(key, {})
     data.setdefault("mixes", [])
@@ -285,6 +291,7 @@ def upsert_user(data, info, language, curated=False):
 
 def upsert_playlist_stub(data, stub, owner=None, language=""):
     """Record a playlist we know about without touching its tracks."""
+    _votes[0] = None  # its tracks or language may change the votes
     from .titles import guess_language, playlist_title
 
     playlists = data["playlists"]
@@ -320,6 +327,7 @@ def short_thumbnail(url):
 
 def set_playlist_tracks(data, details):
     """Store a fetched playlist: its metadata and cleaned tracks."""
+    _votes[0] = None  # its tracks or language may change the votes
     from .titles import clean_title
 
     entry = data["playlists"].get(details["id"]) or {"id": details["id"], "saved": False}
@@ -520,15 +528,32 @@ def played_language(data, track):
     own = (track.get("language") or "").title()
     if own in PLAYED_LANGUAGES:
         return own
-    votes = {}
-    for playlist in data["playlists"].values():
-        language = playlist.get("language")
-        if language in PLAYED_LANGUAGES and not playlist.get("local") and track.get("id") in (playlist.get("tracks") or []):
-            votes[language] = votes.get(language, 0) + 1
+    votes = language_votes(data).get(track.get("id"))
     if votes:
         return max(PLAYED_LANGUAGES, key=lambda language: votes.get(language, 0))
     credits = [str(c) for c in track.get("credits") or []]
     return guess_language(track.get("title", ""), track.get("movie", ""), track.get("channel", ""), *credits)
+
+
+def language_votes(data):
+    """Song id -> how many of the library's (not your own) Malayalam and Tamil
+    playlists hold it, by language. Worked out once for each library as
+    loaded (the radio asks about every song played and every one it finds);
+    set_playlist_tracks and upsert_playlist_stub start it afresh."""
+    if _votes[0] is not data:
+        out = {}
+        for playlist in data["playlists"].values():
+            language = playlist.get("language")
+            if language not in PLAYED_LANGUAGES or playlist.get("local"):
+                continue
+            for tid in set(playlist.get("tracks") or []):
+                votes = out.setdefault(tid, {})
+                votes[language] = votes.get(language, 0) + 1
+        _votes[:] = [data, out]
+    return _votes[1]
+
+
+_votes = [None, {}]
 
 
 def note_played(data, track):

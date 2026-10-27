@@ -2,7 +2,9 @@
 #define RUNNER_FLUTTER_WINDOW_H_
 
 #include <flutter/dart_project.h>
+#include <flutter/encodable_value.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
 
@@ -28,6 +30,19 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // "dev.paattu.paattu/window": the title bar in the app's colours
+  // (lib/src/ui/title_bar.dart).
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> window_channel_;
+
+  // The colours last asked for (0x00RRGGBB), put back when Windows redraws
+  // the frame in its own after a theme change; caption < 0 for none yet.
+  int caption_ = -1;
+  int text_ = 0;
+  int border_ = 0;
+  bool dark_ = false;
+
+  void ApplyTitleBar();
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

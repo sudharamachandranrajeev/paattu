@@ -26,7 +26,6 @@ import '../sources/sources.dart' as sources;
 import '../sources/youtube.dart' show videoYouTube;
 import '../track.dart';
 import '../util.dart';
-import 'beat.dart';
 
 /// Whether a song's video is showing, for Now Playing on a phone to fade
 /// the cover out of its way.
@@ -136,9 +135,11 @@ class SongVideoCard extends StatelessWidget {
 }
 
 /// [child] (video mode's card) with no edge of its own: it fades out into the
-/// page behind it all round, and like the 3D cover it leans a little, slowly
-/// drifting (towards the pointer on a computer) and swelling a touch on each
-/// beat. Still for those who turn animations off.
+/// page behind it all round, and on a computer it leans a little towards the
+/// pointer, like the 3D cover. It moves only while it settles after the
+/// pointer: a picture that moves on its own needs no more, and drawing the
+/// page afresh every frame made the whole app lag on Windows. Still for
+/// those who turn animations off.
 class FloatingVideo extends StatefulWidget {
   const FloatingVideo({super.key, required this.child});
   final Widget child;
@@ -151,21 +152,7 @@ class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProvider
   late final Ticker _ticker = createTicker(_tick);
   final _tilt = ValueNotifier(Offset.zero);
   Offset _aim = Offset.zero;
-  DateTime _moved = DateTime(0);
   Duration _last = Duration.zero;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final still = MediaQuery.disableAnimationsOf(context);
-    if (still && _ticker.isActive) {
-      _ticker.stop();
-      _tilt.value = Offset.zero;
-    } else if (!still && !_ticker.isActive) {
-      _last = Duration.zero;
-      _ticker.start();
-    }
-  }
 
   @override
   void dispose() {
@@ -177,20 +164,26 @@ class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProvider
   void _tick(Duration elapsed) {
     final seconds = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
-    final t = elapsed.inMicroseconds / 1e6;
-    // Slower and smaller than the cover's: a picture that moves on its own
-    // needs only a hint of it.
-    final drifting = DateTime.now().difference(_moved) > const Duration(seconds: 3);
-    final aim = drifting ? Offset(sin(t * 0.3) * 0.3, cos(t * 0.21) * 0.22) : _aim;
-    final next = _tilt.value + (aim - _tilt.value) * (1 - exp(-seconds * 3));
-    if ((next - _tilt.value).distance > 0.0004) _tilt.value = next;
+    final next = _tilt.value + (_aim - _tilt.value) * (1 - exp(-seconds * 3));
+    if ((next - _aim).distance < 0.002) {
+      _tilt.value = _aim;
+      _ticker.stop();
+    } else {
+      _tilt.value = next;
+    }
+  }
+
+  void _aimAt(Offset aim) {
+    _aim = aim;
+    if (MediaQuery.disableAnimationsOf(context) || _ticker.isActive || aim == _tilt.value) return;
+    _last = Duration.zero;
+    _ticker.start();
   }
 
   void _pointerMoved(Offset at) {
     final size = context.size;
     if (size == null || size.isEmpty) return;
-    _aim = Offset((at.dx / size.width * 2 - 1).clamp(-1.0, 1.0), (at.dy / size.height * 2 - 1).clamp(-1.0, 1.0));
-    _moved = DateTime.now();
+    _aimAt(Offset((at.dx / size.width * 2 - 1).clamp(-1.0, 1.0), (at.dy / size.height * 2 - 1).clamp(-1.0, 1.0)));
   }
 
   /// Opaque in the middle, clear at the edges: a fade over the outer [edge]
@@ -204,7 +197,6 @@ class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final beat = BeatDriver.of(context);
     final melted = ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (rect) => _fade(rect, Axis.vertical, 0.12),
@@ -216,23 +208,18 @@ class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProvider
     );
     return MouseRegion(
       onHover: (event) => _pointerMoved(event.localPosition),
-      onExit: (_) => _aim = Offset.zero,
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_tilt, ?beat]),
+      onExit: (_) => _aimAt(Offset.zero),
+      child: ValueListenableBuilder(
+        valueListenable: _tilt,
         child: RepaintBoundary(child: melted),
-        builder: (context, child) {
-          final tilt = _tilt.value;
-          final swell = 1 + (beat?.punch ?? 0) * 0.012;
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.0012)
-              ..rotateX(-tilt.dy * 0.07)
-              ..rotateY(tilt.dx * 0.09)
-              ..scaleByDouble(swell, swell, 1, 1),
-            child: child,
-          );
-        },
+        builder: (context, tilt, child) => Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0012)
+            ..rotateX(-tilt.dy * 0.07)
+            ..rotateY(tilt.dx * 0.09),
+          child: child,
+        ),
       ),
     );
   }

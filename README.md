@@ -66,8 +66,6 @@ the Linux command share one library format: export it from one (Settings → Exp
 * **Your music in numbers** – plays, hours, most played songs, singers and films, the hour you
   listen most, and titles your listening earns (*Stuck on repeat*, *Night owl*, *Picky DJ*…), set
   beside this week's charts in your languages and what the whole ListenBrainz community plays.
-* **Interface sounds** – a soft tap, a breath between pages and a small bell for another song,
-  low and quiet under the music (Settings turns them off).
 * **Songs kept on this device** – songs you play to the end are kept for playing offline
   (2 GB by default, least recently played go first), and take over when the internet goes.
 * **Plays follow you (ListenBrainz)** – scrobbles carry your history between the phone, the
@@ -198,7 +196,9 @@ Download from [Releases](../../releases); each release also has `SHA256SUMS.txt`
 
 * **Windows** – `Paattu-…-windows-x64-setup.exe` (Inno Setup) or `…-windows-x64-portable.zip`. The
   installer is not code signed yet, so SmartScreen says "Windows protected your PC": choose **More
-  info → Run anyway**.
+  info → Run anyway**. On Windows 11 the window's title bar takes the app's colours, and the song's
+  cover's while Now Playing or the mini player shows it in them; Windows 10 gives it only a dark or
+  light frame. Paattu runs once: opening it again brings the open one to the front.
 * **Android** – `Paattu-…-android.apk`. Allow your browser or file manager to install unknown apps
   when asked.
 * **Android TV** – `Paattu-…-android-tv.apk`, the same app on the TV's home screen, run with the
@@ -697,7 +697,20 @@ and runs its `install.sh`; then *Restart the shell* loads the new window.
 ```
 paattu update                           # is there a newer one?
 paattu update apply                     # install it
+paattu update rollback [VERSION]        # go back to an earlier one (else the one before this)
 ```
+
+**Going back.** When a new version misbehaves, *Settings › About › Go back to
+an earlier version* lists the earlier releases for this device and installs
+the one you pick the same way, checked against its SHA-256. Your library,
+plays and settings stay; 0.23.1 is the oldest offered, the first that reads
+them as this one writes them. From 1.0.1 on, the version you went back to
+doesn't offer the one you left as it starts (Settings still has it).
+Android won't put an older version over a newer one,
+so there it opens that release's page and says what to do: export the
+library, uninstall Paattu, install the older APK and import the library
+again. On Omarchy, `paattu update rollback` does it; a `--dev` install says
+which tag to check out instead of moving your checkout.
 
 **The repository has to be public for the app to see its releases.** GitHub
 answers 404 to everybody else about a private one, so while it's private,
@@ -782,12 +795,6 @@ habit*, *Picky DJ* (three songs taken out of the radio) and more. In the app,
 *You and everyone else* sets you against this week's top songs in your
 languages (how mainstream you are) and against the artists the whole
 ListenBrainz community played most this month.
-
-**Interface sounds**: a soft drop when you tap a button, a breath when a page
-opens or closes, and a small singing bowl when you change the song, all low
-and well under the music. In the app they take no audio focus, so they never
-pause or duck the song. Turn them off in Settings › Sound (Look & settings
-on Omarchy, or `paattu config set uiSounds false`).
 
 **Fades**: each song fades out over its last seconds and the next fades in
 (3 seconds by default; *Look & settings → Between songs* on Omarchy,

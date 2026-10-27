@@ -4,8 +4,10 @@
 // ~/.local/share/paattu/history.json (paattu/history.py):
 //
 //     plays   [{id, at (seconds since 1970), heard (seconds), length}], oldest first
-//     removed [{id, at}], oldest first: songs the radio queued that you took
-//             out of Up next before they played
+//     removed [{id, at, song}], oldest first: songs the radio queued that you
+//             took out of Up next before they played (song as in tracks too:
+//             0.23 keeps tracks only for plays and made, so going back to it
+//             and on again loses none)
 //     tracks  id -> the song, for the ids in plays, removed and made
 //     made    daily|weekly|monthly -> {key, tracks[ids]}: the playlist made
 //             for that day, week or month
@@ -20,6 +22,7 @@ import 'package:flutter/foundation.dart';
 import 'titles.dart';
 import 'track.dart';
 import 'util.dart';
+import 'save.dart';
 
 /// Plays kept; older ones are dropped.
 const historyLimit = 3000;
@@ -95,9 +98,15 @@ class History extends ChangeNotifier {
         for (final key in ['plays', 'removed']) {
           if (data[key] is! List) data[key] = <dynamic>[];
         }
+        for (final r in asList(data['removed'])) {
+          final id = r is Map ? asString(r['id']) : '';
+          if (id.isNotEmpty && r['song'] is Map && _tracks[id] is! Map) _tracks[id] = asJson(r['song']);
+        }
       }
     } catch (error) {
+      // Kept aside, not written over with an empty one.
       debugPrint('history: $error');
+      await setAside(file);
       data = _empty();
     }
     notifyListeners();
@@ -125,9 +134,10 @@ class History extends ChangeNotifier {
     final id = trackId(track);
     if (id.isEmpty) return;
     final list = asList(data['removed']);
-    list.add(<String, dynamic>{'id': id, 'at': epochSeconds(at ?? DateTime.now())});
+    final song = storedTrack(track);
+    list.add(<String, dynamic>{'id': id, 'at': epochSeconds(at ?? DateTime.now()), 'song': song});
     if (list.length > removedLimit) list.removeRange(0, list.length - removedLimit);
-    _tracks[id] = storedTrack(track);
+    _tracks[id] = song;
     _prune();
     _changed();
   }
@@ -198,10 +208,12 @@ class History extends ChangeNotifier {
 
   Future<void> save() async {
     _saveTimer?.cancel();
-    await file.parent.create(recursive: true);
-    final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(jsonEncode(data), flush: true);
-    await tmp.rename(file.path);
+    await writeWhole(file, jsonEncode(data));
+  }
+
+  /// A save that's waiting, done now (save.dart's saveEverything).
+  Future<void> flush() async {
+    if (_saveTimer?.isActive ?? false) await save();
   }
 }
 

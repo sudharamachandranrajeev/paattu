@@ -286,8 +286,9 @@ sync_dir() {
     [[ -f $f ]] || continue
     cmp -s "$f" "$dst/${f##*/}" || install -m 644 "$f" "$dst/${f##*/}"
   done
-  for f in "$dst"/*.qml "$dst"/*.js "$dst"/*.json; do
-    [[ -e $f && ! -e $src/${f##*/} ]] && rm -f "$f"
+  # The folder is the plugin's alone: whatever an older version left goes.
+  for f in "$dst"/*; do
+    [[ -f $f && ! -e $src/${f##*/} ]] && rm -f "$f"
   done
   return 0
 }

@@ -1178,10 +1178,10 @@ def cmd_radio(args, out):
             left = _extend_radio(e, data, station, out)
         out.done("Radio: %s to come" % _plural(left, "song"), count=left)
     elif args.action == "remove":
-        _radio_remove(data, args.target, out)
+        _radio_remove(data, args.target, out, args.entry)
     elif args.action == "taste":
-        with history.editing() as h:  # only read, but not while it's half written
-            rows = history.taste_ranking(h.signals, h.track, time.time())
+        h = history.History.load()  # saves replace the file whole: never half written
+        rows = history.taste_ranking(h.signals, h.track, time.time())
         if args.json:
             out.data(rows)
             return
@@ -1201,16 +1201,21 @@ def cmd_radio(args, out):
         out.data({"radio": station}, "Radio: songs like %s" % station.get("title") if station else "Radio off")
 
 
-def _radio_remove(data, target, out):
+def _radio_remove(data, target, out, link=None):
     """Take queue entry target (from 1, as paattu queue numbers them) out. One
     the radio queued that hasn't played yet is noted in the history, so the
-    radio learns from it."""
+    radio learns from it. With link (the entry's), the entry is that song's
+    even if the queue moved since target was read; gone, nothing is taken."""
     try:
         index = int(target or "") - 1
     except ValueError:
         raise SourceError("say which queue entry: paattu radio remove N") from None
     with engine.Engine(autostart=False) as e, radio.session() as state:
         entries = e.get("playlist") or []
+        if link and not (0 <= index < len(entries) and entries[index].get("filename") == link):
+            index = next((i for i, x in enumerate(entries) if x.get("filename") == link), -1)
+            if index < 0:
+                raise SourceError("that song has already left the queue")
         if not 0 <= index < len(entries):
             raise SourceError("there's no queue entry %d" % (index + 1))
         entry = entries[index]
@@ -1536,6 +1541,12 @@ def cmd_update(args, out):
         out.progress("Updating Paattu…")
         version = update.apply(lambda message: out.progress(message))
         out.done("Paattu %s is installed. Restart the shell to load the new window: omarchy restart shell" % version,
+                 version=version)
+        return
+    if args.action == "rollback":
+        out.progress("Going back…")
+        version = update.rollback(args.version, lambda message: out.progress(message))
+        out.done("Paattu %s is installed. Restart the shell to load its window: omarchy restart shell" % version,
                  version=version)
         return
     found = update.check()
@@ -2272,6 +2283,8 @@ def build_parser():
                    choices=("start", "stop", "more", "status", "remove", "taste", "forgive"))
     a.add_argument("target", nargs="?", help="start: the song (a link or id), the one playing when left out; "
                                              "remove: the queue entry; forgive: by:NAME or film:NAME")
+    a.add_argument("--entry", metavar="LINK", help="remove: the entry's link, so a queue that moved meanwhile "
+                                                   "loses that song and no other")
     a.set_defaults(func=cmd_radio)
     a = sub.add_parser("played", help="note a play in the history (the engine does this)")
     a.add_argument("url")
@@ -2306,8 +2319,9 @@ def build_parser():
     a.add_argument("--start", type=int, default=0, help="play: the song to start at (0 is the newest)")
     a.add_argument("--quiet", action="store_true", help="say nothing (the engine keeps songs this way)")
     a.set_defaults(func=cmd_offline)
-    a = sub.add_parser("update", help="a newer Paattu: check | apply")
-    a.add_argument("action", nargs="?", default="check", choices=("check", "apply"))
+    a = sub.add_parser("update", help="a newer Paattu: check | apply | rollback [VERSION]")
+    a.add_argument("action", nargs="?", default="check", choices=("check", "apply", "rollback"))
+    a.add_argument("version", nargs="?", help="rollback: the version to go back to (else the one before this)")
     a.set_defaults(func=cmd_update)
     a = sub.add_parser("describe", help='a playlist from a description: "Ilaiyaraaja melodies, rain songs, Premam"')
     a.add_argument("text", nargs="+")

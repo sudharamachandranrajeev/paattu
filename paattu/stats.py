@@ -57,7 +57,7 @@ def music_stats(plays, track, now, days=None, favourites=(), hour_of=None):
         days_played.add(at // DAY)
     out["minutes"] //= 60
     out["songs"], out["artists"] = len(songs), len(artists)
-    out["top_songs"] = _top({titles[k]: n for k, n in songs.items()})
+    out["top_songs"] = _top(songs, name=titles.get)  # by song: two of one title stay two
     out["top_artists"] = _top(artists)
     out["top_films"] = _top(films)
     run = 0
@@ -67,8 +67,9 @@ def music_stats(plays, track, now, days=None, favourites=(), hour_of=None):
     return out
 
 
-def _top(counts, count=5):
-    return [[name, n] for name, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower()))[:count]]
+def _top(counts, count=5, name=str):
+    rows = sorted(counts.items(), key=lambda kv: (-kv[1], name(kv[0]).lower()))[:count]
+    return [[name(key), n] for key, n in rows]
 
 
 THEME_TITLES = {

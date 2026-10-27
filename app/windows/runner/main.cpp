@@ -7,6 +7,19 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // One Paattu at a time: two would save the library and the plays over each
+  // other's. Opened again, the one running comes to the front instead.
+  HANDLE single = ::CreateMutexW(nullptr, TRUE, L"Local\\dev.paattu.paattu");
+  if (single != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {
+    HWND running = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Paattu");
+    if (running != nullptr) {
+      if (::IsIconic(running)) ::ShowWindow(running, SW_RESTORE);
+      ::SetForegroundWindow(running);
+    }
+    ::CloseHandle(single);
+    return EXIT_SUCCESS;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {

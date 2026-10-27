@@ -23,6 +23,7 @@ import 'sources/youtube.dart' show playlistDetails;
 import 'sources/youtube_music.dart';
 import 'track.dart';
 import 'util.dart';
+import 'save.dart';
 
 const chartLanguages = ['Malayalam', 'Tamil', 'Hindi', 'Telugu', 'Kannada', 'Punjabi'];
 const chartKinds = ['top', 'searched', 'love'];
@@ -150,10 +151,7 @@ class Charts extends ChangeNotifier {
     };
     notifyListeners();
     try {
-      await file.parent.create(recursive: true);
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsString(jsonEncode(_data), flush: true);
-      await tmp.rename(file.path);
+      await writeWhole(file, jsonEncode(_data));
     } catch (error) {
       problemLog.warn('charts: ${errorText(error)}');
     }

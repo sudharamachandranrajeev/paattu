@@ -26,6 +26,13 @@ class StatsTest(unittest.TestCase):
         self.assertEqual(got["plays"], 0)
         self.assertEqual(stats.quirks(got), [])
 
+    def test_two_songs_of_one_title_stay_two(self):
+        tracks = {"a": {"id": "a", "title": "Malare", "movie": "Premam"},
+                  "b": {"id": "b", "title": "Malare", "movie": "Other"}}
+        plays = [{"id": id, "at": 100 + i, "heard": 200, "length": 200} for i, id in enumerate("aaabb")]
+        got = stats.music_stats(plays, tracks.get, 1000, hour_of=hour_of)
+        self.assertEqual(got["top_songs"], [["Malare", 3], ["Malare", 2]])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,4 +35,16 @@ void main() {
     expect(got.plays, 0);
     expect(quirks(got), isEmpty);
   });
+
+  test('two songs of one title stay two', () {
+    const songs = {
+      'a': {'id': 'a', 'title': 'Malare', 'movie': 'Premam'},
+      'b': {'id': 'b', 'title': 'Malare', 'movie': 'Other'},
+    };
+    final played = [
+      for (final (i, id) in 'aaabb'.split('').indexed) {'id': id, 'at': 100 + i, 'heard': 200, 'length': 200},
+    ];
+    final got = musicStats(played, (id) => songs[id], now: DateTime.fromMillisecondsSinceEpoch(1000000));
+    expect(got.topSongs, [('Malare', 3), ('Malare', 2)]);
+  });
 }

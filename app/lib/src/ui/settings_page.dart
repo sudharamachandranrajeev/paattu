@@ -1,6 +1,7 @@
 // Settings: theme, sound, where the music comes from, data saver, library
 // import / export, the problem log, about.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -480,22 +481,7 @@ class SettingsPage extends StatelessWidget {
                       app.toast('Keeping songs in the app\'s own folder');
                     },
                   ),
-                ListTile(
-                  leading: const Icon(Icons.sd_storage_outlined),
-                  title: const Text('Space allowed'),
-                  subtitle: Text(
-                    settings.offlineLimitMb == 0
-                        ? 'No limit: songs are kept until you take them off'
-                        : '${formatBytes(settings.offlineLimitMb << 20)} · the songs played least recently go first',
-                  ),
-                ),
-                Slider(
-                  value: settings.offlineLimitMb.toDouble().clamp(0, _limitSliderMax),
-                  max: _limitSliderMax,
-                  divisions: _limitSliderMax ~/ 512,
-                  label: settings.offlineLimitMb == 0 ? 'No limit' : formatBytes(settings.offlineLimitMb << 20),
-                  onChanged: (v) => settings.offlineLimitMb = (v.round() ~/ 512) * 512,
-                ),
+                _SpaceAllowed(app: app),
               ],
             ),
             const SectionHeader('Sync between devices'),
@@ -580,6 +566,12 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 _UpdateTile(app: app),
+                ListTile(
+                  leading: const Icon(Icons.history_toggle_off),
+                  title: const Text('Go back to an earlier version'),
+                  subtitle: const Text('When this one misbehaves: your library, plays and settings stay'),
+                  onTap: () => _goBack(context, app),
+                ),
                 ListTile(
                   leading: const Icon(Icons.code),
                   title: const Text('Source code and releases'),
@@ -825,6 +817,79 @@ class _LogPage extends StatelessWidget {
 }
 
 /// Looking for a newer Paattu, and installing it when there is one.
+/// How much room kept songs may take. The limit is set when the slider is
+/// let go (a moment after the last press, with the arrow keys), and one that
+/// would take kept songs off asks first: dragging past a small limit on the
+/// way to a big one, or to "No limit", takes nothing.
+class _SpaceAllowed extends StatefulWidget {
+  const _SpaceAllowed({required this.app});
+  final AppState app;
+
+  @override
+  State<_SpaceAllowed> createState() => _SpaceAllowedState();
+}
+
+class _SpaceAllowedState extends State<_SpaceAllowed> {
+  int? _moving;
+  Timer? _settle;
+
+  @override
+  void dispose() {
+    _settle?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _set(int mb) async {
+    final settings = widget.app.settings, kept = widget.app.offline.totalBytes;
+    if (mb > 0 && kept > mb << 20 && mb != settings.offlineLimitMb) {
+      final ok = await confirm(
+        context,
+        title: 'Take kept songs off?',
+        body: '${formatBytes(kept)} of songs are kept. To fit in ${formatBytes(mb << 20)}, '
+            'the ones played least recently are taken off this device.',
+        action: 'Take them off',
+      );
+      if (!mounted) return;
+      if (!ok) return setState(() => _moving = null);
+    }
+    settings.offlineLimitMb = mb;
+    setState(() => _moving = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mb = _moving ?? widget.app.settings.offlineLimitMb;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.sd_storage_outlined),
+          title: const Text('Space allowed'),
+          subtitle: Text(
+            mb == 0
+                ? 'No limit: songs are kept until you take them off'
+                : '${formatBytes(mb << 20)} · the songs played least recently go first',
+          ),
+        ),
+        Slider(
+          value: mb.toDouble().clamp(0, _limitSliderMax),
+          max: _limitSliderMax,
+          divisions: _limitSliderMax ~/ 512,
+          label: mb == 0 ? 'No limit' : formatBytes(mb << 20),
+          onChanged: (v) {
+            _settle?.cancel();
+            setState(() => _moving = (v.round() ~/ 512) * 512);
+          },
+          onChangeEnd: (v) {
+            _settle?.cancel();
+            _settle = Timer(const Duration(milliseconds: 800), () => _set((v.round() ~/ 512) * 512));
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class _UpdateTile extends StatelessWidget {
   const _UpdateTile({required this.app});
   final AppState app;
@@ -931,5 +996,84 @@ Future<void> offerUpdate(BuildContext context, AppState app, Release release) as
       );
     default:
       break;
+  }
+}
+
+/// The earlier versions this device can go back to, and going back to the
+/// one picked. Android won't install an older version over a newer one, so
+/// on a phone or TV it opens that release's page instead, with what to do.
+Future<void> _goBack(BuildContext context, AppState app) async {
+  final updates = app.updates;
+  final load = updates.earlier();
+  final picked = await showDialog<Release>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: const Text('Go back to'),
+      content: SizedBox(
+        width: 360,
+        child: FutureBuilder<List<Release>?>(
+          future: load,
+          builder: (context, found) {
+            if (found.connectionState != ConnectionState.done) {
+              return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+            }
+            final releases = found.data;
+            if (releases == null || releases.isEmpty) {
+              return Text(
+                releases == null ? "Couldn't reach the releases on GitHub" : 'There is no earlier version for this device',
+              );
+            }
+            return ListView(
+              shrinkWrap: true,
+              children: [
+                for (final (i, r) in releases.indexed)
+                  ListTile(
+                    autofocus: i == 0,
+                    title: Text('Paattu ${r.version}'),
+                    subtitle: Text([
+                      if (i == 0) 'The one before this',
+                      r.prerelease ? 'Pre-release' : 'Stable',
+                    ].join(' · ')),
+                    onTap: () => Navigator.pop(dialog, r),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Cancel'))],
+    ),
+  );
+  if (picked == null || !context.mounted) return;
+  final android = updates.platform == 'android';
+  final go = await confirm(
+    context,
+    title: 'Go back to Paattu ${picked.version}?',
+    body: android
+        ? "Android won't put an older version over a newer one. Save your library first (Settings › Library › "
+            'Export the library), then uninstall Paattu, install ${picked.installerFor('android', tv: onTv)?.name ?? 'the APK'} '
+            'from the page that opens, and import the library again.'
+        : 'Paattu downloads ${picked.version}, checks it and installs it over this one. Your library, plays and '
+            'settings stay. As it starts, ${picked.version} may offer $appVersion or a newer one: "Not now" '
+            'keeps ${picked.version}.',
+    action: android ? 'Open the page' : 'Go back',
+  );
+  if (!go || !context.mounted) return;
+  if (android) {
+    fire(launchUrl(Uri.parse(picked.page.isEmpty ? releasePageUrl : picked.page), mode: LaunchMode.externalApplication));
+    return;
+  }
+  problemLog.info('update: going back from $appVersion to ${picked.version}');
+  // Not offered again as it starts (from 1.0.1 on, which reads this).
+  app.settings.updateSkipped = appVersion;
+  await updates.downloadAndInstall(release: picked);
+  if (!context.mounted) return;
+  if (updates.state == UpdateState.ready || updates.state == UpdateState.failed) {
+    final reason = updates.problem;
+    app.toast(
+      updates.state == UpdateState.ready
+          ? reason
+          : '${reason.isEmpty ? "Couldn't install it" : reason}. Get it from the releases page',
+    );
   }
 }

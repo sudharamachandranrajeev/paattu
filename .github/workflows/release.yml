@@ -34,6 +34,17 @@ jobs:
           # not the run number: Android won't install a lower versionCode over
           # a higher one, and run numbers start again in a new repository
           # (0.8.0 was build 1 after 0.7.1's build 16). 0.8.1 -> 801.
+          # Every place the version is written says the tag's: a desktop
+          # install that says less is offered the update for ever.
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            for found in \
+                "app/pubspec.yaml:$(sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)" \
+                "app/lib/src/app_state.dart:$(sed -n "s/^const sourceVersion = '\(.*\)';/\1/p" app/lib/src/app_state.dart)" \
+                "paattu/__init__.py:$(sed -n 's/^__version__ = "\(.*\)"/\1/p' paattu/__init__.py)" \
+                "plugin/manifest.json:$(sed -n 's/^ *"version": *"\(.*\)".*/\1/p' plugin/manifest.json)"; do
+              [[ ${found#*:} == "$version" ]] || { echo "::error::${found%%:*} says ${found#*:}, the tag $version"; exit 1; }
+            done
+          fi
           IFS=. read -r major minor patch <<< "${version%%-*}"
           build=$(( major * 10000 + minor * 100 + ${patch:-0} ))
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -413,7 +424,8 @@ jobs:
         run: |
           version=${{ needs.version.outputs.version }}
           # The CHANGELOG section for this version.
-          awk -v v="$version" '$0 ~ "^## " {p = index($0, v) > 0; next} p' CHANGELOG.md > notes.md
+          # The heading's own version, so 1.0.1 doesn't take 1.0.10's too.
+          awk -v v="$version" '/^## / {p = $2 == v; next} p' CHANGELOG.md > notes.md
           [[ -s notes.md ]] || echo "Paattu $version" > notes.md
           cat notes.md
       - name: Publish

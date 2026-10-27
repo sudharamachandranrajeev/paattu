@@ -63,7 +63,10 @@ def read(where=None):
     try:
         with open(where / INDEX, encoding="utf-8") as f:
             songs = (json.load(f) or {}).get("songs") or {}
-    except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+    except FileNotFoundError:
+        return {}
+    except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        paths.set_aside(where / INDEX)
         return {}
     return {k: e for k, e in songs.items()
             if isinstance(e, dict) and e.get("file") and (where / e["file"]).is_file()}

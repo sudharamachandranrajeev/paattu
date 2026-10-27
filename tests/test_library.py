@@ -57,6 +57,14 @@ class TempDirs(unittest.TestCase):
 
 
 class LibraryTest(TempDirs):
+    def test_a_damaged_library_is_set_aside(self):
+        paths.DATA.mkdir(parents=True)
+        paths.LIBRARY.write_text('{"playlists": {', encoding="utf-8")
+        self.assertEqual(library.load()["playlists"], {})
+        library.load()  # a second failure keeps the first copy
+        self.assertEqual((paths.DATA / "library.json.damaged").read_text(encoding="utf-8"), '{"playlists": {')
+        self.assertEqual(len(list(paths.DATA.glob("library.json.damaged*"))), 2)
+
     def test_user_playlists_and_tracks(self):
         with library.edit() as data:
             user = library.upsert_user(data, CHANNEL, "Malayalam")

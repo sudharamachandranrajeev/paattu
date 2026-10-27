@@ -12,6 +12,7 @@ import 'links.dart';
 import 'sound.dart';
 import 'ui/glass.dart';
 import 'util.dart';
+import 'save.dart';
 
 class PaattuTheme {
   const PaattuTheme(
@@ -269,6 +270,7 @@ class Settings extends ChangeNotifier {
     try {
       if (await file.exists()) _data = asJson(jsonDecode(await file.readAsString()));
     } catch (_) {
+      await setAside(file);
       _data = {};
     }
     notifyListeners();
@@ -282,10 +284,13 @@ class Settings extends ChangeNotifier {
   }
 
   Future<void> save() async {
-    await file.parent.create(recursive: true);
-    final tmp = File('${file.path}.tmp');
-    await tmp.writeAsString(const JsonEncoder.withIndent(' ').convert(_data));
-    await tmp.rename(file.path);
+    _saveTimer?.cancel();
+    await writeWhole(file, const JsonEncoder.withIndent(' ').convert(_data));
+  }
+
+  /// A save that's waiting, done now (save.dart's saveEverything).
+  Future<void> flush() async {
+    if (_saveTimer?.isActive ?? false) await save();
   }
 
   PaattuTheme get theme => themeById(asString(_data['theme']));
@@ -364,7 +369,7 @@ class Settings extends ChangeNotifier {
 
   /// Keep the songs listened to on this device, so they play with no internet.
   /// Off unless asked on a TV, which has little storage.
-  bool get offlineAutoSave => _data['offlineAutoSave'] as bool? ?? !onTv;
+  bool get offlineAutoSave => switch (_data['offlineAutoSave']) { final bool on => on, _ => !onTv };
   set offlineAutoSave(bool on) => _set('offlineAutoSave', on);
 
   /// Where the kept songs go: empty for the app's own folder. Only the desktop
@@ -395,6 +400,11 @@ class Settings extends ChangeNotifier {
   }
 
   set updateOffered(Json? release) => _set('updateOffered', release);
+
+  /// The version gone back from (Settings › About): it, and any before it,
+  /// isn't offered as Paattu starts, only from Settings.
+  String get updateSkipped => asString(_data['updateSkipped']);
+  set updateSkipped(String version) => _set('updateSkipped', version);
 
   /// The languages Home shows charts for (charts.dart).
   List<String> get chartLanguages =>

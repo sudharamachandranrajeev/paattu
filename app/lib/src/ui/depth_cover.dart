@@ -27,9 +27,13 @@ import 'beat.dart';
 import 'widgets.dart';
 
 class DepthCover extends StatefulWidget {
-  const DepthCover({super.key, required this.track, this.radius = 24});
+  const DepthCover({super.key, required this.track, this.playing = true, this.radius = 24});
   final Json track;
   final double radius;
+
+  /// Paused, the cover comes to rest and nothing is drawn again till it
+  /// plays or is moved.
+  final bool playing;
 
   @override
   State<DepthCover> createState() => _DepthCoverState();
@@ -51,6 +55,8 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
   Offset _aim = Offset.zero;
   DateTime _moved = DateTime(0);
   Duration _last = Duration.zero;
+  // Seconds the drift had come to when the ticker last stopped.
+  double _ran = 0;
   StreamSubscription<AccelerometerEvent>? _motion;
   Offset? _held;
 
@@ -95,6 +101,13 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
       _depth = null;
       _find();
     }
+    if (widget.playing) _wake();
+  }
+
+  void _wake() {
+    if (_still || _ticker.isActive) return;
+    _last = Duration.zero;
+    _ticker.start();
   }
 
   @override
@@ -114,6 +127,7 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     if (depth == null || !mounted || art != _art) return;
     _strength.value = _still ? 1 : 0;
     setState(() => _depth = depth);
+    _wake();
   }
 
   /// Gravity across and down the screen, against how the phone is usually
@@ -124,7 +138,10 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     final held = _held = Offset.lerp(_held ?? now, now, 0.03)!;
     final moved = now - held;
     _aim = Offset((-moved.dx / 2.5).clamp(-1.0, 1.0), (moved.dy / 2.5).clamp(-1.0, 1.0));
-    if (moved.distance > 0.2) _moved = DateTime.now();
+    if (moved.distance > 0.2) {
+      _moved = DateTime.now();
+      _wake();
+    }
   }
 
   void _pointerMoved(Offset at) {
@@ -132,19 +149,32 @@ class _DepthCoverState extends State<DepthCover> with SingleTickerProviderStateM
     if (size == null || size.isEmpty) return;
     _aim = Offset((at.dx / size.width * 2 - 1).clamp(-1.0, 1.0), (at.dy / size.height * 2 - 1).clamp(-1.0, 1.0));
     _moved = DateTime.now();
+    _wake();
   }
 
   void _tick(Duration elapsed) {
     final seconds = (elapsed - _last).inMicroseconds / 1e6;
     _last = elapsed;
-    final t = elapsed.inMicroseconds / 1e6;
+    final t = _ran + elapsed.inMicroseconds / 1e6;
     final still = DateTime.now().difference(_moved) > const Duration(seconds: 3);
-    final aim = still ? Offset(sin(t * 0.45) * 0.35, cos(t * 0.31) * 0.25) : _aim;
+    final rest = still && !widget.playing;
+    final aim = rest
+        ? Offset.zero
+        : still
+            ? Offset(sin(t * 0.45) * 0.35, cos(t * 0.31) * 0.25)
+            : _aim;
     final next = _tilt.value + (aim - _tilt.value) * (1 - exp(-seconds * 5));
     if ((next - _tilt.value).distance > 0.0004) _tilt.value = next;
     if (_depth != null) {
       _clock.value = t;
       if (_strength.value < 1) _strength.value = min(1.0, _strength.value + seconds / 1.2);
+    }
+    // Every frame of this redraws the cover and the blurs over it: none
+    // while paused and still.
+    if (rest && _tilt.value.distance < 0.002 && (_depth == null || _strength.value >= 1)) {
+      _tilt.value = Offset.zero;
+      _ran = t;
+      _ticker.stop();
     }
   }
 
