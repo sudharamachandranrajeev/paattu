@@ -64,8 +64,6 @@ DEFAULTS = {
     # the song is (film, year, singers, music...) above Up next.
     "lyrics": {"show": True, "effect": "3d", "gradient": True, "transliterate": True},
     "songInfo": True,
-    # Soft sounds when you click, go to another page or change the song.
-    "uiSounds": True,
 }
 
 STYLES = ("vinyl", "card", "minimal")
@@ -136,7 +134,7 @@ def validate(key, value):
         raise ValueError("fade is 0 to 12 seconds")
     if key == "lyrics.effect" and value not in LYRIC_EFFECTS:
         raise ValueError("lyrics.effect is one of: " + ", ".join(LYRIC_EFFECTS))
-    if key in ("autoRadio", "offline.autoSave", "songInfo", "uiSounds", "lyrics.show", "lyrics.gradient",
+    if key in ("autoRadio", "offline.autoSave", "songInfo", "lyrics.show", "lyrics.gradient",
                "lyrics.transliterate") and not isinstance(value, bool):
         raise ValueError(key + " is true or false")
     if key == "offline.limitMb" and not (isinstance(value, int) and not isinstance(value, bool) and value >= 0):

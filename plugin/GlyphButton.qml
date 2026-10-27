@@ -1,5 +1,4 @@
 import QtQuick
-import "Model.js" as Model
 
 // A round icon button: glyph on a soft circle that shows on hover.
 Item {
@@ -47,13 +46,6 @@ Item {
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     cursorShape: Qt.PointingHandCursor
-    onClicked: function(e) {
-      if (e.button === Qt.RightButton) {
-        root.rightClicked()
-      } else {
-        Model.clickSound()
-        root.clicked()
-      }
-    }
+    onClicked: function(e) { if (e.button === Qt.RightButton) root.rightClicked(); else root.clicked() }
   }
 }

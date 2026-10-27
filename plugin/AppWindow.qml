@@ -317,18 +317,6 @@ FloatingWindow {
   property var updateOffer: null
   property string updateState: ""  // "" | installing | installed
   Jobs { id: updateJobs }
-  UiSounds {
-    id: sounds
-    on: win.store.config.uiSounds !== false
-    Component.onCompleted: Model.uiSounds = sounds
-    Component.onDestruction: if (Model.uiSounds === sounds) Model.uiSounds = null
-  }
-  onViewChanged: sounds.play("move")
-  Connections {
-    target: win.player
-    function onSkipped() { sounds.play("change") }
-  }
-
   Component.onCompleted: updateJobs.run(["update", "check"], "", function(ok, e) {
     if (ok && e.available && store.updateDismissed !== e.latest) updateOffer = e
   })

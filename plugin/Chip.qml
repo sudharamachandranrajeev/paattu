@@ -1,5 +1,4 @@
 import QtQuick
-import "Model.js" as Model
 
 // A pill button: optional glyph + label.
 Rectangle {
@@ -59,6 +58,6 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: { Model.clickSound(); root.clicked() }
+    onClicked: root.clicked()
   }
 }

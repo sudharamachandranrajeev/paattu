@@ -28,7 +28,6 @@ import 'src/settings.dart';
 import 'src/sources/jiosaavn.dart';
 import 'src/ui/settings_page.dart' show offerUpdate;
 import 'src/ui/shell.dart';
-import 'src/ui_sounds.dart';
 import 'src/update.dart';
 import 'src/util.dart' show asString, nowStamp;
 
@@ -133,8 +132,7 @@ Future<void> main() async {
       }
       if (scrobbles({'heard': heard, 'length': length ?? 0})) fire(listenBrainz.sync());
     })
-    ..onRemovedFromRadio = history.removedFromRadio
-    ..onSkip = (() => UiSounds.instance.play(UiSound.change));
+    ..onRemovedFromRadio = history.removedFromRadio;
   void playback() {
     jiosaavnSaveData = settings.saveData;
     player
@@ -147,7 +145,6 @@ Future<void> main() async {
     // The folder or the space allowed changed while running.
     fire(offline.moveTo(keptSongsDirectory(settings.offlineDir, dir), allowed: settings.offlineLimitMb << 20));
     fire(androidScreenAwake(settings.screenAwake));
-    UiSounds.instance.enabled = settings.uiSounds;
   }
 
   playback();

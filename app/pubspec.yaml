@@ -86,8 +86,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon.png
-    # The interface sounds (tools/ui-sounds.py, lib/src/ui_sounds.dart).
-    - assets/sounds/ui.wav
   # The cover in 3D (lib/src/ui/depth_cover.dart).
   shaders:
     - shaders/depth_cover.frag

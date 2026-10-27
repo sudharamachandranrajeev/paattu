@@ -311,11 +311,6 @@ class Settings extends ChangeNotifier {
   bool get screenAwake => _data['screenAwake'] != false;
   set screenAwake(bool on) => _set('screenAwake', on);
 
-  /// Soft sounds when you tap, go to another page or change the song (on
-  /// unless turned off; ui_sounds.dart).
-  bool get uiSounds => _data['uiSounds'] != false;
-  set uiSounds(bool on) => _set('uiSounds', on);
-
   /// The song's video, blurred, behind Now Playing (on unless turned off).
   bool get videoBackground => _data['videoBackground'] != false;
   set videoBackground(bool on) => _set('videoBackground', on);
