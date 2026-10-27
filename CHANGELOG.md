@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.2 — No pause after each song
+
+Which file: the same as before. On Omarchy, `git pull`, then
+`./install.sh --dev`, then `omarchy restart shell`.
+
+- **No hitch when a song ends.** Each song played is saved to the library
+  and the plays, and with a big library writing them out held the app up
+  for a tenth of a second, enough to catch a fade or the screen. Now
+  they're written a piece at a time with the screen drawn in between
+  (5 ms at most, against 100 before, on an 11 MB library).
+- **Video mode draws half as much.** The card's edges melt into the page
+  through one mask instead of two, so each frame of the video is drawn
+  once fewer behind the scenes. It looks the same.
+
 ## 1.0.1 — Smoother, steadier, and a way back
 
 Which file: the same as before. On Omarchy, `git pull`, then

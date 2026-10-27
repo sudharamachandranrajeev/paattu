@@ -10,6 +10,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -195,17 +197,37 @@ class _FloatingVideoState extends State<FloatingVideo> with SingleTickerProvider
         stops: [0, edge, 1 - edge, 1],
       ).createShader(rect);
 
+  /// Both fades (the outer 12% down, 8% across) as one small picture,
+  /// stretched over the card: one mask, not one for each way, as each is a
+  /// layer of its own, drawn again with every frame of the video.
+  static final ui.Image _edges = () {
+    const side = 128;
+    final rect = Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble());
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder)
+      ..drawRect(rect, Paint()..shader = _fade(rect, Axis.vertical, 0.12))
+      ..drawRect(rect, Paint()
+        ..shader = _fade(rect, Axis.horizontal, 0.08)
+        ..blendMode = BlendMode.dstIn);
+    return recorder.endRecording().toImageSync(side, side);
+  }();
+
+  static Shader _edgesOver(Rect rect) => ImageShader(
+        _edges,
+        TileMode.clamp,
+        TileMode.clamp,
+        Float64List.fromList([
+          rect.width / _edges.width, 0, 0, 0, //
+          0, rect.height / _edges.height, 0, 0,
+          0, 0, 1, 0,
+          rect.left, rect.top, 0, 1,
+        ]),
+        filterQuality: FilterQuality.medium,
+      );
+
   @override
   Widget build(BuildContext context) {
-    final melted = ShaderMask(
-      blendMode: BlendMode.dstIn,
-      shaderCallback: (rect) => _fade(rect, Axis.vertical, 0.12),
-      child: ShaderMask(
-        blendMode: BlendMode.dstIn,
-        shaderCallback: (rect) => _fade(rect, Axis.horizontal, 0.08),
-        child: widget.child,
-      ),
-    );
+    final melted = ShaderMask(blendMode: BlendMode.dstIn, shaderCallback: _edgesOver, child: widget.child);
     return MouseRegion(
       onHover: (event) => _pointerMoved(event.localPosition),
       onExit: (_) => _aimAt(Offset.zero),

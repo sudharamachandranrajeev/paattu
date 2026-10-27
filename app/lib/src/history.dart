@@ -208,7 +208,7 @@ class History extends ChangeNotifier {
 
   Future<void> save() async {
     _saveTimer?.cancel();
-    await writeWhole(file, jsonEncode(data));
+    await writeJsonGently(file, data);
   }
 
   /// A save that's waiting, done now (save.dart's saveEverything).
