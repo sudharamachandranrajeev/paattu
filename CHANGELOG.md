@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Surround off leaves the phone's sound alone.** On Android the app set
+  up the phone's virtualizer for every song just to switch it off, and
+  on one phone, once that started failing, the app kept closing mid-song
+  (#27).
+  Now the virtualizer is only made while surround is turned up, and let
+  go when it goes back to none.
+
 ## 1.0.2 — No pause after each song
 
 Which file: the same as before. On Omarchy, `git pull`, then

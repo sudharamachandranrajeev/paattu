@@ -274,9 +274,10 @@ class MainActivity : AudioServiceActivity() {
             }
         }
 
-        // A virtualizer for each audio session given one, held by the
-        // application like the players; those of players gone (not in
-        // [live]) are let go.
+        // A virtualizer for each audio session given some surround, held by
+        // the application like the players; those of players gone (not in
+        // [live]) or turned down to none are let go, so with surround off
+        // the phone's effect engine is never touched.
         private val virtualizers = HashMap<Int, Virtualizer>()
 
         @Suppress("DEPRECATION")
@@ -284,13 +285,13 @@ class MainActivity : AudioServiceActivity() {
             for (gone in virtualizers.keys.filter { it != session && it !in live }) {
                 virtualizers.remove(gone)?.release()
             }
-            val effect = virtualizers.getOrPut(session) { Virtualizer(0, session) }
-            if (strength > 0) {
-                if (effect.strengthSupported) effect.setStrength(strength.coerceIn(0, 1000).toShort())
-                effect.enabled = true
-            } else {
-                effect.enabled = false
+            if (strength <= 0) {
+                virtualizers.remove(session)?.release()
+                return
             }
+            val effect = virtualizers.getOrPut(session) { Virtualizer(0, session) }
+            if (effect.strengthSupported) effect.setStrength(strength.coerceIn(0, 1000).toShort())
+            effect.enabled = true
         }
 
         // Wi-Fi kept awake while music plays: audio_service holds the CPU,
