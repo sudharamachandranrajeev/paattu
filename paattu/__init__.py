@@ -1,3 +1,3 @@
 """Paattu: Malayalam & Tamil music from YouTube, JioSaavn, SoundCloud and any link."""
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
