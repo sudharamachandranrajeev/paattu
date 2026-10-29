@@ -31,7 +31,7 @@ The app is in `app/` (Flutter, Dart): `lib/src/` has the library model
 audio_service for Android's media controls). Now Playing's silent video is
 video_player on Android and media_kit_video on Windows / Linux. `lib/src/ui/`
 holds the glass look (`glass.dart`). `subject.dart` finds the cover's subject
-(ML Kit on Android, U²-Net with ONNX Runtime on Windows / Linux, from
+(an on-device model on Android, U²-Net with ONNX Runtime on Windows / Linux, from
 `packages/flutter_onnxruntime`). `player/sleep_timer.dart` is the sleep timer,
 `offline.dart` the songs kept on this device, and `update.dart` the in-app
 updater (GitHub's releases, checked by SHA-256 before anything is installed;
@@ -94,7 +94,7 @@ as the engine and shares the library instead:
 paattu export cliamp      # every saved playlist → ~/.config/cliamp/playlists/Paattu - *.toml
 ```
 
-cliamp then plays the same Malayalam / Tamil library with its Winamp EQ and
+cliamp then plays the same Malayalam / Tamil library with its classic-style EQ and
 visualizer. Features worth bringing over next, natively: the spectrum visualizer (cava), Radio Browser
-stations (cliamp's history already has Anbu FM Malayalam, BIG 92.7, Big FM
-Tamil), and synced lyrics (LRCLIB).
+stations (cliamp's history already has Malayalam and Tamil stations), and
+synced lyrics (LRCLIB).

@@ -14,11 +14,11 @@ otherwise; the `paattu` commands are for Linux. [Back to the README](../README.m
   refresh never touch them.
 * **Mixes** – your own shuffle buttons made of languages, profiles and playlists; songs you play
   to the end join *Played in Malayalam / Tamil*, so the mixes grow as you listen.
-* **Radio and playlists made for you** – song radio from YouTube Music, shaped by what you play
+* **Radio and playlists made for you** – song radio from YouTube, shaped by what you play
   and skip, auto radio when the queue runs out, Daily mix, Weekly discovery, Monthly top, and
   playlists from a description.
 * **Charts** – the week's top songs, most searched and love songs for Malayalam, Tamil, Hindi,
-  Telugu, Kannada and Punjabi, from JioSaavn and YouTube Music.
+  Telugu, Kannada and Punjabi, from JioSaavn and YouTube.
 * **Now Playing with the song's video** – blurred, silent and in time behind the cover; four looks
   (cover, video first, full picture, record), colours from the cover, and the cover in 3D: its
   subject gliding over the picture in one piece (or its layers drifting) and moving with the song's rhythm.
@@ -42,7 +42,7 @@ otherwise; the `paattu` commands are for Linux. [Back to the README](../README.m
   YouTube's player page and never scrapes mp3 download sites.
 * **Omarchy-native** – a bar widget with a panel, a desktop widget on workspace 1 (vinyl, card or
   minimal), an app window, media keys and the lock screen through MPRIS, seven themes
-  (Spicetify-style JSON files), and a `paattu` command for everything.
+  (plain JSON files), and a `paattu` command for everything.
 * **Updates from inside the app** – checked against each release's `SHA256SUMS.txt` before
   installing.
 
@@ -63,7 +63,7 @@ failed to a text file: attach it to an [issue](https://github.com/sudharamachand
 ## Platform notes
 
 * **Windows** – `Paattu-…-windows-x64-setup.exe` (Inno Setup) or `…-windows-x64-portable.zip`. The
-  installer is not code signed yet, so SmartScreen says "Windows protected your PC": choose **More
+  installer is not code signed yet, so Windows says "Windows protected your PC": choose **More
   info → Run anyway**. On Windows 11 the window's title bar takes the app's colours, and the song's
   cover's while Now Playing or the mini player shows it in them; Windows 10 gives it only a dark or
   light frame. Paattu runs once: opening it again brings the open one to the front.
@@ -81,7 +81,7 @@ that one is added. In the app, use **Add from YouTube** (top bar, home page,
 or the bar panel). From a terminal:
 
 ```
-paattu import @Muzik247                   # a profile: all of its playlists
+paattu import @handle                     # a profile: all of its playlists
 paattu import 'https://www.youtube.com/playlist?list=…' --lang Malayalam
 paattu user list
 paattu user sync                          # new playlists on followed profiles, fresh songs
@@ -127,16 +127,8 @@ are cleaned into song, movie and credits by `paattu/titles.py`.
 
 A new library is empty: add the profiles and playlists you want. If you'd
 rather start with a ready-made South Indian library, `paattu seed` follows
-27 verified channels (`paattu/seeds.py`) and saves about four playlists from
-each:
-
-- **Malayalam:** Muzik247, Saregama Malayalam, Sony Music Malayalam,
-  Manorama Music Songs, Goodwill, East Coast, Satyam Audios,
-  Millennium Audios, Magic Frames, Wonderwall, Mango Music, Friday Music,
-  Think Music Malayalam, Sushin Shyam
-- **Tamil:** Think Music, Sony Music South, Saregama Tamil, T-Series Tamil,
-  Divo, Aditya Music Tamil, U1 Records, Lahari Music Tamil, Zee Music South,
-  A. R. Rahman, Anirudh, Ilaiyaraaja, Sid Sriram
+27 verified channels of Malayalam and Tamil film music labels and composers
+(listed in `paattu/seeds.py`) and saves about four playlists from each.
 
 `paattu seed --remove` takes it out again: those profiles, the playlists they
 brought and their cached cover art. Profiles and playlists you added, your
@@ -199,7 +191,7 @@ pick.
 | **SoundCloud** | covers, remixes, independent artists | whatever the uploader gave |
 
 Or **paste a link** to a song, album or playlist on any site yt-dlp can play:
-JioSaavn, YouTube, SoundCloud, Bandcamp, Audiomack, archive.org, or a plain
+JioSaavn, YouTube, SoundCloud, other music and archive sites, or a plain
 mp3 / m4a / flac file. A FLAC link plays lossless.
 
 While you type, suggestions come up: YouTube's search phrases, and
@@ -224,12 +216,12 @@ doesn't say. Paattu streams; it doesn't download, and it doesn't scrape mp3
 download sites.
 
 ```
-paattu search kaathalae kaathalae               # where the music comes from (search.sites)
-paattu search --site jiosaavn --limit 20 malare
+paattu search "rain song"                       # where the music comes from (search.sites)
+paattu search --site jiosaavn --limit 20 mazha
 paattu search 'https://www.jiosaavn.com/album/…'   # what's at a link
-paattu browse search --kind album chithra       # songs, albums, artists or playlists, a page at a time
-paattu browse search --kind song --after '{"youtube": "…"}' chithra   # the next page
-paattu browse suggest chith                     # what the search box suggests
+paattu browse search --kind album SINGER        # songs, albums, artists or playlists, a page at a time
+paattu browse search --kind song --after '{"youtube": "…"}' SINGER   # the next page
+paattu browse suggest mazh                      # what the search box suggests
 paattu browse open '{"type": "artist", "site": "jiosaavn", "id": "455", …}'   # an item from browse search
 paattu play SONG                                # an id from a search, or any song link
 paattu add [--next] SONG
@@ -238,7 +230,7 @@ paattu playlist add-songs "Night drive" SONG
 ```
 
 Songs from other sites get ids made from their page address
-(`jiosaavn.com_song_kaathalae-kaathalae-from-96_QyVdYxxAZgM`). The last 400
+(`jiosaavn.com_song_<song-name>_<id>`). The last 400
 search results are remembered in `~/.cache/paattu/search.json`, so their ids
 work after the search. A song you save, heart or add to a playlist is copied
 into `library.json`. Search settings are in `paattu config`:
@@ -275,7 +267,7 @@ starts the first mix.
 
 ```
 paattu mix list
-paattu mix new "Night drive" --user @Muzik247 --playlist favourites
+paattu mix new "Night drive" --user @handle --playlist favourites
 paattu mix add "Night drive" --lang Tamil --playlist 'https://www.youtube.com/playlist?list=…'
 paattu mix drop "Night drive" --lang Tamil
 paattu mix rename "Night drive" "Kollywood"
@@ -300,10 +292,10 @@ them.
 paattu play --mix "Night drive"         # a shuffle button (see Mixes)
 paattu play --lang Malayalam            # shuffled mix of the saved Malayalam playlists
 paattu play PL… [--shuffle] [--index 3]
-paattu play --user @ARRahman
+paattu play --user @handle
 paattu toggle | next | prev | seek +10 | volume 60 | shuffle | repeat
 paattu status | queue | jump 5
-paattu watch                            # this song's video in Brave, audio pauses
+paattu watch                            # this song's video in your browser, audio pauses
 paattu video SONG                       # where to stream its small, silent video
 paattu depth SONG                       # its cover's depth map, for the cover in 3D
 paattu rhythm SONG                      # its loudness and beats (the cover in 3D moves with them)
@@ -312,7 +304,7 @@ paattu rhythm SONG                      # its loudness and beats (the cover in 3
 Now Playing (in the app, and on Omarchy from the sidebar or by clicking the
 song in the player bar) shows the song's video behind it, blurred, silent
 and kept in time with the music: the smallest H.264 picture, about 1 MB a
-minute. A YouTube Music song whose own video is only its cover held still
+minute. A YouTube song whose own video is only its cover held still
 (an "art track"), and JioSaavn and SoundCloud songs, use a YouTube video of
 about the same length found by search (a lyric or video song) when there is
 one. On Omarchy it needs Qt Multimedia (`qt6-multimedia-ffmpeg`); turn it off
@@ -346,7 +338,7 @@ On the beat the near parts swell a little and the rest breathes with the
 loudness. A cover without anyone in it is taken apart into the few colours
 it is made of, each a layer (nearer the more central, colourful and away
 from the edges it is), and the layers drift slowly past each other under a
-slow sheen. The subject is found on the device: by ML Kit on Android, and by
+slow sheen. The subject is found on the device: by a segmentation model on Android, and by
 U²-Net's small model (`models/u2netp.onnx`, with ONNX Runtime) on Windows,
 Linux and Omarchy. On Omarchy, `paattu depth` runs it through
 [uv](https://docs.astral.sh/uv/), which fetches ONNX Runtime, NumPy and
@@ -370,7 +362,7 @@ of the cover on Now Playing, with how it sounds in English letters under it
 (for Malayalam, Tamil, Hindi, Telugu and Kannada). The **Lyrics** button
 shows all the words in place of Up next, the line being sung lit up.
 
-The words come from [LRCLIB](https://lrclib.net) or YouTube Music, in the
+The words come from [LRCLIB](https://lrclib.net) or YouTube, in the
 song's own script and timed line by line where they have them so. Words
 timed to another upload of the song than the one playing (a music video with
 a longer start, say) are put in step with it: the two uploads' loudness over
@@ -532,7 +524,7 @@ paattu radio forgive by:NAME            # let one it leaves out back in (or film
 paattu made                             # Daily mix, Weekly discovery, Monthly top
 paattu stats [--days 30]                # your music in numbers, and the titles it earned
 paattu made daily --play [--refresh]    # play today's (--refresh: a new one)
-paattu describe "Ilaiyaraaja melodies, rain songs, Premam" --play [--save NAME]
+paattu describe "old melodies, rain songs, FILM" --play [--save NAME]
 paattu charts                           # the charts for your languages
 paattu charts top Malayalam --play      # top / searched / love, then the language
 paattu config set fade 3                # seconds a song fades out and the next in (0: off)
@@ -540,9 +532,9 @@ paattu config set autoRadio false       # don't carry on when the queue runs out
 ```
 
 **Radio** (the *Start radio* button on Now Playing, in the app and on
-Omarchy) plays songs like a song, from YouTube Music's own radio for it, a
-helping at a time as the queue runs low. Like Spotify's and YouTube's, it
-leaves out what you played in the last six hours and songs you skipped more
+Omarchy) plays songs like a song, from YouTube's own radio for it, a
+helping at a time as the queue runs low. Like the radio on the big streaming
+apps, it leaves out what you played in the last six hours and songs you skipped more
 than once, and when one song's radio runs dry it carries on from a song it
 played. With **auto radio** on (the default), any queue that runs out
 carries on as a radio of its last song, unless repeat is on or you turned
@@ -567,7 +559,7 @@ by that score, and lets one back in.
 5. songs of a theme you play a lot (love, sad, dance, devotional, calm,
    wedding, festival, rap, from the words in their titles);
 6. songs in a language you play a lot;
-7. then the rest, as YouTube Music gave them.
+7. then the rest, as YouTube gave them.
 
 **Made for you** (on Home) comes from what you play: how long you listened
 (a play counts after half a song or 30 seconds), how often, how lately
@@ -579,10 +571,10 @@ songs, and what you skip.
   the songs you like most. A new one every Monday.
 - **Monthly top**: what you played most in the last 30 days.
 - **Charts**: the week's *Top* (JioSaavn's weekly top 50 and, where it has
-  one, YouTube Music's top weekly videos, taken in turn), *Most searched* and
+  one, YouTube's top weekly music videos, taken in turn), *Most searched* and
   *Love songs* for each of your languages (Settings › Charts in the app).
   Fetched again every 12 hours, without the songs you turned down.
-- **Describe a playlist**: "songs from Premam, rain songs and Ilaiyaraaja"
+- **Describe a playlist**: "songs from a film, rain songs and a composer"
   looks up each part and takes their songs in turn, topped up from each
   part's radio.
 
@@ -661,8 +653,8 @@ what both share, up to 2.5 times at full (FFmpeg's `extrastereo`). With
 *Keep loud songs from clipping* on, the preamp also leaves room for a sound
 panned hard one way. On Android it is the phone's own virtualizer at that
 strength (stock Android's is open source; some phone makers ship their
-own, and some apply it only on headphones). Dolby Atmos and DTS can't be
-added to an app: they are licensed to phone and PC makers, and the songs
+own, and some apply it only on headphones). Commercial surround formats can't
+be added to an app: they are licensed to phone and PC makers, and the songs
 are plain stereo. Where your phone or PC has them, they work on Paattu too.
 
 ```
@@ -684,7 +676,7 @@ Linux app build the same chain from the same numbers
 `equalizer`, so the Windows app ships shinchiro's full libmpv build
 instead, pinned in [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv).
 
-## Customising (Spicetify-style themes, desktop widget, bar)
+## Customising (themes, desktop widget, bar)
 
 Everything is a file that applies live, and everything can be set from the
 command line:

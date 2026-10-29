@@ -38,7 +38,7 @@ else runs as root. `--yes` answers its questions; `--dev` links your checkout in
 systemd, `paattu` starts mpv itself.
 
 On Omarchy, open it with **Super+Shift+M**, the music icon in the bar, the widget on workspace 1, or
-Super+Space → Paattu. Elsewhere, use the command: `paattu search malare`,
+Super+Space → Paattu. Elsewhere, use the command: `paattu search mazha`,
 `paattu play --lang Malayalam`, `paattu --help`.
 
 ## Download notes for the Linux app
@@ -65,8 +65,8 @@ Choices, and why:
   straight from YouTube, so no third-party instance sees what you play and
   there's nothing to go down.
 - **No ads, without a browser.** Ads live in YouTube's player page; Paattu
-  never loads it, so there's nothing to block. The video button opens Brave
-  (the default browser) where Shields blocks the page's ads.
+  never loads it, so there's nothing to block. The video button opens the
+  song's page in your default browser.
 - **mpv as the engine.** mpv + yt-dlp is the most reliable YouTube audio path,
   and mpv-mpris makes media keys, the Omarchy OSD and the lock screen work
   for free. cliamp keeps its own role (see [cliamp](design.md#cliamp)).
@@ -76,8 +76,8 @@ Choices, and why:
 OpenSnitch asks before a new program connects, and an unanswered prompt
 becomes a permanent block after 30 seconds. `sudo ./install.sh --firewall`
 adds one rule letting mpv and python (yt-dlp) reach only the music sites:
-YouTube, JioSaavn and SoundCloud for search, plus Bandcamp, archive.org and
-Audiomack for links. A link to any other site gets an OpenSnitch prompt the
+YouTube, JioSaavn and SoundCloud for search, plus a few other music and
+archive sites for links. A link to any other site gets an OpenSnitch prompt the
 first time. It also offers to remove the old rule that blocks cliamp.
 `paattu play` warns (desktop notification) when the rule is missing. If you
 added the rule before search existed, run it again to add the new sites.

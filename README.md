@@ -104,7 +104,7 @@ Each release also has `SHA256SUMS.txt`, a list of fingerprints to check the file
 
 1. Open the downloaded `.apk` (on a TV, copy it over with a USB stick and open it in a file manager).
 2. If Android asks, allow your browser or file manager to install unknown apps. This is normal for
-   apps from outside the Play Store.
+   apps from outside an app store.
 3. Tap **Install**, then **Open**.
 
 </details>
@@ -259,9 +259,9 @@ cd app && flutter pub get && flutter test && flutter run   # the app (Flutter 3.
 - [mpv](https://mpv.io), [mpv-mpris](https://github.com/hoyon/mpv-mpris), [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Deno](https://deno.com) – the Linux engine
 - [Quickshell](https://quickshell.org) and [Omarchy](https://omarchy.org) – the bar, desktop widget and app window
 - [Flutter](https://flutter.dev), [just_audio](https://pub.dev/packages/just_audio), [audio_service](https://pub.dev/packages/audio_service) (+ [audio_service_win](https://pub.dev/packages/audio_service_win)), [audio_session](https://pub.dev/packages/audio_session), [media_kit](https://github.com/media-kit/media-kit) (+ just_audio_media_kit, media_kit_video), [video_player](https://pub.dev/packages/video_player), [youtube_explode_dart](https://pub.dev/packages/youtube_explode_dart), [rxdart](https://pub.dev/packages/rxdart), [file_picker](https://pub.dev/packages/file_picker), [sensors_plus](https://pub.dev/packages/sensors_plus), [package_info_plus](https://pub.dev/packages/package_info_plus) – the app
-- [ML Kit subject segmentation](https://pub.dev/packages/google_mlkit_subject_segmentation), [ONNX Runtime](https://onnxruntime.ai) (+ flutter_onnxruntime) and [U²-Net](https://github.com/xuebinqin/U-2-Net)'s small model, run through [uv](https://docs.astral.sh/uv/) on Omarchy – the cover in 3D
+- [A subject segmentation plugin](https://pub.dev/packages/google_mlkit_subject_segmentation), [ONNX Runtime](https://onnxruntime.ai) (+ flutter_onnxruntime) and [U²-Net](https://github.com/xuebinqin/U-2-Net)'s small model, run through [uv](https://docs.astral.sh/uv/) on Omarchy – the cover in 3D
 - [Poppins](https://fonts.google.com/specimen/Poppins) (SIL Open Font License) – the app's font
-- [JioSaavn](https://www.jiosaavn.com), [YouTube](https://www.youtube.com) / YouTube Music, [SoundCloud](https://soundcloud.com) – where the music comes from; [LRCLIB](https://lrclib.net) – lyrics; [ListenBrainz](https://listenbrainz.org) – plays across devices
+- [LRCLIB](https://lrclib.net) – lyrics; [ListenBrainz](https://listenbrainz.org) – plays across devices
 - [Inno Setup](https://jrsoftware.org/isinfo.php) and [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy) – the Windows installer and the AppImage
 - [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv) – the full libmpv build for the Windows app
 
