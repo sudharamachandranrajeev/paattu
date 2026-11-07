@@ -85,9 +85,11 @@ Flickable {
       visible: !!root.mix
 
       Rectangle {
-        width: 180
-        height: 180
-        radius: 28
+        id: headTile
+        // Smaller in a narrow (tiled) window, so the title keeps room.
+        width: Math.round(Math.max(96, Math.min(180, parent.width * 0.3)))
+        height: width
+        radius: width > 120 ? 28 : 20
         color: root.pal.accent
         Text {
           anchors.centerIn: parent
@@ -96,16 +98,18 @@ Flickable {
           color: root.pal.accentText
           opacity: 0.85
           font.family: root.app.fontFamily
-          font.pixelSize: 76
+          font.pixelSize: Math.round(headTile.width * 0.42)
         }
       }
 
       Column {
         anchors.bottom: parent.bottom
-        width: parent.width - 204
+        width: parent.width - headTile.width - 24
         spacing: 8
 
         Text {
+          width: parent.width
+          elide: Text.ElideRight
           textFormat: Text.PlainText
           text: "MIX  ·  BUTTON " + root.position
           color: root.pal.accent
@@ -120,7 +124,7 @@ Flickable {
           text: root.mix ? root.mix.title : ""
           color: root.pal.foreground
           font.family: root.app.fontFamily
-          font.pixelSize: 32
+          font.pixelSize: root.width < 640 ? 24 : 32
           font.weight: Font.Black
           wrapMode: Text.WordWrap
           maximumLineCount: 2
@@ -133,7 +137,7 @@ Flickable {
           color: root.pal.foreground
           selectionColor: root.pal.accent
           font.family: root.app.fontFamily
-          font.pixelSize: 32
+          font.pixelSize: root.width < 640 ? 24 : 32
           font.weight: Font.Black
           clip: true
           onAccepted: root.rename(text)
@@ -160,7 +164,9 @@ Flickable {
           elide: Text.ElideRight
         }
 
-        Row {
+        // Wraps onto more lines when narrow.
+        Flow {
+          width: parent.width
           spacing: 8
           topPadding: 6
           GlyphButton {
@@ -174,7 +180,6 @@ Flickable {
             onClicked: root.app.playMix(root.mixId, root.mix.title)
           }
           Chip {
-            anchors.verticalCenter: parent.verticalCenter
             text: "Rename"
             glyph: Model.GLYPH_EDIT
             textColor: root.pal.foreground
@@ -189,7 +194,6 @@ Flickable {
             }
           }
           Chip {
-            anchors.verticalCenter: parent.verticalCenter
             visible: !!root.mix && root.mix.waiting > 0
             text: "Load songs for " + Model.plural(root.mix ? root.mix.waiting : 0, "playlist")
             glyph: Model.GLYPH_DOWNLOAD
@@ -200,7 +204,6 @@ Flickable {
             onClicked: root.app.fetchMix(root.mixId)
           }
           RemoveButton {
-            anchors.verticalCenter: parent.verticalCenter
             label: "Delete mix"
             confirmLabel: "Click again to delete"
             textColor: root.pal.foreground
@@ -284,10 +287,12 @@ Flickable {
       spacing: 14
       visible: !!root.mix
 
-      Row {
+      Flow {
+        width: parent.width
         spacing: 16
         Text {
-          anchors.verticalCenter: parent.verticalCenter
+          height: 32
+          verticalAlignment: Text.AlignVCenter
           textFormat: Text.PlainText
           text: "Add to this mix"
           color: root.pal.foreground
@@ -297,8 +302,7 @@ Flickable {
         }
         InputBox {
           id: filterBox
-          anchors.verticalCenter: parent.verticalCenter
-          width: 260
+          width: Math.min(260, parent.width)
           height: 32
           app: root.app
           glyph: Model.GLYPH_SEARCH

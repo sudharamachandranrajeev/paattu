@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.4 — The Omarchy window fits its tile
+
+Linux only: the Android, TV and Windows apps are unchanged and stay on
+1.0.3 (their update check says this version has no file for them). On
+Omarchy, `paattu update`, then `omarchy restart shell`.
+
+- **The app window fits a tiled half, third or quarter of the screen.**
+  It was laid out for 860 by 560 or more, and Hyprland tiles windows
+  smaller than that, so buttons, titles and lists ran over each other.
+  Below 900 wide the sidebar is now a rail of icons, the search box
+  takes the room "Add from YouTube" had, and the player bar puts the
+  song and its buttons on top with the controls and seek bar under them.
+- **Now Playing scrolls and stacks.** In a narrow window the cover sits
+  above the song; the chips wrap onto more lines; nothing runs under the
+  top bar or the player bar any more, at any size.
+- **Every page fits narrow windows.** Song lists drop the film and kind
+  columns (then the cover) to keep the title readable; YouTube users
+  shows the list or the user, one at a time; playlist, mix and album
+  headers shrink their cover and wrap their buttons; the equaliser
+  shows every other band's numbers when they would collide.
+
 ## 1.0.3 — Surround off leaves the phone alone
 
 Which file: the same as before. On Omarchy, `git pull`, then

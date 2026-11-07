@@ -1,6 +1,12 @@
 # Builds the Paattu app for Android, Windows and Linux. A v* tag publishes a
 # GitHub release with the APK, the Windows installer (and a portable zip), and
 # the Linux AppImage / tarball; running it by hand only builds them.
+#
+# A release for some platforms only (a fix that touches nothing else): make
+# the tag annotated with a line naming them, and the rest aren't built:
+#     git tag -a v1.0.4 -m "Paattu 1.0.4" -m "platforms: linux"
+# Names: android (the phone and TV APKs), windows, linux (the AppImage and
+# tarball; the Omarchy install updates from the tag's source either way).
 
 name: Release
 
@@ -21,6 +27,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
       build: ${{ steps.v.outputs.build }}
+      platforms: ${{ steps.p.outputs.platforms }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - id: v
@@ -50,9 +57,32 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "Paattu $version (build $build)"
+      # Which platforms: every one, unless an annotated tag says
+      # "platforms: ..." (read from GitHub: checkout leaves the tag lightweight).
+      - id: p
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          platforms="android windows linux"
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/${GITHUB_REF#refs/tags/}")
+            if [[ $(jq -r .object.type <<< "$ref") == tag ]]; then
+              message=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$(jq -r .object.sha <<< "$ref")" --jq .message)
+              named=$(sed -n 's/^platforms: *//p' <<< "$message" | head -n 1 | tr ',' ' ' | xargs)
+              if [[ -n $named ]]; then
+                for name in $named; do
+                  [[ " android windows linux " == *" $name "* ]] || { echo "::error::unknown platform $name"; exit 1; }
+                done
+                platforms=$named
+              fi
+            fi
+          fi
+          echo "platforms=,$(tr ' ' ',' <<< "$platforms")," >> "$GITHUB_OUTPUT"
+          echo "Platforms: $platforms"
 
   android:
     needs: version
+    if: contains(needs.version.outputs.platforms, ',android,')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -106,6 +136,7 @@ jobs:
 
   windows:
     needs: version
+    if: contains(needs.version.outputs.platforms, ',windows,')
     runs-on: windows-latest
     defaults:
       run:
@@ -188,6 +219,7 @@ jobs:
 
   linux:
     needs: version
+    if: contains(needs.version.outputs.platforms, ',linux,')
     # The oldest supported Ubuntu, so the build runs on older distros too.
     runs-on: ubuntu-22.04
     defaults:
@@ -400,7 +432,8 @@ jobs:
           exit $failed
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Skipped platforms skip their jobs; any failure or cancel still stops it.
+    if: ${{ !cancelled() && !failure() && startsWith(github.ref, 'refs/tags/v') }}
     needs: [version, android, android-smoke, windows, linux, linux-smoke]
     runs-on: ubuntu-latest
     permissions:
@@ -409,14 +442,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # The builds only (not the smoke tests' screenshots and logs).
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: contains(needs.version.outputs.platforms, ',android,')
         with:
           name: android
           path: dist
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: contains(needs.version.outputs.platforms, ',windows,')
         with:
           name: windows
           path: dist
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: contains(needs.version.outputs.platforms, ',linux,')
         with:
           name: linux
           path: dist

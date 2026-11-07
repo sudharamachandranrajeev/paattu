@@ -19,6 +19,10 @@ Rectangle {
   property bool found: false
   // In a narrow list (Now Playing's up next): no film or kind columns.
   property bool compact: false
+  // Too narrow for those columns either way (a tiled window).
+  readonly property bool slim: compact || width < 560
+  // Narrower still: no cover, so the title keeps room.
+  readonly property bool tiny: width < 380
   // Small text before the length: the kind of video, or a result's quality.
   property string badge: Model.qualityLabel(track) || (!found && track.kind && track.kind !== "video" ? track.kind : "")
 
@@ -70,9 +74,10 @@ Rectangle {
   Cover {
     id: thumb
     anchors.left: lead.right
-    anchors.leftMargin: 6
+    anchors.leftMargin: root.tiny ? 0 : 6
     anchors.verticalCenter: parent.verticalCenter
-    width: 34
+    visible: !root.tiny
+    width: root.tiny ? 0 : 34
     height: 34
     radius: 12
     source: root.app.store.artFor("v", root.track.id)
@@ -117,8 +122,8 @@ Rectangle {
     anchors.right: actionSlot.left
     anchors.rightMargin: 12
     anchors.verticalCenter: parent.verticalCenter
-    width: root.compact ? 0 : Math.min(220, root.width * 0.26)
-    visible: !root.compact
+    width: root.slim ? 0 : Math.min(220, root.width * 0.26)
+    visible: !root.slim
     textFormat: Text.PlainText
     text: root.track.movie || ""
     color: root.pal.muted
@@ -172,8 +177,8 @@ Rectangle {
     anchors.right: durationText.left
     anchors.rightMargin: 12
     anchors.verticalCenter: parent.verticalCenter
-    width: root.compact ? 0 : 56
-    visible: !root.compact
+    width: root.slim ? 0 : 56
+    visible: !root.slim
     textFormat: Text.PlainText
     text: root.badge
     color: root.pal.muted

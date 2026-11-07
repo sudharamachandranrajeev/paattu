@@ -60,7 +60,12 @@ FloatingWindow {
   color: pal.background
   implicitWidth: 1160
   implicitHeight: 760
+  // A tiling window manager ignores this (a tile can be half or a third of
+  // the screen), so the layout below works down to phone widths too.
   minimumSize: Qt.size(860, 560)
+  // Narrower than the full layout fits: the sidebar becomes a rail of
+  // glyphs, the top bar and player bar drop their words.
+  readonly property bool compact: width < 900
 
   onVisibleChanged: if (!visible) dismissed()
 
@@ -561,12 +566,12 @@ FloatingWindow {
       id: sidebar
       pal: win.pal
       x: 12
-      width: 220
+      width: win.compact ? 60 : 220
       anchors.top: parent.top
       anchors.topMargin: 12
       anchors.bottom: nowBar.top
       anchors.bottomMargin: 10
-      radius: 28
+      radius: win.compact ? 24 : 28
 
       // Nav scrolls instead of running under the footer on short windows.
       Flickable {
@@ -574,7 +579,7 @@ FloatingWindow {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: sidebarFooter.top
-        anchors.margins: 16
+        anchors.margins: win.compact ? 8 : 16
         anchors.bottomMargin: 8
         clip: true
         contentHeight: navColumn.height
@@ -586,6 +591,7 @@ FloatingWindow {
         spacing: 4
 
         Row {
+          visible: !win.compact
           spacing: 10
           bottomPadding: 18
           Text {
@@ -632,9 +638,9 @@ FloatingWindow {
               || (modelData.view === "users" && win.view === "user")
               || (modelData.view === "mixes" && win.view === "mix")
               || (modelData.view === "search" && win.view === "collection")
-            width: sidebar.width - 32
-            height: 38
-            radius: height / 2
+            width: navColumn.width
+            height: win.compact ? 44 : 38
+            radius: win.compact ? 16 : height / 2
             color: selected ? Qt.rgba(win.pal.accent.r, win.pal.accent.g, win.pal.accent.b, 0.2)
               : navMouse.containsMouse ? Qt.rgba(win.pal.foreground.r, win.pal.foreground.g, win.pal.foreground.b, 0.07) : "transparent"
             border.width: selected ? 1 : 0
@@ -642,7 +648,7 @@ FloatingWindow {
 
             Row {
               anchors.verticalCenter: parent.verticalCenter
-              x: 14
+              x: win.compact ? (parent.width - 20) / 2 : 14
               spacing: 12
               Text {
                 width: 20
@@ -655,6 +661,7 @@ FloatingWindow {
                 font.pixelSize: 16
               }
               Text {
+                visible: !win.compact
                 textFormat: Text.PlainText
                 text: navItem.modelData.label
                 color: navItem.selected ? win.pal.foreground : win.pal.muted
@@ -682,12 +689,24 @@ FloatingWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.margins: 18
+        anchors.margins: win.compact ? 8 : 18
         spacing: 6
 
+        // On the rail: a glyph while work runs (or failed); the words go in the toast.
         Text {
           width: parent.width
-          visible: win.jobs.busy || win.jobs.lastError !== ""
+          visible: win.compact && (win.jobs.busy || win.jobs.lastError !== "")
+          horizontalAlignment: Text.AlignHCenter
+          textFormat: Text.PlainText
+          text: win.jobs.busy ? Model.GLYPH_REFRESH : "!"
+          color: win.jobs.busy ? win.pal.accent : Color.urgent
+          font.family: win.fontFamily
+          font.pixelSize: 16
+          font.bold: true
+        }
+        Text {
+          width: parent.width
+          visible: !win.compact && (win.jobs.busy || win.jobs.lastError !== "")
           textFormat: Text.PlainText
           text: win.jobs.busy ? win.jobs.message + (win.jobs.total ? "  " + win.jobs.step + "/" + win.jobs.total : "") : win.jobs.lastError
           color: win.jobs.busy ? win.pal.accent : Color.urgent
@@ -699,6 +718,7 @@ FloatingWindow {
         }
         Text {
           width: parent.width
+          visible: !win.compact
           textFormat: Text.PlainText
           text: Model.plural(win.store.shelf.counts.saved || 0, "playlist") + " · "
             + Model.formatCount(win.store.shelf.counts.tracks || 0) + " songs\n"
@@ -740,7 +760,8 @@ FloatingWindow {
         Glass {
           anchors.verticalCenter: parent.verticalCenter
           pal: win.pal
-          width: Math.min(440, main.width - 300)
+          // What the back button and Add leave, up to 440.
+          width: Math.max(120, Math.min(440, main.width - 48 - 42 - addChip.width - 20))
           height: 40
           radius: 20
           hovered: search.activeFocus
@@ -784,8 +805,8 @@ FloatingWindow {
               anchors.fill: parent
               visible: !search.text
               textFormat: Text.PlainText
-              text: search.activeFocus ? "A song, film or singer, then Enter to search online. Or paste a link."
-                : "Search songs, films, singers…  ( / )"
+              text: search.activeFocus ? (win.compact ? "Song, film or singer, then Enter" : "A song, film or singer, then Enter to search online. Or paste a link.")
+                : win.compact ? "Search  ( / )" : "Search songs, films, singers…  ( / )"
               color: win.pal.muted
               font: search.font
               elide: Text.ElideRight
@@ -809,8 +830,9 @@ FloatingWindow {
         }
 
         Chip {
+          id: addChip
           anchors.verticalCenter: parent.verticalCenter
-          text: "Add from YouTube"
+          text: win.compact ? "" : "Add from YouTube"
           glyph: Model.GLYPH_ADD
           textColor: win.pal.foreground
           accent: win.pal.accent
@@ -939,11 +961,14 @@ FloatingWindow {
       }
     }
 
+    // A message, or (on the rail, which has no room for it) the work running.
     Rectangle {
+      readonly property string message: win.toast
+        || (win.compact && win.jobs.busy ? win.jobs.message : "")
       anchors.horizontalCenter: main.horizontalCenter
       anchors.bottom: nowBar.top
       anchors.bottomMargin: 12
-      visible: win.toast !== ""
+      visible: message !== ""
       width: Math.min(toastText.implicitWidth + 32, main.width - 40)
       height: 40
       radius: 20
@@ -956,7 +981,7 @@ FloatingWindow {
         width: parent.width - 32
         horizontalAlignment: Text.AlignHCenter
         textFormat: Text.PlainText
-        text: win.toast
+        text: parent.message
         color: win.pal.foreground
         font.family: win.fontFamily
         font.pixelSize: 12

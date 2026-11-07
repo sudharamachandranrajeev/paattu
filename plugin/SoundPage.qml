@@ -246,6 +246,8 @@ Flickable {
       radius: 28
 
       readonly property real columnWidth: (width - 32) / Model.SOUND_BANDS.length
+      // Too thin for every band's numbers (a tiled window): every other one.
+      readonly property bool thin: columnWidth < 34
       readonly property real trackTop: bandRepeater.count ? bandRepeater.itemAt(0).trackTop : 0
       readonly property real trackHeight: bandRepeater.count ? bandRepeater.itemAt(0).trackHeight : 0
 
@@ -276,8 +278,8 @@ Flickable {
             width: panel.columnWidth
             height: bands.height
             value: root.s.bands[index]
-            valueText: Model.soundDb(value)
-            label: Model.soundBandLabel(modelData)
+            valueText: panel.thin && index % 2 ? "" : Model.soundDb(value)
+            label: panel.thin && index % 2 ? "" : Model.soundBandLabel(modelData)
             textColor: root.pal.foreground
             mutedColor: root.pal.muted
             accent: root.s.on ? root.pal.accent : root.pal.muted

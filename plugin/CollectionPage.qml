@@ -113,9 +113,11 @@ Flickable {
       spacing: 24
 
       Cover {
-        width: 200
-        height: 200
-        radius: 28
+        id: headCover
+        // Smaller in a narrow (tiled) window, so the title keeps room.
+        width: Math.round(Math.max(96, Math.min(200, parent.width * 0.3)))
+        height: width
+        radius: width > 120 ? 28 : 20
         circle: root.isArtist
         source: root.app.store.artFor("c", root.item.artKey)
         revision: root.app.artRevision
@@ -126,7 +128,7 @@ Flickable {
       }
 
       Column {
-        width: parent.width - 224
+        width: parent.width - headCover.width - 24
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
 
@@ -144,7 +146,7 @@ Flickable {
           text: root.name
           color: root.pal.foreground
           font.family: root.app.fontFamily
-          font.pixelSize: 30
+          font.pixelSize: root.width < 640 ? 24 : 30
           font.bold: true
           wrapMode: Text.WordWrap
           maximumLineCount: 2

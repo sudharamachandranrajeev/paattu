@@ -62,6 +62,8 @@ Flickable {
     spacing: 12
 
     Text {
+      width: parent.width
+      wrapMode: Text.WordWrap
       textFormat: Text.PlainText
       text: "Your music in numbers"
       color: root.pal.foreground

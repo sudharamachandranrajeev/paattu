@@ -50,7 +50,7 @@ Flickable {
     }
 
     InputBox {
-      width: 280
+      width: Math.min(280, parent.width)
       app: root.app
       glyph: Model.GLYPH_ADD
       placeholder: "New mix"
@@ -73,6 +73,8 @@ Flickable {
           required property int index
           // No sources, or none with saved playlists yet: nothing to shuffle.
           readonly property bool empty: !modelData.sources || modelData.sources.length === 0 || !modelData.playlists
+          // Narrow (a tiled window): move and edit show on hover, leaving the title room.
+          readonly property bool spare: width >= 440 || rowHover.hovered
           width: column.width
           height: 72
           radius: 24
@@ -137,6 +139,7 @@ Flickable {
 
             GlyphButton {
               anchors.verticalCenter: parent.verticalCenter
+              visible: row.spare
               glyph: Model.GLYPH_UP
               size: 30
               color: root.pal.muted
@@ -148,6 +151,7 @@ Flickable {
             }
             GlyphButton {
               anchors.verticalCenter: parent.verticalCenter
+              visible: row.spare
               glyph: Model.GLYPH_DOWN
               size: 30
               color: root.pal.muted
@@ -158,6 +162,7 @@ Flickable {
             }
             GlyphButton {
               anchors.verticalCenter: parent.verticalCenter
+              visible: row.spare
               glyph: Model.GLYPH_EDIT
               size: 30
               color: root.pal.muted

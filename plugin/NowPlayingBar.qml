@@ -12,7 +12,12 @@ Glass {
   readonly property var player: app.player
   readonly property var track: Model.nowPlaying(app.store.tracks, player.path, player.mediaTitle)
 
-  height: 84
+  // Narrow windows (a tiled half or third of the screen): the song and the
+  // buttons on top, play controls and the seek bar under them.
+  readonly property bool compact: app.compact
+  // Narrower still: the heart, save and video buttons are on Now Playing.
+  readonly property bool tight: width < 560
+  height: compact ? 116 : 84
   radius: 28
 
   // Under the track (declared first) so its buttons keep their clicks.
@@ -30,8 +35,8 @@ Glass {
   Row {
     id: trackInfo
     x: 14
-    anchors.verticalCenter: parent.verticalCenter
-    width: Math.min(360, root.width * 0.3)
+    y: root.compact ? 10 : (root.height - height) / 2
+    width: root.compact ? root.width - 28 - sideButtons.width - 8 : Math.min(360, root.width * 0.3)
     spacing: 12
 
     Cover {
@@ -87,7 +92,7 @@ Glass {
     SongActions {
       id: songActions
       anchors.verticalCenter: parent.verticalCenter
-      visible: root.player.hasTrack && videoId !== ""
+      visible: root.player.hasTrack && videoId !== "" && !root.tight
       store: root.app.store
       jobs: root.app.quick
       videoId: root.player.videoId
@@ -100,14 +105,19 @@ Glass {
     }
   }
 
-  // Transport + seek
-  Column {
-    anchors.centerIn: parent
-    width: Math.min(520, root.width * 0.42)
-    spacing: 4
+  // Transport + seek: stacked in the middle, or side by side along the bottom.
+  Item {
+    id: controls
+    x: root.compact ? 14 : (root.width - width) / 2
+    y: root.compact ? root.height - height - 8 : (root.height - height) / 2
+    // Never under the song or the buttons beside it.
+    width: root.compact ? root.width - 28
+      : Math.min(520, root.width * 0.42, root.width - 2 * Math.max(trackInfo.x + trackInfo.width, sideButtons.width + 18) - 24)
+    height: root.compact ? transport.height : transport.height + 4 + seekRow.height
 
     Transport {
-      anchors.horizontalCenter: parent.horizontalCenter
+      id: transport
+      x: root.compact ? 0 : (parent.width - width) / 2
       player: root.player
       color: root.pal.foreground
       accent: root.pal.accent
@@ -117,7 +127,10 @@ Glass {
     }
 
     Row {
-      width: parent.width
+      id: seekRow
+      x: root.compact ? transport.width + 8 : 0
+      y: root.compact ? (parent.height - height) / 2 : transport.height + 4
+      width: parent.width - x
       spacing: 10
       Text {
         width: 40
@@ -153,13 +166,15 @@ Glass {
 
   // Volume, video, queue
   Row {
+    id: sideButtons
     anchors.right: parent.right
-    anchors.rightMargin: 18
-    anchors.verticalCenter: parent.verticalCenter
+    anchors.rightMargin: root.compact ? 12 : 18
+    y: root.compact ? trackInfo.y + (56 - height) / 2 : (root.height - height) / 2
     spacing: 4
 
     GlyphButton {
       anchors.verticalCenter: parent.verticalCenter
+      visible: !root.tight
       glyph: root.player.hasTrack && !root.player.onYouTube ? Model.GLYPH_WEB : Model.GLYPH_VIDEO
       size: 30
       color: root.pal.muted
@@ -197,6 +212,8 @@ Glass {
     }
     Seekbar {
       anchors.verticalCenter: parent.verticalCenter
+      // The mute button stays; the slider needs room.
+      visible: !root.compact
       width: 110
       progress: root.player.volume / 100
       trackColor: Qt.rgba(root.pal.foreground.r, root.pal.foreground.g, root.pal.foreground.b, 0.14)

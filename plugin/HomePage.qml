@@ -50,6 +50,8 @@ Flickable {
         font.weight: Font.DemiBold
       }
       Text {
+        width: parent.width
+        wrapMode: Text.WordWrap
         textFormat: Text.PlainText
         text: root.language ? root.language + " — your saved playlists and the YouTube users behind them"
           : root.greet.english

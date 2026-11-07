@@ -87,9 +87,11 @@ ListView {
       width: parent.width - 16
 
       Cover {
-        width: 180
-        height: 180
-        radius: 28
+        id: headCover
+        // Smaller in a narrow (tiled) window, so the title keeps room.
+        width: Math.round(Math.max(96, Math.min(180, head.width * 0.3)))
+        height: width
+        radius: width > 120 ? 28 : 20
         // Favourites and Saved songs are tiles; your playlists wear their first song's art.
         source: root.builtin ? "" : root.app.store.artFor(root.cover.kind, root.cover.id)
         revision: root.app.artRevision
@@ -102,7 +104,7 @@ ListView {
 
       Column {
         anchors.bottom: parent.bottom
-        width: parent.width - 204
+        width: parent.width - headCover.width - 24
         spacing: 8
 
         Text {
@@ -122,7 +124,7 @@ ListView {
           text: root.playlist ? root.playlist.title : root.isFavourites ? "Favourites" : root.isSaved ? "Saved songs" : "Playlist"
           color: root.pal.foreground
           font.family: root.app.fontFamily
-          font.pixelSize: 32
+          font.pixelSize: head.width < 600 ? 24 : 32
           font.weight: Font.Black
           wrapMode: Text.WordWrap
           maximumLineCount: 2
@@ -135,7 +137,7 @@ ListView {
           color: root.pal.foreground
           selectionColor: root.pal.accent
           font.family: root.app.fontFamily
-          font.pixelSize: 32
+          font.pixelSize: head.width < 600 ? 24 : 32
           font.weight: Font.Black
           clip: true
           onAccepted: root.rename(text)
@@ -170,7 +172,9 @@ ListView {
           }
         }
 
-        Row {
+        // Wraps onto more lines when narrow.
+        Flow {
+          width: parent.width
           spacing: 8
           topPadding: 6
           GlyphButton {
@@ -183,7 +187,6 @@ ListView {
             onClicked: root.app.playPlaylist(root.playlistId, false)
           }
           GlyphButton {
-            anchors.verticalCenter: parent.verticalCenter
             glyph: Model.GLYPH_SHUFFLE
             size: 38
             color: root.pal.foreground
@@ -192,7 +195,6 @@ ListView {
             onClicked: root.app.playPlaylist(root.playlistId, true)
           }
           Chip {
-            anchors.verticalCenter: parent.verticalCenter
             visible: !root.own
             text: root.playlist && root.playlist.saved ? "In your library" : "Save to library"
             glyph: root.playlist && root.playlist.saved ? Model.GLYPH_CHECK : Model.GLYPH_ADD
@@ -204,7 +206,6 @@ ListView {
             onClicked: root.app.savePlaylist(root.playlistId, !(root.playlist && root.playlist.saved))
           }
           Chip {
-            anchors.verticalCenter: parent.verticalCenter
             visible: root.own && !root.builtin && !!root.playlist
             text: "Rename"
             glyph: Model.GLYPH_EDIT
@@ -220,7 +221,6 @@ ListView {
             }
           }
           Chip {
-            anchors.verticalCenter: parent.verticalCenter
             visible: !root.own
             text: "Refresh"
             glyph: Model.GLYPH_REFRESH
@@ -232,7 +232,6 @@ ListView {
           }
           Chip {
             id: mixChip
-            anchors.verticalCenter: parent.verticalCenter
             visible: !!root.playlist || root.builtin
             text: "Add to mix"
             glyph: Model.GLYPH_PLAYLIST_ADD
@@ -244,7 +243,6 @@ ListView {
               title: root.playlist ? root.playlist.title : root.isSaved ? "Saved songs" : "Favourites" }, mixChip)
           }
           RemoveButton {
-            anchors.verticalCenter: parent.verticalCenter
             visible: !!root.playlist && !root.builtin
             label: root.own ? "Delete playlist" : "Remove from app"
             confirmLabel: root.own ? "Click again to delete" : "Click again to remove"
