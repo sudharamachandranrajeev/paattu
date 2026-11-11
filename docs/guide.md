@@ -58,7 +58,7 @@ Songs come from YouTube unless **Settings → Music from** says JioSaavn, SoundC
 song that won't play is tried another way, then as the same song on the other sites (best sound
 first); if nothing works, the app says why in plain words and plays the next one. When something
 goes wrong, **Settings → Problem log → Save the problem log** writes what the app tried and what
-failed to a text file: attach it to an [issue](https://github.com/sudharamachandranrajeev/paattu/issues).
+failed to a text file: attach it to an [issue](https://github.com/sudharamachandranrajeev/paattu-music-player/issues).
 
 ## Platform notes
 
@@ -470,7 +470,7 @@ Two things worth knowing:
 
 ## Updates
 
-**Settings › About › Check for updates** reads the [Releases](https://github.com/sudharamachandranrajeev/paattu/releases)
+**Settings › About › Check for updates** reads the [Releases](https://github.com/sudharamachandranrajeev/paattu-music-player/releases)
 on GitHub, shows what's new in the version it found, then downloads the right
 file for this device, checks its SHA-256 against the release's
 `SHA256SUMS.txt`, and installs it:
@@ -674,7 +674,7 @@ Everything is one chain of FFmpeg filters in mpv (`equalizer`, and
 Linux app build the same chain from the same numbers
 (`tests/sound_cases.json`). media_kit's Windows libmpv has only
 `equalizer`, so the Windows app ships shinchiro's full libmpv build
-instead, pinned in [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv).
+instead, pinned in [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-music-player-libmpv).
 
 ## Customising (themes, desktop widget, bar)
 

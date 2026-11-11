@@ -15,14 +15,14 @@ Json _release(String version, {List<Json> assets = const []}) => <String, dynami
       'tag_name': 'v$version',
       'name': 'Paattu $version',
       'body': '- Something new\n- Something else',
-      'html_url': 'https://github.com/sudharamachandranrajeev/paattu/releases/tag/v$version',
+      'html_url': 'https://github.com/sudharamachandranrajeev/paattu-music-player/releases/tag/v$version',
       'assets': assets,
     };
 
 Json _asset(String name, {int size = 1000, String digest = ''}) => <String, dynamic>{
       'name': name,
       'browser_download_url':
-          'https://github.com/sudharamachandranrajeev/paattu/releases/download/v0.8.0/$name',
+          'https://github.com/sudharamachandranrajeev/paattu-music-player/releases/download/v0.8.0/$name',
       'size': size,
       if (digest.isNotEmpty) 'digest': digest,
     };

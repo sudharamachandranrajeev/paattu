@@ -33,7 +33,7 @@ from .transliterate import LANGUAGES, script_of, transliterate
 SCRIPTS = {language: script for script, language in LANGUAGES.items()}
 
 LRCLIB = "https://lrclib.net/api/search"
-AGENT = "Paattu/%s (https://github.com/sudharamachandranrajeev/paattu)" % __version__
+AGENT = "Paattu/%s (https://github.com/sudharamachandranrajeev/paattu-music-player)" % __version__
 BROWSE_API = "https://music.youtube.com/youtubei/v1/browse?prettyPrint=false"
 FOLDER = paths.CACHE / "lyrics"
 MISS_KEEP = 3 * 86400

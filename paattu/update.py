@@ -17,8 +17,8 @@ from pathlib import Path
 
 from . import __version__, browse, paths
 
-RELEASES = "https://api.github.com/repos/sudharamachandranrajeev/paattu/releases?per_page=20"
-SOURCE = "https://github.com/sudharamachandranrajeev/paattu/archive/refs/tags/%s.tar.gz"
+RELEASES = "https://api.github.com/repos/sudharamachandranrajeev/paattu-music-player/releases?per_page=20"
+SOURCE = "https://github.com/sudharamachandranrajeev/paattu-music-player/archive/refs/tags/%s.tar.gz"
 LIB = paths.HOME / ".local/lib/paattu"
 
 

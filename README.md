@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/sudharamachandranrajeev/paattu"><img src="share/paattu.svg" alt="Paattu" width="140"></a>
+  <a href="https://github.com/sudharamachandranrajeev/paattu-music-player"><img src="share/paattu.svg" alt="Paattu" width="140"></a>
   <br>
   Paattu — പാട്ട് · பாட்டு
   <br>
@@ -9,7 +9,7 @@
 <h4 align="center">Malayalam and Tamil music, free and ad-free, on your phone, TV and computer, and built into Omarchy.</h4>
 
 <p align="center">
-  <a href="https://github.com/sudharamachandranrajeev/paattu/releases"><img src="https://img.shields.io/github/v/release/sudharamachandranrajeev/paattu?include_prereleases&color=f0405a&label=download" alt="Latest release"></a>
+  <a href="https://github.com/sudharamachandranrajeev/paattu-music-player/releases"><img src="https://img.shields.io/github/v/release/sudharamachandranrajeev/paattu-music-player?include_prereleases&color=f0405a&label=download" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/works%20on-Android%20%7C%20Android%20TV%20%7C%20Windows%20%7C%20Linux%20%7C%20Omarchy-555" alt="Works on Android, Android TV, Windows, Linux and Omarchy">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-f7942e" alt="MIT licence"></a>
 </p>
@@ -84,7 +84,7 @@ covers, rendered from the current code. More are in the [feature guide](docs/gui
 
 ### Step 1 – Download
 
-Open the [releases page](https://github.com/sudharamachandranrajeev/paattu/releases) and, under
+Open the [releases page](https://github.com/sudharamachandranrajeev/paattu-music-player/releases) and, under
 the newest release, pick the file for your device:
 
 | Your device | File to download | Works on |
@@ -138,7 +138,7 @@ The `…-linux-x64.tar.gz` also works, but needs mpv's library (libmpv.so.2) ins
 
 1. Open a terminal and run:
    ```sh
-   git clone https://github.com/sudharamachandranrajeev/paattu.git
+   git clone https://github.com/sudharamachandranrajeev/paattu-music-player.git
    cd paattu && ./install.sh
    ```
 2. It asks once for your password, to install mpv and Python with your package manager. Nothing
@@ -221,7 +221,7 @@ file against `SHA256SUMS.txt` on the release if you want to be sure it is genuin
 
 Paattu tries another way, then the same song on the other sites, best sound first. If nothing works,
 it says why and plays the next one. To report it, use **Settings → Problem log → Save the problem
-log** and attach the file to an [issue](https://github.com/sudharamachandranrajeev/paattu/issues).
+log** and attach the file to an [issue](https://github.com/sudharamachandranrajeev/paattu-music-player/issues).
 </details>
 
 <details>
@@ -263,7 +263,7 @@ cd app && flutter pub get && flutter test && flutter run   # the app (Flutter 3.
 - [Poppins](https://fonts.google.com/specimen/Poppins) (SIL Open Font License) – the app's font
 - [LRCLIB](https://lrclib.net) – lyrics; [ListenBrainz](https://listenbrainz.org) – plays across devices
 - [Inno Setup](https://jrsoftware.org/isinfo.php) and [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy) – the Windows installer and the AppImage
-- [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv) – the full libmpv build for the Windows app
+- [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-music-player-libmpv) – the full libmpv build for the Windows app
 
 </details>
 
@@ -271,8 +271,8 @@ cd app && flutter pub get && flutter test && flutter run   # the app (Flutter 3.
 
 | App | What it does |
 | --- | --- |
-| [chithram](https://github.com/sudharamachandranrajeev/chithram) | The sibling video app: YouTube, live TV and torrents, Android TV first |
-| [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-libmpv) | The Windows player library Paattu ships |
+| [chithram](https://github.com/sudharamachandranrajeev/chithram-video-app) | The sibling video app: YouTube, live TV and torrents, Android TV first |
+| [paattu-libmpv](https://github.com/sudharamachandranrajeev/paattu-music-player-libmpv) | The Windows player library Paattu ships |
 
 ## License
 

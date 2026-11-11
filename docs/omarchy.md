@@ -9,7 +9,7 @@ You'll need [Git](https://git-scm.com); `install.sh` brings the rest.
 
 ```bash
 # Clone this repository
-$ git clone https://github.com/sudharamachandranrajeev/paattu.git
+$ git clone https://github.com/sudharamachandranrajeev/paattu-music-player.git
 
 # Go into the repository
 $ cd paattu

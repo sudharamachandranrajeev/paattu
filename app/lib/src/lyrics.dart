@@ -401,7 +401,7 @@ Future<Json?> findLyrics(Json track, String language, {LyricsLevel? level}) asyn
 
 Future<Object?> _askLrclib(String query) async {
   final uri = Uri.parse(_lrclib).replace(queryParameters: {'q': query});
-  final headers = {'User-Agent': 'Paattu/$appVersion (https://github.com/sudharamachandranrajeev/paattu)'};
+  final headers = {'User-Agent': 'Paattu/$appVersion (https://github.com/sudharamachandranrajeev/paattu-music-player)'};
   try {
     return await getJson(uri, headers: headers);
   } catch (_) {

@@ -103,7 +103,7 @@ endif()
 # each came from). Installed after the plugins' libraries, so it wins.
 set(PAATTU_LIBMPV "libmpv-windows-x86_64-20261017.zip")
 set(PAATTU_LIBMPV_URL
-  "https://github.com/sudharamachandranrajeev/paattu-libmpv/releases/download/2026-10-17/${PAATTU_LIBMPV}")
+  "https://github.com/sudharamachandranrajeev/paattu-music-player-libmpv/releases/download/2026-10-17/${PAATTU_LIBMPV}")
 set(PAATTU_LIBMPV_SHA256 "205b7f06d17c492655b5d4a98d03644badbef07ce27a91c632f2f54438c5e164")
 set(PAATTU_LIBMPV_ARCHIVE "${CMAKE_BINARY_DIR}/${PAATTU_LIBMPV}")
 set(PAATTU_LIBMPV_DIR "${CMAKE_BINARY_DIR}/paattu-libmpv")

@@ -26,8 +26,8 @@ import 'util.dart';
 /// Where the app looks, and where it sends the person when it can't install.
 // The list, not /releases/latest: that one passes over pre-releases, and
 // every Paattu release is published as one, so it answered 404.
-const releaseApiUrl = 'https://api.github.com/repos/sudharamachandranrajeev/paattu/releases?per_page=20';
-const releasePageUrl = 'https://github.com/sudharamachandranrajeev/paattu/releases';
+const releaseApiUrl = 'https://api.github.com/repos/sudharamachandranrajeev/paattu-music-player/releases?per_page=20';
+const releasePageUrl = 'https://github.com/sudharamachandranrajeev/paattu-music-player/releases';
 
 /// The file the releases publish their checksums in.
 const checksumsName = 'SHA256SUMS.txt';

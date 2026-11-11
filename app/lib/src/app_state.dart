@@ -32,7 +32,7 @@ const sourceVersion = '1.0.4';
 /// test and the moment before it's read both have something sensible.
 String appVersion = sourceVersion;
 
-const repoUrl = 'https://github.com/sudharamachandranrajeev/paattu';
+const repoUrl = 'https://github.com/sudharamachandranrajeev/paattu-music-player';
 
 /// Read the build's own version. A platform that won't say keeps the source's.
 Future<void> readAppVersion() async {

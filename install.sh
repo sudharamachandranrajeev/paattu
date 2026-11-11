@@ -38,7 +38,7 @@
 set -euo pipefail
 
 SRC=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
-REPO_URL=https://github.com/sudharamachandranrajeev/paattu
+REPO_URL=https://github.com/sudharamachandranrajeev/paattu-music-player
 PLUGIN_ID=rajeevrama.paattu
 RULE=/etc/opensnitchd/rules/003-paattu-allow-youtube.json
 CLIAMP_DENY=/etc/opensnitchd/rules/deny-always-simple-usr-bin-cliamp.json

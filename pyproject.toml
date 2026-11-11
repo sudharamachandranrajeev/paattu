@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sudharamachandranrajeev/paattu"
+Homepage = "https://github.com/sudharamachandranrajeev/paattu-music-player"
 
 [project.scripts]
 paattu = "paattu.cli:main"
