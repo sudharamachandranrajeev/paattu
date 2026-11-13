@@ -709,7 +709,7 @@ paattu config set lyrics.transliterate false  # no English letters under them
 - **Desktop widget:** right-click it to cycle styles, scroll for volume,
   middle-click to open the app. Hover for style / video / open buttons.
 - **Bar widget:** label on/off, label width and scroll behaviour are in
-  Omarchy's bar settings (or `omarchy bar set rajeevrama.paattu label none`).
+  Omarchy's bar settings (or `omarchy bar set brahma.paattu label none`).
   Click opens the panel, middle-click plays/pauses (or starts the first mix),
   right-click skips. In the panel, 1–9 start your mixes.
 

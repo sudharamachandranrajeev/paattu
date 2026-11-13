@@ -23,7 +23,7 @@ from .engine import EngineError
 from .sources import SourceError
 from .youtube import YouTubeError
 
-PLUGIN_ID = "rajeevrama.paattu"
+PLUGIN_ID = "brahma.paattu"
 # Adding a profile saves all its playlists. Songs are fetched right away for a
 # small profile; a big label (hundreds of playlists) gets its best few now and
 # the rest load when opened or played.

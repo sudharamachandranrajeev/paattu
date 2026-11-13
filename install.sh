@@ -30,7 +30,7 @@
 #   ~/.config/systemd/user/paattu-engine.service      headless mpv, started on demand (with systemd)
 #   ~/.local/share/paattu/, ~/.cache/paattu/          library and cover art
 # On Omarchy, also:
-#   ~/.config/omarchy/plugins/rajeevrama.paattu       shell plugin (enabled in the bar)
+#   ~/.config/omarchy/plugins/brahma.paattu       shell plugin (enabled in the bar)
 #   ~/.local/share/applications/paattu.desktop        launcher entry
 #
 # --firewall (root): /etc/opensnitchd/rules/003-paattu-allow-youtube.json
@@ -39,7 +39,7 @@ set -euo pipefail
 
 SRC=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 REPO_URL=https://github.com/sudharamachandranrajeev/paattu-music-player
-PLUGIN_ID=rajeevrama.paattu
+PLUGIN_ID=brahma.paattu
 RULE=/etc/opensnitchd/rules/003-paattu-allow-youtube.json
 CLIAMP_DENY=/etc/opensnitchd/rules/deny-always-simple-usr-bin-cliamp.json
 
@@ -375,6 +375,19 @@ install_themes() {
 
 install_omarchy() {
   say "Adding Paattu to Omarchy"
+  # A copy installed under an earlier id (<owner>.paattu) is replaced in
+  # place: same spot in the bar, same settings.
+  local old_dir old_id shell_json=$XDG_CONFIG/omarchy/shell.json
+  for old_dir in "$XDG_CONFIG"/omarchy/plugins/*.paattu; do
+    [[ -d $old_dir ]] || continue
+    old_id=${old_dir##*/}
+    [[ $old_id == "$PLUGIN_ID" ]] && continue
+    if grep -qF "\"$old_id\"" "$shell_json" 2>/dev/null; then
+      sed -i "s/\"${old_id//./\\.}\"/\"$PLUGIN_ID\"/g" "$shell_json"
+      note "bar: replaced $old_id in place"
+    fi
+    rm -rf "$old_dir"
+  done
   sync_dir "$LIB/plugin" "$PLUGIN_DIR"
   note "plugin: $PLUGIN_DIR"
   mkdir -p "$APPS" "$ICONS"
@@ -386,7 +399,7 @@ install_omarchy() {
   if grep -q "\"$PLUGIN_ID\"" "$XDG_CONFIG/omarchy/shell.json" 2>/dev/null; then
     note "bar: already there"
   else
-    omarchy plugin enable "$PLUGIN_ID" --section right --before rajeevrama.dual-headphones >/dev/null 2>&1 \
+    omarchy plugin enable "$PLUGIN_ID" --section right --before omarchy.audio >/dev/null 2>&1 \
       || omarchy plugin enable "$PLUGIN_ID" --section right >/dev/null 2>&1 \
       || warn "couldn't add it to the bar: omarchy plugin enable $PLUGIN_ID"
     note "bar: right section, next to the audio controls"

@@ -53,7 +53,7 @@ Super+Space → Paattu. Elsewhere, use the command: `paattu search mazha`,
 |---|---|
 | `paattu` (Python, stdlib only) | library, YouTube lookups, search, playback commands — `paattu --help` |
 | `paattu-engine.service` | headless **mpv** with a JSON IPC socket; resolves YouTube, JioSaavn, SoundCloud and other links through **yt-dlp** |
-| `~/.config/omarchy/plugins/rajeevrama.paattu` | Omarchy shell plugin: bar widget + desktop widget + app window |
+| `~/.config/omarchy/plugins/brahma.paattu` | Omarchy shell plugin: bar widget + desktop widget + app window |
 | `~/.local/share/paattu/library.json` | users, playlists, tracks (`shelf.json` is the small summary the bar reads) |
 | `~/.cache/paattu/art/` | cover art, fetched by `paattu art` so the shell never touches the network |
 | `~/.local/share/paattu/history.json` | what you played and for how long, behind the radio and the playlists made for you |

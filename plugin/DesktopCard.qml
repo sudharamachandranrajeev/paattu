@@ -33,7 +33,7 @@ Item {
 
   // The widget's layer has no keyboard, so a new playlist is named in the app.
   function pickInApp() {
-    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "rajeevrama.paattu", JSON.stringify({ view: "pick" })])
+    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "brahma.paattu", JSON.stringify({ view: "pick" })])
   }
 
   implicitWidth: loader.item ? loader.item.implicitWidth : 400

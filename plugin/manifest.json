@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "rajeevrama.paattu",
+  "id": "brahma.paattu",
   "name": "Paattu",
   "version": "1.0.4",
-  "author": "rajeevrama",
+  "author": "Brahma",
   "description": "Malayalam & Tamil music from YouTube playlists and profiles, with search across JioSaavn, YouTube and SoundCloud for songs, albums, singers and playlists: now-playing controls in the bar, a widget on the home workspace, and the Paattu app window. Audio streams through yt-dlp + mpv (no ads); library and playback live in the paattu command (~/.local/lib/paattu).",
   "kinds": [
     "bar-widget",

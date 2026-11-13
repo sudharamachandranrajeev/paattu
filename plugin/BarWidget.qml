@@ -11,8 +11,8 @@ import "Model.js" as Model
 //   right click  next track            scroll         volume
 Panel {
   id: root
-  moduleName: "rajeevrama.paattu"
-  ipcTarget: "rajeevrama.paattu"
+  moduleName: "brahma.paattu"
+  ipcTarget: "brahma.paattu"
 
   readonly property string labelMode: setting("label", "title")
   readonly property int maxLabelWidth: Number(setting("maxWidth", 170)) || 170
@@ -52,7 +52,7 @@ Panel {
   }
   // The same search in the app, with room for every result.
   function searchInApp(text) {
-    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "rajeevrama.paattu", JSON.stringify({ view: "search", query: text })])
+    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "brahma.paattu", JSON.stringify({ view: "search", query: text })])
     close()
   }
   function playSong(track) { if (track && track.id) run(Model.playSongArgs(track.id), "Loading " + (track.title || "the song") + "…") }
@@ -70,7 +70,7 @@ Panel {
   }
   function playPlaylist(id) { run(["play", id], "Loading playlist…") }
   function openApp(view) {
-    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "rajeevrama.paattu", JSON.stringify({ view: view || "home" })])
+    Quickshell.execDetached(["omarchy-shell", "shell", "summon", "brahma.paattu", JSON.stringify({ view: view || "home" })])
     close()
   }
   function watchVideo() { if (player.hasTrack) { run(["watch"], "Opening in Brave…"); close() } }

@@ -9,7 +9,7 @@ import "Model.js" as Model
 // Paattu's always-loaded half: the desktop widget on the home workspace and
 // the app window (summoned from the bar, the launcher or Super+Shift+M).
 //
-//   omarchy-shell shell summon rajeevrama.paattu '{"view":"users"}'
+//   omarchy-shell shell summon brahma.paattu '{"view":"users"}'
 //   omarchy-shell paattu open|toggle|close|style <vinyl|card|minimal>
 Item {
   id: root
@@ -55,7 +55,7 @@ Item {
   // The user closed the window (Esc / close button): tell the host.
   function hideFromUser() {
     opened = false
-    if (shell && typeof shell.hide === "function") shell.hide("rajeevrama.paattu")
+    if (shell && typeof shell.hide === "function") shell.hide("brahma.paattu")
   }
 
   // ---------- actions ----------
